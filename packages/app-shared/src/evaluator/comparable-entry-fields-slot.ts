@@ -48,6 +48,8 @@ export type ComparablePropertyEntryFieldsProps = {
   onLocationConfirmedChange?: (confirmed: boolean) => void;
   /** Search the bank on the entry map and choose from it, beside entering a new comparable. */
   bankBrowse?: ComparableBankBrowse;
+  /** Ask for the land a built comparable stands on (optional) — off in the inspector's capture form. */
+  landAreaField?: boolean;
 };
 
 let panel: ComponentType<ComparablePropertyEntryFieldsProps> | null = null;

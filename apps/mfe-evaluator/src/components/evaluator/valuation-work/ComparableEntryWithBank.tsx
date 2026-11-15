@@ -231,6 +231,7 @@ export function ComparableEntryWithBank({
       onChange={onChange}
       onLocationConfirmedChange={onLocationConfirmedChange}
       bankBrowse={bankBrowse}
+      landAreaField
     />
   );
 }

@@ -80,7 +80,9 @@ public static class PlatformPermissionCatalog
         ],
         ["field-inspector"] =
         [
-            "po", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
+            // «أعمالي» (Omar 2026-11-12): the inspector enters his inspections from it on a desktop, as
+            // the specialists and the appraiser do; his phone keeps the inspection queue (the app decides).
+            "my-work", "po", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
         ],
         ["government-reviewer"] =
         [

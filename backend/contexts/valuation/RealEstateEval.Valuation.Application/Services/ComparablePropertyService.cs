@@ -372,6 +372,10 @@ public sealed class ComparablePropertyService(
         entity.Latitude = request.Latitude;
         entity.Longitude = request.Longitude;
         entity.AreaSqm = request.AreaSqm;
+        // The land under a building: kept for a built comparable only — a land's area is its AreaSqm.
+        entity.LandAreaSqm = PropertyCategoryRules.IsBuiltType(request.ComparablePropertyType)
+            ? request.LandAreaSqm
+            : null;
         entity.TransactionDate = DateOnly.Parse(request.TransactionDate.Trim());
         entity.Price = request.Price;
         entity.PricePerSqm = ComparablePropertyRules.ComputePricePerSqm(
@@ -423,6 +427,11 @@ public sealed class ComparablePropertyService(
 
         if (request.AreaSqm <= 0m)
             errors["areaSqm"] = "المساحة يجب أن تكون أكبر من صفر";
+
+        if (request.LandAreaSqm is <= 0m)
+            errors["landAreaSqm"] = "مساحة الأرض يجب أن تكون أكبر من صفر";
+        else if (request.LandAreaSqm > MarketApproachRules.MaxSubjectAreaSqm)
+            errors["landAreaSqm"] = "مساحة الأرض تتجاوز الحد المعقول (10,000,000 م²)";
 
         if (ComparablePropertyRules.PriceError(request.Price) is { } priceError)
             errors["price"] = priceError;

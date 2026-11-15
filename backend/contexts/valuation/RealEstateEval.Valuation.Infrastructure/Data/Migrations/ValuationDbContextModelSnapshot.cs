@@ -210,6 +210,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<bool>("IsDuplicateTagged")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal?>("LandAreaSqm")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("Latitude")
                         .HasPrecision(9, 6)
                         .HasColumnType("numeric(9,6)");
@@ -314,6 +318,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.ToTable("ComparableProperties", "valuation", t =>
                         {
                             t.HasCheckConstraint("CK_ComparableProperties_AreaSqm_NonNegative", "\"AreaSqm\" IS NULL OR \"AreaSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ComparableProperties_LandAreaSqm_NonNegative", "\"LandAreaSqm\" IS NULL OR \"LandAreaSqm\" >= 0");
 
                             t.HasCheckConstraint("CK_ComparableProperties_PricePerSqm_NonNegative", "\"PricePerSqm\" IS NULL OR \"PricePerSqm\" >= 0");
 
@@ -612,6 +618,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<bool>("IsAdopted")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal?>("LandAreaOverrideSqm")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal?>("PriceOverrideSar")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -667,6 +677,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.ToTable("ValuationComparableSelections", "valuation", t =>
                         {
                             t.HasCheckConstraint("CK_ValuationComparableSelections_AreaOverrideSqm_NonNegative", "\"AreaOverrideSqm\" IS NULL OR \"AreaOverrideSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationComparableSelections_LandAreaOverrideSqm_NonNegative", "\"LandAreaOverrideSqm\" IS NULL OR \"LandAreaOverrideSqm\" >= 0");
 
                             t.HasCheckConstraint("CK_ValuationComparableSelections_PriceOverrideSar_NonNegative", "\"PriceOverrideSar\" IS NULL OR \"PriceOverrideSar\" >= 0");
                         });
@@ -942,6 +954,12 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasPrecision(9, 4)
                         .HasColumnType("numeric(9,4)");
 
+                    b.Property<decimal>("LandAreaFactorPct")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)")
+                        .HasDefaultValue(5m);
+
                     b.Property<bool>("MarketValueUnrounded")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -951,8 +969,17 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal?>("SubjectLandAreaSqm")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("SubjectSpecJson")
                         .HasColumnType("jsonb");
+
+                    b.Property<bool>("TwoAreaAdjustments")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -971,6 +998,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.ToTable("ValuationMarketApproaches", "valuation", t =>
                         {
                             t.HasCheckConstraint("CK_ValuationMarketApproaches_SubjectAreaSqm_NonNegative", "\"SubjectAreaSqm\" IS NULL OR \"SubjectAreaSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationMarketApproaches_SubjectLandAreaSqm_NonNegative", "\"SubjectLandAreaSqm\" IS NULL OR \"SubjectLandAreaSqm\" >= 0");
                         });
                 });
 

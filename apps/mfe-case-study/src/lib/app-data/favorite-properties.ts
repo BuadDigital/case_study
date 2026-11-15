@@ -3,8 +3,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useAuthSession } from "@platform/app-shared/auth/use-auth-session";
 import { FAVORITE_PROPERTIES_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
-
-const STORAGE_PREFIX = "ejada.favorite-properties.v1";
+import { createUserListStore } from "./user-list-store";
 
 type FavoritePropertyRef = {
   poNumber: string;
@@ -12,83 +11,19 @@ type FavoritePropertyRef = {
   addedAtUtc: string;
 };
 
-const EMPTY_FAVORITES: readonly FavoritePropertyRef[] = [];
-const snapshots = new Map<
-  string,
-  { raw: string | null; value: readonly FavoritePropertyRef[] }
->();
-
-function storageKey(userId: string | null | undefined): string {
-  return `${STORAGE_PREFIX}:${userId?.trim() || "anonymous"}`;
-}
-
-function readSnapshot(userId: string | null | undefined): readonly FavoritePropertyRef[] {
-  if (typeof window === "undefined") return EMPTY_FAVORITES;
-
-  const key = storageKey(userId);
-  let raw: string | null = null;
-  try {
-    raw = window.localStorage.getItem(key);
-  } catch {
-    return EMPTY_FAVORITES;
-  }
-  const cached = snapshots.get(key);
-  if (cached?.raw === raw) return cached.value;
-
-  let value: readonly FavoritePropertyRef[] = EMPTY_FAVORITES;
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        value = parsed.filter(
-          (item): item is FavoritePropertyRef =>
-            typeof item?.poNumber === "string" &&
-            typeof item?.propertyId === "string" &&
-            typeof item?.addedAtUtc === "string",
-        );
-      }
-    } catch {
-      value = EMPTY_FAVORITES;
-    }
-  }
-
-  snapshots.set(key, { raw, value });
-  return value;
-}
-
-function writeFavorites(
-  userId: string | null | undefined,
-  favorites: readonly FavoritePropertyRef[],
-): void {
-  if (typeof window === "undefined") return;
-  const key = storageKey(userId);
-  const raw = JSON.stringify(favorites);
-  try {
-    window.localStorage.setItem(key, raw);
-  } catch {
-    return;
-  }
-  snapshots.set(key, { raw, value: favorites });
-  window.dispatchEvent(new Event(FAVORITE_PROPERTIES_CHANGED_EVENT));
-}
-
-function subscribe(
-  userId: string | null | undefined,
-  onChange: () => void,
-): () => void {
-  if (typeof window === "undefined") return () => {};
-
-  const key = storageKey(userId);
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === key) onChange();
-  };
-  window.addEventListener(FAVORITE_PROPERTIES_CHANGED_EVENT, onChange);
-  window.addEventListener("storage", onStorage);
-  return () => {
-    window.removeEventListener(FAVORITE_PROPERTIES_CHANGED_EVENT, onChange);
-    window.removeEventListener("storage", onStorage);
-  };
-}
+/** «المفضلة», kept per user on this device (`createUserListStore`). */
+const favoritesStore = createUserListStore<FavoritePropertyRef>({
+  prefix: "ejada.favorite-properties.v1",
+  changedEvent: FAVORITE_PROPERTIES_CHANGED_EVENT,
+  isItem: (item): item is FavoritePropertyRef => {
+    const ref = item as Partial<FavoritePropertyRef> | null;
+    return (
+      typeof ref?.poNumber === "string" &&
+      typeof ref?.propertyId === "string" &&
+      typeof ref?.addedAtUtc === "string"
+    );
+  },
+});
 
 /** Stable identity for one favorited property inside a work order. */
 export function favoritePropertyKey(
@@ -106,9 +41,9 @@ export function useFavoriteProperties(): {
 } {
   const userId = useAuthSession()?.user.id;
   const favorites = useSyncExternalStore(
-    useCallback((onChange) => subscribe(userId, onChange), [userId]),
-    useCallback(() => readSnapshot(userId), [userId]),
-    () => EMPTY_FAVORITES,
+    useCallback((onChange) => favoritesStore.subscribe(userId, onChange), [userId]),
+    useCallback(() => favoritesStore.read(userId), [userId]),
+    () => favoritesStore.empty,
   );
 
   const favoriteKeys = useMemo(
@@ -130,7 +65,7 @@ export function useFavoriteProperties(): {
   const toggleFavorite = useCallback(
     (poNumber: string, propertyId: string) => {
       const normalizedPo = poNumber.trim();
-      const current = readSnapshot(userId);
+      const current = favoritesStore.read(userId);
       const exists = current.some(
         (item) =>
           item.poNumber === normalizedPo && item.propertyId === propertyId,
@@ -148,7 +83,7 @@ export function useFavoriteProperties(): {
             },
             ...current,
           ];
-      writeFavorites(userId, next);
+      favoritesStore.write(userId, next);
       return !exists;
     },
     [userId],

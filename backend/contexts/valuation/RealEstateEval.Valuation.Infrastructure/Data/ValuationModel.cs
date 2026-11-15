@@ -97,7 +97,8 @@ public static class ValuationModel
             e.Property(x => x.AreaSqm).HasPrecision(18, 2);
             e.Property(x => x.Price).HasPrecision(18, 2);
             e.Property(x => x.PricePerSqm).HasPrecision(18, 2);
-            e.HasNonNegative("ComparableProperties", "AreaSqm", "Price", "PricePerSqm");
+            e.Property(x => x.LandAreaSqm).HasPrecision(18, 2);
+            e.HasNonNegative("ComparableProperties", "AreaSqm", "Price", "PricePerSqm", "LandAreaSqm");
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.District).HasMaxLength(128).IsRequired();
             e.Property(x => x.PlanNumber).HasMaxLength(64);
@@ -138,7 +139,9 @@ public static class ValuationModel
             e.Property(x => x.AreaAdjustmentMethod).HasMaxLength(32).IsRequired();
             e.Property(x => x.PriceOverrideSar).HasPrecision(18, 2);
             e.Property(x => x.AreaOverrideSqm).HasPrecision(18, 2);
-            e.HasNonNegative("ValuationComparableSelections", "PriceOverrideSar", "AreaOverrideSqm");
+            e.Property(x => x.LandAreaOverrideSqm).HasPrecision(18, 2);
+            e.HasNonNegative(
+                "ValuationComparableSelections", "PriceOverrideSar", "AreaOverrideSqm", "LandAreaOverrideSqm");
             e.HasIndex(x => new { x.ValuationRequestId, x.ComparablePropertyId, x.SelectionContext })
                 .IsUnique()
                 .HasDatabaseName("IX_ValuationComparableSelections_Request_Comp_Context");
@@ -283,12 +286,15 @@ public static class ValuationModel
             e.Property(x => x.SubjectAreaSqm).HasPrecision(18, 2);
             e.Property(x => x.AdjustmentBasis).HasMaxLength(32).IsRequired();
             e.Property(x => x.AreaFactorPct).HasPrecision(9, 4);
+            e.Property(x => x.TwoAreaAdjustments).HasDefaultValue(false);
+            e.Property(x => x.SubjectLandAreaSqm).HasPrecision(18, 2);
+            e.Property(x => x.LandAreaFactorPct).HasPrecision(9, 4).HasDefaultValue(5m);
             e.Property(x => x.AnnualMarketRatePct).HasPrecision(9, 4);
             e.Property(x => x.ValueRoundDecimals);
             e.Property(x => x.MarketValueUnrounded).HasDefaultValue(false);
             e.Property(x => x.AnalysisNotes).HasMaxLength(4000);
             e.Property(x => x.SubjectSpecJson).HasColumnType("jsonb");
-            e.HasNonNegative("ValuationMarketApproaches", "SubjectAreaSqm");
+            e.HasNonNegative("ValuationMarketApproaches", "SubjectAreaSqm", "SubjectLandAreaSqm");
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()

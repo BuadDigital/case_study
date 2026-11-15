@@ -31,7 +31,9 @@ type MatrixAction =
     }
   | { type: "change-basis"; basis: "price_per_sqm" | "whole_property" }
   | { type: "reset-weights" }
-  | { type: "area-factor-change"; value: string }
+  | { type: "area-factor-change"; value: string; line?: AreaLine }
+  | { type: "save-land-area"; item: ValuationComparableSelectionDto; raw: string }
+  | { type: "save-subject-land-area"; raw: string }
   | { type: "add-factor"; factorKey: string; labelAr: string }
   | { type: "rename-factor"; factorKey: string; labelAr: string }
   | { type: "remove-factor"; factorKey: string }
@@ -44,6 +46,9 @@ type MatrixAction =
       text: string;
     }
   | { type: "save-subject-spec"; factorKey: string; text: string };
+
+/** Which area row of a built subject's table a command is for: the building's or the land's. */
+export type AreaLine = "area" | "land";
 
 /** Runs the command and returns success — fire-and-forget commands return true. */
 export type MatrixDispatch = (action: MatrixAction) => Promise<boolean>;
@@ -79,7 +84,11 @@ type MatrixOps<TContext> = {
     basis: "price_per_sqm" | "whole_property",
   ): Promise<unknown> | void;
   resetWeights(context: TContext): Promise<boolean>;
-  saveAreaFactorPct(value: string): Promise<unknown> | void;
+  saveAreaFactorPct(value: string, line?: AreaLine): Promise<unknown> | void;
+  /** A built comparable's land area for this valuation — blank goes back to the bank's. */
+  saveComparableLandArea(item: ValuationComparableSelectionDto, raw: string): Promise<boolean>;
+  /** The subject's land area for the land row — blank goes back to the deed's. */
+  saveSubjectLandArea(raw: string): Promise<boolean>;
   addDifferenceFactor(
     factorKey: string,
     labelAr: string,
@@ -145,8 +154,12 @@ export async function runMatrixAction<TContext>(
       await ops.changeAdjustmentBasis(action.basis);
       return true;
     case "area-factor-change":
-      await ops.saveAreaFactorPct(action.value);
+      await ops.saveAreaFactorPct(action.value, action.line);
       return true;
+    case "save-land-area":
+      return ops.saveComparableLandArea(action.item, action.raw);
+    case "save-subject-land-area":
+      return ops.saveSubjectLandArea(action.raw);
     case "add-factor":
       await ops.addDifferenceFactor(action.factorKey, action.labelAr, context);
       return true;

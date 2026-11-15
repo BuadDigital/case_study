@@ -464,6 +464,11 @@ public static class AreaAdjustmentMethods
 /// Area adjustment — adjustments logic / comparison-method spec.
 /// Method is unified across all table comparables (any ratio ≥ 2 ⟵ multiplier for all).
 /// Sign: smaller comparable negative, larger positive. Does not cover plot shape.
+///
+/// A built subject has two such lines (Omar 2026-11-15: «تسويات المساحتين — الأرض والمباني — كل
+/// مساحة لها بند مستقل… ويسري على كل واحد منها مبدأ المضاعف والأمثال»): one for the land's area
+/// and one for the building's, each with its own areas, its own factor and its own method — the
+/// same calculation run twice, apart. The appraiser may leave one of them out, never both.
 /// </summary>
 public static class AreaAdjustmentRules
 {
@@ -499,11 +504,24 @@ public static class AreaAdjustmentRules
             / Math.Min(subjectAreaSqm, comparableAreaSqm);
     }
 
+    /// <summary>
+    /// The area adjustment of one comparable, in percent.
+    /// How it works: the size of the adjustment comes from the ratio of the two areas, by the method
+    /// (multiples: (r − 1) × factor; multiplier: round(log₂ r) × factor). Its direction depends on
+    /// what is being adjusted:
+    /// - a price per m² of that same area — a smaller comparable has the dearer metre, so it is
+    ///   lowered (negative) and a larger one raised;
+    /// - a whole value (<paramref name="onWholeValue"/>) — a smaller comparable is worth less as a
+    ///   whole, so it is raised (positive) and a larger one lowered (Omar 2026-11-15: «الأصغر تُرفع
+    ///   قيمته»).
+    /// Edge cases: an area that is missing or zero, equal areas, or a zero factor give 0.
+    /// </summary>
     public static decimal SuggestPct(
         string? method,
         decimal subjectAreaSqm,
         decimal comparableAreaSqm,
-        decimal areaFactorPct = DefaultAreaFactorPct)
+        decimal areaFactorPct = DefaultAreaFactorPct,
+        bool onWholeValue = false)
     {
         if (subjectAreaSqm <= 0m || comparableAreaSqm <= 0m || areaFactorPct == 0m)
             return 0m;
@@ -524,6 +542,7 @@ public static class AreaAdjustmentRules
         }
 
         var sign = comparableAreaSqm < subjectAreaSqm ? -1m : 1m;
+        if (onWholeValue) sign = -sign;
         return Math.Round(sign * magnitude, 2, MidpointRounding.AwayFromZero);
     }
 }

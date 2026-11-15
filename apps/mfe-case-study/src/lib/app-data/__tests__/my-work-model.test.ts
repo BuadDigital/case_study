@@ -7,6 +7,9 @@ import {
   buildMyWork,
   defaultMyWorkStage,
   formatActionClock,
+  inspectorStep,
+  isCaseSpecialistGroup,
+  isMyWorkLookupStage,
   myWorkDue,
   returnedLine,
   myWorkGroupsForPages,
@@ -61,6 +64,14 @@ describe("myWorkGroupsForPages", () => {
 
   it("gives the appraiser his own group, from his queue page (Omar 2026-11-10)", () => {
     expect(myWorkGroupsForPages(["my-work", "po", "property-appraisal"])).toEqual(["ap"]);
+  });
+
+  it("gives the field inspector his own group, from his queue page (Omar 2026-11-12)", () => {
+    expect(myWorkGroupsForPages(["my-work", "po", "active-inspection", "party-fees"])).toEqual(["fi"]);
+  });
+
+  it("tells a case specialist's sub-roles from the parties' own groups", () => {
+    expect((["co", "st", "rv", "ap", "fi"] as const).filter(isCaseSpecialistGroup)).toEqual(["co", "st", "rv"]);
   });
 });
 
@@ -693,5 +704,110 @@ describe("returnedLine — why work came back (A→Z 2026-11-09)", () => {
     });
     const { items } = buildMyWork(input({ groups: ["st"], mine: [t], allTasks: [t] }));
     expect(items[0]!.reason).toBe("أُعيدت للدراسة: أكمل وصف الملحق");
+  });
+});
+
+describe("inspectorStep — what an inspection needs from the inspector (Omar 2026-11-12)", () => {
+  const open = { status: "open" } as const;
+
+  it("is a new inspection until he enters something, then one in progress", () => {
+    expect(inspectorStep(open, undefined)).toMatchObject({ stage: "inspection", action: "بدء المعاينة" });
+    expect(inspectorStep(open, { status: "", started: false })).toMatchObject({ action: "بدء المعاينة" });
+    expect(inspectorStep(open, { status: "draft", started: true })).toMatchObject({
+      stage: "inspection",
+      action: "متابعة المعاينة",
+    });
+  });
+
+  it("is a correction once the package is returned to him", () => {
+    expect(inspectorStep(open, { status: "reopened", started: true })).toMatchObject({
+      stage: "inspection-correction",
+      action: "تصحيح المعاينة",
+    });
+  });
+
+  it("is sent once the package is submitted or the task completed, and says whether it was accepted", () => {
+    expect(inspectorStep(open, { status: "submitted", started: true })).toMatchObject({
+      stage: "inspection-sent",
+      reason: "أُرسلت المعاينة — بانتظار قبول التنسيق",
+    });
+    expect(inspectorStep({ status: "completed" }, undefined).stage).toBe("inspection-sent");
+    expect(inspectorStep({ status: "completed", packageAccepted: true }, undefined).reason).toBe(
+      "قبل التنسيق مخرجات المعاينة",
+    );
+  });
+});
+
+describe("buildMyWork — the field inspector's rows (Omar 2026-11-12)", () => {
+  const inspection = (over: Partial<WorkflowTask>) =>
+    task({ kind: "field-inspection", assigneeRole: "field-inspector", ...over });
+  const rows = (tasks: WorkflowTask[], packages: Record<string, { status: string; started: boolean }> = {}) =>
+    buildMyWork(
+      input({ groups: ["fi"], mine: tasks, allTasks: tasks, inspectionPackage: (id) => packages[id] }),
+    ).items;
+
+  it("makes one row per inspection, opening his page", () => {
+    const [row] = rows([inspection({ id: "i9" })]);
+    expect(row).toMatchObject({
+      group: "fi",
+      stage: "inspection",
+      action: "بدء المعاينة",
+      href: "/active-inspection/i9",
+    });
+  });
+
+  it("lists what he owes first, then what he sent — neutral, the latest first", () => {
+    const out = rows(
+      [
+        inspection({ id: "s-old", status: "completed", createdAt: "2026-10-01T00:00:00Z" }),
+        inspection({ id: "s-new", status: "completed", createdAt: "2026-10-20T00:00:00Z" }),
+        inspection({ id: "back" }),
+        inspection({ id: "todo" }),
+      ],
+      { back: { status: "reopened", started: true } },
+    );
+    expect(out.map((r) => [r.taskId, r.stage])).toEqual([
+      ["back", "inspection-correction"],
+      ["todo", "inspection"],
+      ["s-new", "inspection-sent"],
+      ["s-old", "inspection-sent"],
+    ]);
+    expect(out.filter((r) => r.stage === "inspection-sent").every((r) => r.due === "none")).toBe(true);
+  });
+
+  it("drops a sent inspection once its transaction is over, and keeps what he still owes on it", () => {
+    const tasks = [
+      inspection({ id: "sent-live", propertyId: "live", status: "completed" }),
+      inspection({ id: "sent-over", propertyId: "over", status: "completed" }),
+      inspection({ id: "todo-over", propertyId: "over2" }),
+    ];
+    const out = buildMyWork(
+      input({
+        groups: ["fi"],
+        mine: tasks,
+        allTasks: tasks,
+        transactionFinished: (propertyId) => propertyId.startsWith("over"),
+      }),
+    ).items;
+    expect(out.map((r) => r.taskId)).toEqual(["todo-over", "sent-live"]);
+  });
+
+  it("keeps a sent inspection while nothing says its transaction is over", () => {
+    expect(rows([inspection({ id: "s", status: "completed" })]).map((r) => r.taskId)).toEqual(["s"]);
+  });
+
+  it("leaves out a cancelled inspection and other kinds of task", () => {
+    expect(rows([inspection({ id: "x", status: "cancelled" }), task({ id: "cs" })])).toEqual([]);
+  });
+
+  it("opens on the stage that holds work for him, never on «المرسلة»", () => {
+    const stages = (...s: MyWorkStage[]) => s.map((stage) => ({ stage }));
+    expect(defaultMyWorkStage(["fi"], stages("inspection-sent", "inspection-correction"))).toBe(
+      "inspection-correction",
+    );
+    expect(defaultMyWorkStage(["fi"], stages("inspection-sent"))).toBe("inspection");
+    expect(isMyWorkLookupStage("inspection-sent")).toBe(true);
+    expect(isMyWorkLookupStage("handed")).toBe(true);
+    expect(isMyWorkLookupStage("inspection")).toBe(false);
   });
 });

@@ -25,6 +25,24 @@ export function roleFromPermissions(
   return null;
 }
 
+/**
+ * The pages a role holds on this screen.
+ *
+ * How it works: «أعمالي» is the field inspector's entry on a desktop only (Omar 2026-11-12:
+ * his screens like the specialists' and the appraiser's, «دون المساس بـ PWA»). On a phone — the
+ * installed app, below the `lg` width where the phone shell takes over — the page is dropped, so
+ * he lands on his inspection queue, keeps it in the sidebar and works offline exactly as before.
+ * Edge cases: every other role keeps its pages on every screen.
+ */
+export function pagesForViewport(
+  role: RoleId | null,
+  pages: readonly PageId[],
+  desktop: boolean,
+): PageId[] {
+  if (desktop || role !== "field-inspector") return [...pages];
+  return pages.filter((page) => page !== "my-work");
+}
+
 /** The part of `/api/permissions` a user's pages are worked out from. */
 export type RolePagesSource = {
   pages?: readonly string[] | null;
@@ -43,10 +61,19 @@ export type RolePagesSource = {
  * landing page out of the server's pages alone — so a page the app adds to a role («أعمالي» for the
  * appraiser) showed in the sidebar while the login still landed on the old queue. The login now
  * calls this too.
+ * `desktop` (2026-11-12) is the screen the pages are for — see `pagesForViewport`; the app and the
+ * login both pass the real one.
  */
-export function rolePagesFromPermissions(permissions: RolePagesSource | null | undefined): PageId[] {
+export function rolePagesFromPermissions(
+  permissions: RolePagesSource | null | undefined,
+  desktop = true,
+): PageId[] {
   const role = roleFromPermissions(permissions?.prototypeRole, permissions?.identityRoles);
   if (role == null) return [];
+  return pagesForViewport(role, pagesBeforeViewport(role, permissions), desktop);
+}
+
+function pagesBeforeViewport(role: RoleId, permissions: RolePagesSource | null | undefined): PageId[] {
   // A specialist's baseline keeps only the queue pages of the sub-roles he holds.
   const baseline = filterPagesBySubRoles(
     role,

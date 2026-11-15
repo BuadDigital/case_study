@@ -644,6 +644,13 @@ const SEQUENTIAL_FACTOR_KEYS = new Set(SEQUENTIAL_FACTORS.map((f) => f.key));
 
 /** Section 19 row labels shared by the table and its rationale list. */
 const AREA_ROW_LABEL = "تسوية المساحة";
+/**
+ * A built subject's table has two area rows (2026-11-15): the building's and the land's, each
+ * printed with the comparable's own area on that row and its percent.
+ */
+const BUILDING_AREA_ROW_LABEL = "تسوية مساحة المباني";
+const LAND_AREA_ROW_LABEL = "تسوية مساحة الأرض";
+const LAND_AREA_KEY = "land_area";
 const LOCATION_ROW_LABEL = "الموقع العام";
 const WEIGHT_ROW_LABEL = "الأوزان النسبية للعقارات المقارنة";
 
@@ -678,7 +685,14 @@ function differenceFactorRows(
   for (const item of comps) {
     for (const line of item.market?.adjustmentLines ?? []) {
       const key = line.factorKey;
-      if (!line.isIncluded || SEQUENTIAL_FACTOR_KEYS.has(key) || key === "area" || key === "location") {
+      // Area, a built subject's land area and location have rows of their own.
+      if (
+        !line.isIncluded ||
+        SEQUENTIAL_FACTOR_KEYS.has(key) ||
+        key === "area" ||
+        key === LAND_AREA_KEY ||
+        key === "location"
+      ) {
         continue;
       }
       const label = (line.labelAr ?? "").trim() || DIFFERENCE_FACTOR_LABELS[key] || key;
@@ -710,7 +724,7 @@ function printedSequentialFactors(comps: ValuationComparableSelectionDto[]) {
  */
 export function buildAdjustmentRationaleText(
   comps: ValuationComparableSelectionDto[],
-  market?: Pick<ValuationComparableSelectionListDto, "factorRationales"> | null,
+  market?: Pick<ValuationComparableSelectionListDto, "factorRationales" | "twoAreaAdjustments"> | null,
 ): string {
   const own = new Map(
     (market?.factorRationales ?? []).map((r) => [r.factorKey, r.rationaleAr] as const),
@@ -733,7 +747,12 @@ export function buildAdjustmentRationaleText(
   };
   const factors = [
     ...printedSequentialFactors(comps),
-    { key: "area", label: AREA_ROW_LABEL },
+    ...(market?.twoAreaAdjustments
+      ? [
+          { key: "area", label: BUILDING_AREA_ROW_LABEL },
+          { key: LAND_AREA_KEY, label: LAND_AREA_ROW_LABEL },
+        ]
+      : [{ key: "area", label: AREA_ROW_LABEL }]),
     { key: "location", label: LOCATION_ROW_LABEL },
     ...differenceFactorRows(comps),
   ];
@@ -824,7 +843,7 @@ export function buildAdjustmentSheetRows(
       subject: "",
     },
     {
-      key: AREA_ROW_LABEL,
+      key: market?.twoAreaAdjustments ? BUILDING_AREA_ROW_LABEL : AREA_ROW_LABEL,
       values: compCols(comps, (x) => {
         const areaTxt = formatAreaCell(effectiveComparableValues(x).areaSqm || null);
         const p = includedPct(x, "area");
@@ -836,6 +855,25 @@ export function buildAdjustmentSheetRows(
       ]),
       subject: dashSheet(subjectArea),
     },
+    // The land row of a built subject: each comparable's land area and its percent; a row the
+    // appraiser left out still shows the areas, with «—» for the percent.
+    ...(market?.twoAreaAdjustments
+      ? [
+          {
+            key: LAND_AREA_ROW_LABEL,
+            values: compCols(comps, (x) =>
+              [formatAreaCell(x.effectiveLandAreaSqm ?? null), includedPct(x, LAND_AREA_KEY)]
+                .filter(Boolean)
+                .join(" · "),
+            ),
+            pairs: compPairs(comps, (x) => [
+              formatAreaCell(x.effectiveLandAreaSqm ?? null),
+              includedPct(x, LAND_AREA_KEY),
+            ]),
+            subject: dashSheet(formatAreaCell(market.subjectLandAreaSqm || null)),
+          },
+        ]
+      : []),
     {
       key: LOCATION_ROW_LABEL,
       values: compCols(comps, (x) => {

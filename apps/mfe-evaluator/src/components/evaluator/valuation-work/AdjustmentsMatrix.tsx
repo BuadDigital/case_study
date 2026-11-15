@@ -22,6 +22,7 @@ import { fmt } from "./lib/shell-utils";
 import {
   AUTO_AREA_KEY,
   CUSTOM_FACTOR_LABEL,
+  LAND_AREA_KEY,
   factorDescriptor,
   factorHasSpecCell,
   factorMeta,
@@ -48,10 +49,13 @@ import {
   thCompBaseClass,
   thCompClass,
 } from "./AdjustmentsMatrixCells";
+import { noteClass, tdCellClass } from "./AdjustmentsMatrixCells.styles";
 import {
   AddFactorRow,
   InlineDraftInput,
+  LAND_AREA_ROW,
   LabelCell,
+  LandAreaInput,
 } from "./AdjustmentsMatrixFactorCells";
 import { MatrixAlertsPanel, MatrixOutputsPanel } from "./AdjustmentsMatrixPanels";
 import { AdjustmentsMatrixPhone } from "./AdjustmentsMatrixPhone";
@@ -122,7 +126,25 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     alerts,
     addableFactors,
   } = model;
-  const { isUnit, areaMethod, areaFactor, subjectAreaLabel } = basisView;
+  const {
+    isUnit,
+    areaMethod,
+    areaFactor,
+    subjectAreaLabel,
+    twoAreas,
+    areaRowLabel,
+    landAreaMethod,
+    landAreaFactor,
+    subjectLandArea,
+    subjectLandAreaNote,
+  } = basisView;
+  // A built subject's two area rows each carry a ✓ — one of them may be left out, never both.
+  const areaIncluded = lineIsIncluded(adopted[0] ? lineOf(adopted[0], AUTO_AREA_KEY) : null, AUTO_AREA_KEY);
+  const landIncluded = lineIsIncluded(adopted[0] ? lineOf(adopted[0], LAND_AREA_KEY) : null, LAND_AREA_KEY);
+  const toggleAreaRow = (factorKey: string) => {
+    const first = adopted[0];
+    if (first) void dispatch({ type: "toggle-included", item: first, factorKey });
+  };
 
   // Omar 2026-11-12: the adjustments need two adopted comparables at least (one used to open them).
   if (adopted.length < 2) {
@@ -377,18 +399,23 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               <JustCell />
             </tr>
 
-            {/* Area */}
-            <tr>
+            {/* Area — on a built subject's table, the building's own area */}
+            <tr className={twoAreas && !areaIncluded ? "bg-surface-2" : undefined}>
               <LabelCell
-                label={factorMeta(AUTO_AREA_KEY).label}
+                label={areaRowLabel}
                 hint={areaMethod}
                 tip={factorMeta(AUTO_AREA_KEY).tip}
                 locked={locked}
-                // No area adjustment on the whole-property basis — the size is the appraiser's own factor.
-                areaFactor={isUnit ? areaFactor : undefined}
+                // A table with one area row has no area adjustment on the whole-property basis —
+                // the size is then the appraiser's own factor; a built subject's rows apply on both.
+                areaFactor={isUnit || twoAreas ? areaFactor : undefined}
                 onAreaFactorChange={(value) =>
                   dispatch({ type: "area-factor-change", value })
                 }
+                removable={twoAreas}
+                included={twoAreas ? areaIncluded : undefined}
+                onToggle={twoAreas ? () => toggleAreaRow(AUTO_AREA_KEY) : undefined}
+                offNote={twoAreas && !areaIncluded ? LAND_AREA_ROW.offNote : undefined}
               />
               <SubjCell
                 value={`${fmt(parseLocaleNumber(subjectArea) || null)} م²`}
@@ -400,7 +427,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   <CompReadonly
                     key={item.id}
                     value={pct(adj)}
-                    valueClassName={pctClass(adj)}
+                    valueClassName={twoAreas && !areaIncluded ? "text-text-3" : pctClass(adj)}
                     note={`${fmt(effArea(item))} م²`}
                   />
                 );
@@ -412,6 +439,65 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 onCommit={saveRationale}
               />
             </tr>
+
+            {/* The land's area — a built subject's second area row, with its own factor and method */}
+            {twoAreas ? (
+              <tr className={landIncluded ? undefined : "bg-surface-2"}>
+                <LabelCell
+                  label={LAND_AREA_ROW.label}
+                  hint={landAreaMethod}
+                  tip={LAND_AREA_ROW.tip}
+                  locked={locked}
+                  areaFactor={landAreaFactor}
+                  onAreaFactorChange={(value) =>
+                    dispatch({ type: "area-factor-change", value, line: "land" })
+                  }
+                  removable
+                  included={landIncluded}
+                  onToggle={() => toggleAreaRow(LAND_AREA_KEY)}
+                  offNote={landIncluded ? undefined : LAND_AREA_ROW.offNote}
+                />
+                <td className={tdSubjClass}>
+                  <LandAreaInput
+                    value={subjectLandArea}
+                    locked={locked}
+                    placeholder="مساحة الأرض"
+                    onCommit={(raw) => void dispatch({ type: "save-subject-land-area", raw })}
+                  />
+                  <div className={noteClass}>{subjectLandAreaNote}</div>
+                </td>
+                {adopted.map((item) => {
+                  const adj = item.market?.suggestedLandAreaAdjustmentPct ?? 0;
+                  return (
+                    <td key={item.id} className={tdCellClass}>
+                      <span
+                        dir="ltr"
+                        className={cn(
+                          "font-[Tajawal,sans-serif] text-[14px] font-extrabold",
+                          landIncluded ? pctClass(adj) : "text-text-3",
+                        )}
+                      >
+                        {pct(adj)}
+                      </span>
+                      <div>
+                        <LandAreaInput
+                          value={item.effectiveLandAreaSqm}
+                          locked={locked}
+                          placeholder="أرض المقارن"
+                          onCommit={(raw) => void dispatch({ type: "save-land-area", item, raw })}
+                        />
+                      </div>
+                    </td>
+                  );
+                })}
+                <JustCell
+                  factorKey={LAND_AREA_KEY}
+                  value={justValue(LAND_AREA_KEY)}
+                  locked={locked}
+                  onCommit={saveRationale}
+                />
+              </tr>
+            ) : null}
 
             {/* Difference factors */}
             {differenceKeys.map((factorKey) => {

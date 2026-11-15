@@ -3,8 +3,12 @@ import {
   COMPONENT_BOOL_KEYS,
   INSPECTOR_ANNEX_COUNT_FIELDS,
   INSPECTOR_COMPONENT_COUNT_FIELDS,
+  INSPECTOR_FRAME_SECTIONS,
   annexAnswerPatch,
+  firstInspectorStepToComplete,
   inspectorComponentCountFields,
+  inspectorFrameStep,
+  inspectorSectionId,
   listComponentBoolPhotoSlots,
 } from "../inspector-wizard-state";
 import {
@@ -156,5 +160,39 @@ describe("annexAnswerPatch — annex counts are numbers on both devices", () => 
       "annexGroundCount",
     ]);
     expect(INSPECTOR_ANNEX_COUNT_FIELDS.every((f) => f.label.includes("(عدد)"))).toBe(true);
+  });
+});
+
+describe("the inspector's page on the work page's frame", () => {
+  it("has one numbered section per wizard step, in step order", () => {
+    expect(INSPECTOR_FRAME_SECTIONS.map((s) => [s.id, s.step])).toEqual([
+      ["ins-step-1", 1],
+      ["ins-step-2", 2],
+      ["ins-step-3", 3],
+    ]);
+    expect(INSPECTOR_FRAME_SECTIONS.map((s) => s.title)).toEqual([
+      "الموقع والتصوير",
+      "بيانات العقار",
+      "التجهيز والإكمال",
+    ]);
+    expect(inspectorSectionId(2)).toBe("ins-step-2");
+  });
+
+  it("opens at the first step with a required field missing", () => {
+    expect(firstInspectorStepToComplete(() => true)).toBe(1);
+    expect(firstInspectorStepToComplete((step) => step === 2)).toBe(2);
+    expect(firstInspectorStepToComplete((step) => step === 3)).toBe(3);
+    // A later gap does not hide an earlier one.
+    expect(firstInspectorStepToComplete((step) => step !== 2)).toBe(1);
+  });
+
+  it("opens at the last step, where the inspection is sent, when nothing is missing", () => {
+    expect(firstInspectorStepToComplete(() => false)).toBe(3);
+  });
+
+  it("puts a sent inspection past every section, so all three read done", () => {
+    expect(inspectorFrameStep(2, false)).toBe(2);
+    const sent = inspectorFrameStep(1, true);
+    expect(INSPECTOR_FRAME_SECTIONS.every((s) => s.step < sent)).toBe(true);
   });
 });

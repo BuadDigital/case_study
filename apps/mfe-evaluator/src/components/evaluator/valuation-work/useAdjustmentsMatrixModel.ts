@@ -7,7 +7,7 @@ import type {
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
 
-import { AUTO_AREA_KEY } from "./lib/factor-registry";
+import { autoAreaPct } from "./lib/market-save-mappers";
 import type { MatrixDispatch } from "./lib/matrix-actions";
 import {
   addableFactorOptions,
@@ -63,9 +63,7 @@ export function useAdjustmentsMatrixModel({
   const linePct = (item: ValuationComparableSelectionDto, factorKey: string) => {
     const line = lineOf(item, factorKey);
     if (line) return line.percent;
-    if (factorKey === AUTO_AREA_KEY)
-      return item.market?.suggestedAreaAdjustmentPct ?? 0;
-    return 0;
+    return autoAreaPct(item, factorKey) ?? 0;
   };
 
   const factorKeysFromData = useMemo(

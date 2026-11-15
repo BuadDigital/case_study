@@ -8,6 +8,7 @@ import {
   JUSTIFICATION_TOO_SHORT_MESSAGE,
   RESET_WEIGHTS_PATCH,
   bankOverridePatch,
+  wouldSwitchOffBothAreaLines,
   contextOfSelection,
   isFactorIncluded,
   isJustificationTooShort,
@@ -23,7 +24,6 @@ import {
   nextSubjectSpecs,
   savedLines,
   withAdoptionFlag,
-  landCopyState,
   withFactorIncluded,
   withoutComparable,
 } from "../market-commands-state";
@@ -158,66 +158,6 @@ describe("withAdoptionFlag", () => {
   });
 });
 
-// Ruling 2026-11-11: the land valuation by comparable sales is copied between the two tables.
-describe("landCopyState", () => {
-  const into = (over: Partial<Parameters<typeof landCopyState>[0]>) =>
-    landCopyState({
-      target: "market",
-      marketKind: "land",
-      targetRowCount: 0,
-      sourceAdoptedCount: 3,
-      sourceAdoptedLandCount: 3,
-      ...over,
-    });
-
-  it("copies into an empty market table that values land, by itself", () => {
-    expect(into({})).toEqual({ available: true, automatic: true, sourceCount: 3 });
-  });
-
-  it("is offered, never automatic, once the target holds comparables", () => {
-    expect(into({ targetRowCount: 2 })).toMatchObject({ available: true, automatic: false });
-  });
-
-  it("does not concern a market table that values a building", () => {
-    expect(into({ marketKind: "building" })).toMatchObject({ available: false, automatic: false });
-    expect(into({ marketKind: "unit" }).available).toBe(false);
-  });
-
-  it("has nothing to offer when the other table adopted nothing", () => {
-    expect(into({ sourceAdoptedCount: 0, sourceAdoptedLandCount: 0 }).available).toBe(false);
-  });
-
-  it("copies nothing between a building's table and the land table (Omar 2026-11-12)", () => {
-    // A market table valuing a villa: its adjustments are against a building — not offered, even
-    // for the lands adopted in it.
-    for (const marketKind of ["building", "unit"]) {
-      expect(
-        into({ target: "land", marketKind, sourceAdoptedCount: 4, sourceAdoptedLandCount: 2 }),
-      ).toMatchObject({ available: false, automatic: false });
-    }
-  });
-
-  it("copies nothing when the land has one table for both approaches (Omar 2026-11-12)", () => {
-    // The two lists are the same rows: a copy would write the table onto itself.
-    expect(into({ oneLandTable: true })).toMatchObject({ available: false, automatic: false });
-    expect(into({ target: "land", oneLandTable: true })).toMatchObject({
-      available: false,
-      automatic: false,
-    });
-  });
-
-  it("takes only the land of a land-valuing market table into the land table", () => {
-    expect(into({ target: "land", sourceAdoptedCount: 4, sourceAdoptedLandCount: 2 })).toEqual({
-      available: true,
-      // Built comparables among the adopted ones: offered, not automatic.
-      automatic: false,
-      sourceCount: 2,
-    });
-    expect(into({ target: "land", sourceAdoptedCount: 2, sourceAdoptedLandCount: 2 }).automatic).toBe(true);
-    expect(into({ target: "land", sourceAdoptedCount: 2, sourceAdoptedLandCount: 0 }).available).toBe(false);
-  });
-});
-
 describe("withoutComparable", () => {
   it("drops the removed comparable and keeps the adopted ones counted", () => {
     const prev = list([item("a", []), item("b", [], { isAdopted: false })], 1);
@@ -257,7 +197,25 @@ describe("bankOverridePatch", () => {
     expect(bankOverridePatch(it1, "area", "300,5")).toEqual({
       priceOverrideSar: 900000,
       areaOverrideSqm: 300.5,
+      landAreaOverrideSqm: null,
     });
+  });
+
+  // 2026-11-15: a built comparable's land area is a third figure the valuation may override.
+  it("sets a comparable's land area and keeps its price and area overrides", () => {
+    const it1 = item("a", [], { priceOverrideSar: 900000, areaOverrideSqm: 250 });
+    expect(bankOverridePatch(it1, "land", "600")).toEqual({
+      priceOverrideSar: 900000,
+      areaOverrideSqm: 250,
+      landAreaOverrideSqm: 600,
+    });
+  });
+
+  it("keeps the land area when another figure is edited, and clears it on a blank entry", () => {
+    const it1 = item("a", [], { landAreaOverrideSqm: 600 });
+    expect(bankOverridePatch(it1, "price", "950000").landAreaOverrideSqm).toBe(600);
+    expect(bankOverridePatch(it1, "land", "").landAreaOverrideSqm).toBeNull();
+    expect(bankOverridePatch(it1, "land", "0").landAreaOverrideSqm).toBeNull();
   });
 
   it("clears the field on blank or non-positive input", () => {
@@ -265,6 +223,7 @@ describe("bankOverridePatch", () => {
     expect(bankOverridePatch(it1, "price", "")).toEqual({
       priceOverrideSar: null,
       areaOverrideSqm: null,
+      landAreaOverrideSqm: null,
     });
     expect(bankOverridePatch(it1, "price", "-5").priceOverrideSar).toBeNull();
   });
@@ -422,5 +381,36 @@ describe("weight patches", () => {
       weightPct: null,
       weightOverrideRationale: null,
     });
+  });
+});
+
+describe("wouldSwitchOffBothAreaLines — a built subject keeps one area line at least (Omar 2026-11-15)", () => {
+  const both = [item("a", [line("area", 2), line("land_area", -5)])];
+  const landOff = [item("a", [line("area", 2), line("land_area", -5, { isIncluded: false })])];
+  const areaOff = [item("a", [line("area", 2, { isIncluded: false }), line("land_area", -5)])];
+
+  it("lets either line be switched off while the other is on", () => {
+    expect(wouldSwitchOffBothAreaLines(both, "area", true)).toBe(false);
+    expect(wouldSwitchOffBothAreaLines(both, "land_area", true)).toBe(false);
+  });
+
+  it("refuses to switch off the last one", () => {
+    expect(wouldSwitchOffBothAreaLines(landOff, "area", true)).toBe(true);
+    expect(wouldSwitchOffBothAreaLines(areaOff, "land_area", true)).toBe(true);
+  });
+
+  it("never refuses switching a line back on", () => {
+    expect(wouldSwitchOffBothAreaLines(landOff, "land_area", true)).toBe(false);
+    expect(wouldSwitchOffBothAreaLines(areaOff, "area", true)).toBe(false);
+  });
+
+  it("asks nothing of other factors or of a table with one area line", () => {
+    expect(wouldSwitchOffBothAreaLines(landOff, "location", true)).toBe(false);
+    expect(wouldSwitchOffBothAreaLines(landOff, "area", false)).toBe(false);
+  });
+
+  it("reads a land line that was never saved as switched on", () => {
+    // A comparable saved before the land line existed: the server adds it switched on.
+    expect(wouldSwitchOffBothAreaLines([item("a", [line("area", 2)])], "area", true)).toBe(false);
   });
 });

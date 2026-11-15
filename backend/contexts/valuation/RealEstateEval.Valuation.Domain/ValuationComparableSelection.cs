@@ -39,6 +39,9 @@ public class ValuationComparableSelection : ITrackUpdatedAt
  /// <summary>Manual override of comparable area (m²) for this valuation only. Null = bank value.</summary>
     public decimal? AreaOverrideSqm { get; set; }
 
+ /// <summary>Manual override of a built comparable's LAND area (m²) for this valuation only. Null = bank value.</summary>
+    public decimal? LandAreaOverrideSqm { get; set; }
+
     public ValuationRequest? ValuationRequest { get; set; }
     public ComparableProperty? ComparableProperty { get; set; }
     public ICollection<ValuationComparableAdjustmentLine> AdjustmentLines { get; set; } = [];

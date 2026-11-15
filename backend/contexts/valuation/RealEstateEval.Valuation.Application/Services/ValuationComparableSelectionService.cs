@@ -93,7 +93,9 @@ public sealed partial class ValuationComparableSelectionService(
             await CostLandAreasAsync(valuationRequestId, context, cancellationToken),
             roundOpinionValue: context == ComparableSelectionContexts.Market
                 && !await HandedOverValueIsFixedAsync(request, header, cancellationToken),
-            landSharedWithMarket: table != context);
+            landSharedWithMarket: table != context,
+            subjectIsBuilt: !await LandIsValuedOnceAsync(request, cancellationToken),
+            deedLandAreaSqm: await DeedLandAreaOfBuiltSubjectAsync(request, cancellationToken));
     }
 
     /// <summary>
@@ -410,7 +412,11 @@ public sealed partial class ValuationComparableSelectionService(
             });
         }
 
-        var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(request);
+        // A built subject's market table has two area lines; one of them at least stays switched on.
+        var twoAreaLines = row.SelectionContext == ComparableSelectionContexts.Market
+            && (await repo.GetMarketApproachAsync(valuationRequestId, cancellationToken))?.TwoAreaAdjustments == true
+            && !await LandIsValuedOnceAsync(vr, cancellationToken);
+        var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(request, twoAreaLines);
         foreach (var (field, message) in DuplicateFactorKeyErrors(request))
             errors[field] = message;
         if (errors.Count > 0) return (null, errors);
@@ -469,7 +475,9 @@ public sealed partial class ValuationComparableSelectionService(
             row.SelectionContext,
             factorRationales: [],
             hardComparableDateCutoff: cutoff,
-            costLand: await CostLandAreasAsync(row.ValuationRequestId, row.SelectionContext, cancellationToken));
+            costLand: await CostLandAreasAsync(row.ValuationRequestId, row.SelectionContext, cancellationToken),
+            subjectIsBuilt: !await LandIsValuedOnceAsync(request, cancellationToken),
+            deedLandAreaSqm: await DeedLandAreaOfBuiltSubjectAsync(request, cancellationToken));
         return list.Items.FirstOrDefault(i => i.Id == selectionId);
     }
 

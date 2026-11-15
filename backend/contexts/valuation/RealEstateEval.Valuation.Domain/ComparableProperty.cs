@@ -35,6 +35,12 @@ public class ComparableProperty
     public decimal Longitude { get; set; }
 
     public decimal AreaSqm { get; set; }
+ /// <summary>
+ /// The land a BUILT comparable stands on (m²) — <see cref="AreaSqm"/> is then its building's area
+ /// (an apartment: its own). Feeds the land-area adjustment of a built subject (2026-11-15).
+ /// Null for a land comparable (its <see cref="AreaSqm"/> is the land) and when not entered.
+ /// </summary>
+    public decimal? LandAreaSqm { get; set; }
  /// <summary>Transaction date — mandatory.</summary>
     public DateOnly TransactionDate { get; set; }
     public decimal Price { get; set; }

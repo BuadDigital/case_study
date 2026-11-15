@@ -33,4 +33,24 @@ public static class SubjectLandRules
         string? propertyType,
         IEnumerable<CaseStudyBuildingInventoryLineDto>? inventory) =>
         ValuationApproachSettingsRules.IsLandPropertyType(propertyType) && !HasFloorArea(inventory);
+
+    /// <summary>
+    /// What: the land a built subject stands on, as its deed states it — what the land-area line of
+    /// its market table compares with until the appraiser types another figure (2026-11-15).
+    /// Edge cases: a unit inside a building (an apartment, a shop, a floor) has no land of its own on
+    /// its deed — the deed's area is the unit's — so there is no default and the appraiser enters the
+    /// land share, or leaves the land line out. An unreadable or empty area gives none.
+    /// </summary>
+    public static decimal? DeedLandAreaOfBuiltSubject(string? propertyType, string? deedArea)
+    {
+        var type = (propertyType ?? "").Trim();
+        if (PropertyTypeCatalog.ClassificationOf(type) == PropertyTypeCatalog.UnitInBuilding
+            || type.Contains("شقة", StringComparison.Ordinal)
+            || type.Contains("شقه", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return LocaleNumber.TryParsePositive(deedArea, out var area) ? area : null;
+    }
 }

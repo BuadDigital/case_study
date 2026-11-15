@@ -60,7 +60,7 @@ export function activeSurveyEntryPath(taskId: string): string {
 }
 
 /** Full-page workspace for the field inspector — official path under active transactions. */
-function activeInspectionWorkspacePath(taskId: string): string {
+export function activeInspectionWorkspacePath(taskId: string): string {
   return `/active-inspection/${encodeURIComponent(taskId)}`;
 }
 

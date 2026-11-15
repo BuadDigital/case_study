@@ -4,9 +4,11 @@
  * «أعمالي» — the start page of the case-study staff: every decision waiting for the viewer's
  * sub-roles in one list, and stage chips to work one stage in a batch (plan 2026-11-05, phase 1).
  * The rows come from `buildMyWork`. What waits for someone else is «المعاملات النشطة»'s, not here.
+ * The appraiser (2026-11-10) and, on a desktop, the field inspector (2026-11-12) enter from it too.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useIsFetching } from "@tanstack/react-query";
 import {
   Badge,
   FilterChips,
@@ -27,6 +29,7 @@ import {
   Tr,
   cn,
   opsLetterCard,
+  useToast,
   type BadgeTone,
 } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -36,9 +39,11 @@ import { formatDateAr } from "@platform/app-shared/format/date";
 import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
 import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
+import { PropertyListRowStatuses } from "@platform/api-client";
 import {
   usePendingBourseItemsQuery,
   usePoRecordsQuery,
+  usePropertyListItemsQuery,
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
 import { SituationBar } from "../components/active-transactions/ActiveTransactionsSituationBar";
@@ -47,17 +52,24 @@ import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bour
 import { tasksForRole, type WorkflowTask } from "../lib/app-data/tasks";
 import { seesAllCaseStudyWorkflowTasks } from "../lib/app-data/viewer-task-access";
 import { isFoldedAppraisalTask } from "@platform/app-shared/workflow/task-types";
+import { workspaceHasDraftProgress } from "../lib/app-data/field-inspection-work-queue";
+import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import {
   MY_WORK_GROUPS,
   buildMyWork,
   defaultMyWorkStage,
   formatActionClock,
+  isCaseSpecialistGroup,
+  isMyWorkLookupStage,
   myWorkGroupsForPages,
+  type InspectionPackageState,
   type MyWorkDue,
   type MyWorkItem,
   type MyWorkStage,
 } from "../lib/app-data/my-work-model";
 import { buildPoByNumber } from "./active-transaction-queue-state";
+import { FavoriteStar } from "../components/ui/FavoriteStar";
+import { MY_WORK_PIN_LIMIT, pinnedFirst, useMyWorkPins } from "../lib/app-data/my-work-pins";
 import { QueueRowMoreCell } from "./active-transaction-queue-row-parts";
 import { useMyWorkRowMenu } from "./useMyWorkRowMenu";
 import { useActiveReopeningsQuery } from "../query/use-active-reopenings-query";
@@ -120,15 +132,18 @@ const DUE_TEXT_CLASS: Record<MyWorkDue, string> = {
 };
 
 /**
- * The width of each column of the «أعمالي» table, in the header's order: transaction number, deed,
- * city / district, work order, action, dates, clock, ⋮ (Omar 2026-11-12: the same widths on every chip).
+ * The width of each column of the «أعمالي» table, in the header's order: the star, transaction
+ * number, deed, city / district, work order, action, dates, clock, ⋮ (Omar 2026-11-12: the same
+ * widths on every chip).
  *
  * How it works: the table's layout is fixed, so these — not the rows — decide the widths. The shares
- * are of the table's width; the action column (`null`) takes what is left, and ⋮ keeps its button's
- * 56px. Edge case: at the table's least width (990px) every share still holds its usual value on one
- * line — a longer one wraps inside its cell (`MY_WORK_LONG_VALUE`).
+ * are of the table's width; the action column (`null`) takes what is left, the star keeps its
+ * button's 44px and ⋮ its 56px. Edge case: at the table's least width (1034px — 990px before the
+ * star's column) every share still holds its usual value on one line — a longer one wraps inside
+ * its cell (`MY_WORK_LONG_VALUE`).
  */
 const MY_WORK_COLUMN_WIDTHS: readonly (string | number | null)[] = [
+  44,
   "10.5%",
   "14%",
   "14%",
@@ -195,8 +210,34 @@ function ActionClock({ arrivedIso, stopped }: { arrivedIso: string; stopped?: bo
   );
 }
 
+/**
+ * The row's pin (Omar 2026-11-12), a star at the start of the row: an outline until pressed, then
+ * filled, and the transaction rises to the top of its stage's list until it is sent on to the next
+ * step. It never opens the row.
+ */
+function PinButton({ pinned, onToggle }: { pinned: boolean; onToggle: () => void }) {
+  const label = pinned ? "إلغاء تثبيت المعاملة" : "تثبيت المعاملة أعلى القائمة";
+  return (
+    <button
+      type="button"
+      aria-pressed={pinned}
+      aria-label={label}
+      title={label}
+      data-testid="my-work-pin"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md border-none bg-transparent leading-none hover:bg-row-hover"
+    >
+      <FavoriteStar on={pinned} size={18} />
+    </button>
+  );
+}
+
 export function MyWorkView() {
   const router = useRouter();
+  const { showToast } = useToast();
   const { role, rolePages } = useAppAccess();
   const nowMs = useTickingMinute();
   // The chip picked by hand: a stage, «الكل» ("all"), or null while none was picked — the page then
@@ -209,8 +250,37 @@ export function MyWorkView() {
   const bourseQuery = usePendingBourseItemsQuery();
   const failuresQuery = useFailuresQuery();
   const groups = useMemo(() => myWorkGroupsForPages(rolePages), [rolePages]);
-  // The reopenings list is the specialists' read: the appraiser's page does not ask for it.
-  const reopenings = useActiveReopeningsQuery(groups.some((g) => g !== "ap"));
+  // The reopenings list is the specialists' read: the appraiser's and the inspector's pages do not ask for it.
+  const reopenings = useActiveReopeningsQuery(groups.some(isCaseSpecialistGroup));
+  // The inspector's own inspections (Omar 2026-11-12): each package's status says whether it is
+  // new, in progress, returned to him or sent — the list his queue page reads.
+  const inspectionsQuery = useFieldInspectionWorkspacesQuery(groups.includes("fi"));
+  const inspectionPackages = useMemo(
+    () =>
+      new Map<string, InspectionPackageState>(
+        (inspectionsQuery.data ?? []).map((w) => [
+          w.workflowTaskId,
+          { status: w.status, started: w.status === "draft" || workspaceHasDraftProgress(w) },
+        ]),
+      ),
+    [inspectionsQuery.data],
+  );
+  // «المرسلة» keeps a sent inspection only while its transaction is live: the server's property
+  // row says «مكتمل» once it is uploaded to Enfaz, and «ملغاة» when it is cancelled.
+  const propertyRowsQuery = usePropertyListItemsQuery(groups.includes("fi"));
+  const finishedProperties = useMemo(
+    () =>
+      new Set(
+        (propertyRowsQuery.data ?? [])
+          .filter(
+            (item) =>
+              item.row.status === PropertyListRowStatuses.Done ||
+              item.row.status === PropertyListRowStatuses.Cancelled,
+          )
+          .map((item) => item.propertyId),
+      ),
+    [propertyRowsQuery.data],
+  );
   const tasks = tasksQuery.data ?? EMPTY_TASKS;
   const mine = useMemo(
     () =>
@@ -263,6 +333,8 @@ export function MyWorkView() {
       poByNumber,
       pendingBourse,
       draftState: (id) => getReportDraftState(id),
+      inspectionPackage: (taskId) => inspectionPackages.get(taskId),
+      transactionFinished: (propertyId) => finishedProperties.has(propertyId),
       reopenings,
       now: new Date(nowMs),
     });
@@ -274,6 +346,8 @@ export function MyWorkView() {
     bourseQuery.data,
     failuresQuery.data,
     draftVersion,
+    inspectionPackages,
+    finishedProperties,
     reopenings,
     nowMs,
   ]);
@@ -302,12 +376,14 @@ export function MyWorkView() {
         : picked;
 
   // The stage chip, then the search box (deed, PO, transaction number, place, type or action).
+  // Pinned rows (Omar 2026-11-12): up to five per stage, drawn first; a pin ends when its row goes.
+  const { pinnedKeys, toggle: togglePinned, endFinished: endFinishedPins } = useMyWorkPins();
   const listed = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return work.items.filter(
+    const rows = work.items.filter(
       (i) =>
-        // «الكل» is what waits for him: the handed-over lookup rows show under their own chip only.
-        (stage ? i.stage === stage : i.stage !== "handed") &&
+        // «الكل» is what waits for him: the lookup rows (handed over, sent) show under their own chip only.
+        (stage ? i.stage === stage : !isMyWorkLookupStage(i.stage)) &&
         (!q ||
           [
             i.deedNumber,
@@ -321,11 +397,12 @@ export function MyWorkView() {
             .toLowerCase()
             .includes(q)),
     );
-  }, [work.items, stage, search]);
+    return pinnedFirst(rows, pinnedKeys);
+  }, [work.items, stage, search, pinnedKeys]);
 
   const pending = tasksQuery.isPending || poQuery.isPending;
   const failed = [tasksQuery, poQuery].filter(queryLoadFailed);
-  const waiting = useMemo(() => work.items.filter((i) => i.stage !== "handed"), [work.items]);
+  const waiting = useMemo(() => work.items.filter((i) => !isMyWorkLookupStage(i.stage)), [work.items]);
   const values =
     pending || failed.length
       ? {}
@@ -334,6 +411,31 @@ export function MyWorkView() {
           late: waiting.filter((i) => i.due === "late").length,
           soon: waiting.filter((i) => i.due === "soon").length,
         };
+
+  // A pin ends once its transaction was sent on: its row is no longer in the stage. Checked only
+  // against the settled list — while anything still loads (the draft states, the inspections) a
+  // row may stand under another stage for a moment, and that must not end a pin.
+  const fetching = useIsFetching();
+  const listSettled =
+    !pending &&
+    failed.length === 0 &&
+    fetching === 0 &&
+    !bourseQuery.isError &&
+    !inspectionsQuery.isError &&
+    !propertyRowsQuery.isError;
+  useEffect(() => {
+    if (!listSettled) return;
+    const timer = window.setTimeout(() => endFinishedPins(work.items), 1000);
+    return () => window.clearTimeout(timer);
+  }, [listSettled, work.items, endFinishedPins]);
+  const pin = (item: MyWorkItem) => {
+    if (togglePinned(item) === "full") {
+      showToast(
+        `يمكن تثبيت ${MY_WORK_PIN_LIMIT} معاملات كحد أقصى في كل مرحلة — ألغِ تثبيت إحداها أولًا`,
+        "error",
+      );
+    }
+  };
 
   const countOf = (s: MyWorkStage) =>
     work.items.filter((i) => i.stage === s).length;
@@ -427,6 +529,8 @@ export function MyWorkView() {
                 ? "لا نتائج مطابقة للبحث"
                 : stage === "handed"
                   ? "لا توجد تقييمات مسلَّمة"
+                  : stage === "inspection-sent"
+                    ? "لا توجد معاينات مرسلة"
                   : stage === "prework"
                     ? "لا توجد تقييمات بانتظار الدراسة"
                     : `لا شيء ينتظرك ${stage ? "في هذه المرحلة" : "الآن"}`}
@@ -434,6 +538,8 @@ export function MyWorkView() {
             <div className="mt-1 text-[13px] text-text-3">
               {stage === "handed"
                 ? "تظهر هنا التقييمات التي سلّمتها ريثما تصدر مسودة التقرير أو يُودَع."
+                : stage === "inspection-sent"
+                  ? "تظهر هنا المعاينات التي أرسلتها ما دامت معاملتها لم تكتمل في النظام."
                 : stage === "prework"
                   ? "تظهر هنا التقييمات التي لم تصدر دراستها بعد: يمكن إعدادها كمسودة، وتنتقل إلى «التقييم» عند صدور الدراسة."
                   : "تظهر هنا كل خطوة تصل إلى أدوارك، ويختفي الصف بعد تنفيذها."}
@@ -466,7 +572,12 @@ export function MyWorkView() {
                     )
                   }
                   onOpen={() => open(item.href)}
-                  actions={<RowMoreMenu items={itemsFor(item)} />}
+                  actions={
+                    <span className="flex items-center gap-2">
+                      <PinButton pinned={pinnedKeys.has(item.key)} onToggle={() => pin(item)} />
+                      <RowMoreMenu items={itemsFor(item)} />
+                    </span>
+                  }
                   fields={[
                     { label: "رقم المعاملة", value: item.transactionNumber || "—", ltr: true },
                     { label: "رقم الصك / التسجيل العيني", value: item.deedNumber, ltr: true },
@@ -488,7 +599,7 @@ export function MyWorkView() {
                     },
                     {
                       label: "وقت الإجراء",
-                      value: <ActionClock arrivedIso={item.arrivedIso} stopped={item.stage === "handed"} />,
+                      value: <ActionClock arrivedIso={item.arrivedIso} stopped={isMyWorkLookupStage(item.stage)} />,
                     },
                   ]}
                 />
@@ -498,8 +609,8 @@ export function MyWorkView() {
               {/* One set of column widths for every chip (Omar 2026-11-12): the widths used to follow
                   the content, so the columns moved each time a chip changed the rows. The layout is
                   fixed now and `MY_WORK_COLUMN_WIDTHS` shares the width out the same way whatever the
-                  rows hold; below 990px the table scrolls sideways instead of squeezing a column. */}
-              <Table className="min-w-[990px] table-fixed">
+                  rows hold; below 1034px the table scrolls sideways instead of squeezing a column. */}
+              <Table className="min-w-[1034px] table-fixed">
                 <colgroup>
                   {MY_WORK_COLUMN_WIDTHS.map((width, i) => (
                     <col key={i} style={width === null ? undefined : { width }} />
@@ -508,6 +619,9 @@ export function MyWorkView() {
                 <THead>
                   <Tr hoverable={false}>
                     {/* The two long headers break onto two lines so they fit their columns. */}
+                    <Th>
+                      <span className="sr-only">تثبيت</span>
+                    </Th>
                     <Th>رقم المعاملة</Th>
                     <Th className="text-center">
                       رقم الصك /<br />
@@ -541,6 +655,9 @@ export function MyWorkView() {
                           The columns are fixed (2026-11-12), so a value longer than its column goes
                           onto a second line (`MY_WORK_LONG_VALUE`) instead of running into the next
                           column: a number stays whole while it fits, a place breaks between words. */}
+                      <Td className="pe-0">
+                        <PinButton pinned={pinnedKeys.has(item.key)} onToggle={() => pin(item)} />
+                      </Td>
                       <Td>
                         {item.transactionNumber ? (
                           <bdi
@@ -617,7 +734,7 @@ export function MyWorkView() {
                         <MyWorkDates item={item} />
                       </Td>
                       <Td className="whitespace-nowrap text-center">
-                        <ActionClock arrivedIso={item.arrivedIso} stopped={item.stage === "handed"} />
+                        <ActionClock arrivedIso={item.arrivedIso} stopped={isMyWorkLookupStage(item.stage)} />
                       </Td>
                       <QueueRowMoreCell items={itemsFor(item)} />
                     </Tr>

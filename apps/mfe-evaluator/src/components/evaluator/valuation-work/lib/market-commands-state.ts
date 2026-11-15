@@ -10,7 +10,12 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
-import { factorIncludedByDefault } from "./factor-registry";
+import {
+  AUTO_AREA_KEY,
+  AUTO_AREA_KEYS,
+  LAND_AREA_KEY,
+  factorIncludedByDefault,
+} from "./factor-registry";
 import {
   ensureLinesForSave,
   lineForSave,
@@ -97,51 +102,6 @@ export function withAdoptionFlag(
   };
 }
 
-/** The two tables that hold a land valuation by comparable sales. */
-export type LandCopyTarget = "market" | "land";
-
-/**
- * Whether the land valuation by comparable sales can be copied into a table from the other one,
- * and whether that should happen by itself (ruling 2026-11-11).
- *
- * How it works: the copy only concerns land, and only when BOTH tables value land (Omar 2026-11-12:
- * «إذا اختلف نوع العقار في التسويات — أرض أو مبنى — فلا حاجة لنسخ التسويات»): the adjustments of a
- * table that compares a building are measured against a building and say nothing about the land.
- * So in either direction the market table must compare land (`marketKind` land); then into the
- * market table when the land table of the cost approach has adopted comparables, and into the land
- * table when the market table has adopted land comparables. It happens by itself only when the
- * target holds no comparable at all — and, into the land table, only when everything adopted in
- * the market table is land.
- *
- * Edge cases: `sourceLandCount` 0 → nothing to copy; a hidden target (its approach off) is the
- * caller's check. Until 2026-11-12 a market table valuing a villa still offered its adopted lands
- * to the land table, adjustments and all.
- * `oneLandTable` (Omar 2026-11-12: «الأرض هي الأرض وقيمتها ثابتة»): the subject is valued as
- * land, so the server keeps one table for both approaches — the two lists are the same rows and
- * nothing is copied, in either direction. What is left to copy is a built subject valued under
- * «أرض فقط»: its land table from before the scope changed, into the market table.
- */
-export function landCopyState(input: {
-  target: LandCopyTarget;
-  marketKind: string;
-  /** The land table is the market table's own rows (`landSharedWithMarket`). */
-  oneLandTable?: boolean;
-  targetRowCount: number;
-  sourceAdoptedCount: number;
-  sourceAdoptedLandCount: number;
-}): { available: boolean; automatic: boolean; sourceCount: number } {
-  const sourceCount =
-    input.target === "market" ? input.sourceAdoptedCount : input.sourceAdoptedLandCount;
-  const available = sourceCount > 0 && input.marketKind === "land" && !input.oneLandTable;
-  const pureLandSource =
-    input.target === "market" || input.sourceAdoptedLandCount === input.sourceAdoptedCount;
-  return {
-    available,
-    automatic: available && input.targetRowCount === 0 && pureLandSource,
-    sourceCount,
-  };
-}
-
 /** The selection without one comparable — the optimistic view of a removal. */
 export function withoutComparable(
   prev: ValuationComparableSelectionListDto,
@@ -188,21 +148,47 @@ export function isFactorIncluded(
     : factorIncludedByDefault(factorKey);
 }
 
-/** compEdit: parse a price/area override — blank or non-positive clears it. */
+/** The comparable figures an appraiser may override for one valuation: its price, its area, its land area. */
+export type BankOverrideField = "price" | "area" | "land";
+
+/** compEdit: parse a price / area / land-area override — blank or non-positive clears it. */
 export function bankOverridePatch(
   item: ValuationComparableSelectionDto,
-  field: "price" | "area",
+  field: BankOverrideField,
   raw: string,
 ): Pick<
   SaveValuationComparableMarketRequest,
-  "priceOverrideSar" | "areaOverrideSqm"
+  "priceOverrideSar" | "areaOverrideSqm" | "landAreaOverrideSqm"
 > {
   const parsed = parseDecimal(raw);
   const value = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   return {
     priceOverrideSar: field === "price" ? value : item.priceOverrideSar ?? null,
     areaOverrideSqm: field === "area" ? value : item.areaOverrideSqm ?? null,
+    landAreaOverrideSqm: field === "land" ? value : item.landAreaOverrideSqm ?? null,
   };
+}
+
+/** The message both ends give when the last area line of a built subject is switched off. */
+export const BOTH_AREA_LINES_OFF_MESSAGE =
+  "تسوية المساحة: أبقِ بند مساحة الأرض أو بند مساحة المباني — أحدهما على الأقل";
+
+/**
+ * Switching `factorKey` off would leave a built subject's table with no area line at all
+ * (Omar 2026-11-15: «اختيار واحد منهم على الأقل»).
+ * How it works: only the two area lines are asked; the other one must be switched on.
+ * Edge cases: a table with one area line (land, or a valuation begun before the two lines) is
+ * never refused — its single line has no toggle.
+ */
+export function wouldSwitchOffBothAreaLines(
+  items: ValuationComparableSelectionDto[],
+  factorKey: string,
+  twoAreaLines: boolean,
+): boolean {
+  if (!twoAreaLines || !AUTO_AREA_KEYS.has(factorKey)) return false;
+  if (!isFactorIncluded(items, factorKey)) return false;
+  const other = factorKey === AUTO_AREA_KEY ? LAND_AREA_KEY : AUTO_AREA_KEY;
+  return !isFactorIncluded(items, other);
 }
 
 /** The comparable's stored lines, prepared for save unchanged. */

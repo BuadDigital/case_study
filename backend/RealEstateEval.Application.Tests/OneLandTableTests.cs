@@ -5,6 +5,8 @@ using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Application.Services;
 using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Persistence;
 using Xunit;
 
 namespace RealEstateEval.Application.Tests;
@@ -24,7 +26,7 @@ public sealed class OneLandTableTests
     public async Task The_land_table_of_a_land_is_the_market_table_with_its_adjustments_and_weights()
     {
         await using var contexts = TestDatabases.Create("one-land-read");
-        var seed = await CopyLandComparablesTableTests.SeedAsync(contexts.Valuation, "أرض سكنية");
+        var seed = await SeedAsync(contexts.Valuation, "أرض سكنية");
         var a = await seed.AdoptAsync(Market, seed.LandA);
         await seed.AdoptAsync(Market, seed.LandB);
         await seed.TuneAsync(a.Id, percent: -7.5m, rationale: "الموقع أدنى من موضوع التقييم", weight: 60m, price: 480_000m);
@@ -57,7 +59,7 @@ public sealed class OneLandTableTests
     public async Task The_comparison_is_one_whatever_area_or_basis_each_approach_holds(string marketBasis)
     {
         await using var contexts = TestDatabases.Create($"one-land-comparison-{marketBasis}");
-        var seed = await CopyLandComparablesTableTests.SeedAsync(contexts.Valuation, "أرض");
+        var seed = await SeedAsync(contexts.Valuation, "أرض");
         var a = await seed.AdoptAsync(Market, seed.LandA);
         await seed.AdoptAsync(Market, seed.LandB);
         await seed.TuneAsync(a.Id, percent: -7.5m, rationale: "الموقع أدنى من موضوع التقييم", weight: 60m, price: 480_000m);
@@ -102,7 +104,7 @@ public sealed class OneLandTableTests
     public async Task Every_write_through_the_land_table_lands_in_the_market_table()
     {
         await using var contexts = TestDatabases.Create("one-land-write");
-        var seed = await CopyLandComparablesTableTests.SeedAsync(contexts.Valuation, "أرض");
+        var seed = await SeedAsync(contexts.Valuation, "أرض");
 
         await seed.AdoptAsync(Land, seed.LandA);
         var (rationale, rationaleErrors) = await seed.Selections.SaveFactorRationaleAsync(
@@ -142,26 +144,10 @@ public sealed class OneLandTableTests
     }
 
     [Fact]
-    public async Task A_land_has_nothing_to_copy_between_its_one_table()
-    {
-        await using var contexts = TestDatabases.Create("one-land-copy");
-        var seed = await CopyLandComparablesTableTests.SeedAsync(contexts.Valuation, "أرض تجارية");
-        await seed.AdoptAsync(Market, seed.LandA);
-
-        var (result, errors) = await seed.Selections.CopyTableAsync(
-            seed.RequestId, new CopyValuationComparableTableRequest { FromContext = Market, ToContext = Land }, User);
-
-        Assert.Null(result);
-        Assert.Equal(ValuationComparableSelectionService.OneLandTableCopyAr, errors!["_"]);
-        Assert.Single(contexts.Valuation.ValuationComparableSelections
-            .Where(s => s.ValuationRequestId == seed.RequestId));
-    }
-
-    [Fact]
     public async Task A_built_subject_keeps_two_tables()
     {
         await using var contexts = TestDatabases.Create("one-land-villa");
-        var seed = await CopyLandComparablesTableTests.SeedAsync(contexts.Valuation);
+        var seed = await SeedAsync(contexts.Valuation);
         await seed.AdoptAsync(Market, seed.Villa);
         await seed.AdoptAsync(Land, seed.LandA);
 
@@ -179,7 +165,7 @@ public sealed class OneLandTableTests
     {
         // «أرض تجارية + مستودع»: the market table compares warehouses, which say nothing about the land.
         await using var contexts = TestDatabases.Create("one-land-warehouse");
-        var seed = await CopyLandComparablesTableTests.SeedAsync(
+        var seed = await SeedAsync(
             contexts.Valuation, "أرض تجارية", Inventory(Line(BuildingStructureKinds.Floor, "1000", "المستودع")));
         await seed.AdoptAsync(Market, seed.Villa);
         await seed.AdoptAsync(Land, seed.LandA);
@@ -195,7 +181,7 @@ public sealed class OneLandTableTests
     {
         await using var contexts = TestDatabases.Create("one-land-fence");
         // Recorded as a villa at intake, found to be a fenced land at the inspection.
-        var seed = await CopyLandComparablesTableTests.SeedAsync(
+        var seed = await SeedAsync(
             contexts.Valuation,
             "فيلا",
             Inventory(Line(BuildingStructureKinds.Fence, "120"), inspectedType: "أرض"));
@@ -236,4 +222,97 @@ public sealed class OneLandTableTests
                     BuildingInventoryLines = [line],
                 })
                 : null);
+
+    private sealed record Seed(
+        ValuationDbContext Db,
+        ValuationComparableSelectionService Selections,
+        Guid RequestId,
+        Guid LandA,
+        Guid LandB,
+        Guid Villa)
+    {
+        public async Task<ValuationComparableSelection> AdoptAsync(string context, Guid comparableId, bool adopted = true)
+        {
+            var (_, error) = await Selections.SetAdoptedAsync(RequestId, comparableId, adopted, User, default, context);
+            Assert.Null(error);
+            // A land's row lives in the market table whichever table it was adopted through.
+            var rows = Db.ValuationComparableSelections
+                .Where(s => s.ValuationRequestId == RequestId && s.ComparablePropertyId == comparableId)
+                .ToList();
+            return rows.SingleOrDefault(s => s.SelectionContext == context)
+                ?? rows.Single(s => s.SelectionContext == Market);
+        }
+
+        /// <summary>Writes what the appraiser tunes on one row: a location adjustment, a manual weight, a price override.</summary>
+        public async Task TuneAsync(Guid selectionId, decimal percent, string rationale, decimal weight, decimal? price)
+        {
+            var row = Db.ValuationComparableSelections.Single(s => s.Id == selectionId);
+            row.WeightPct = weight;
+            row.WeightIsManual = true;
+            row.WeightOverrideRationale = "وزن يدوي لقرب المقارن";
+            row.PriceOverrideSar = price;
+            var line = Db.ValuationComparableAdjustmentLines
+                .Single(l => l.SelectionId == selectionId && l.FactorKey == MarketAdjustmentFactorKeys.Location);
+            line.Percent = percent;
+            line.Rationale = rationale;
+            await Db.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// A valuation with the cost approach on (land and buildings), two land comparables and a villa
+    /// in the bank. <paramref name="caseStudy"/> answers for the property's inventory and inspected type.
+    /// </summary>
+    private static async Task<Seed> SeedAsync(
+        ValuationDbContext db,
+        string propertyType = "فيلا",
+        ICaseStudyLookup? caseStudy = null)
+    {
+        var id = Guid.NewGuid();
+        db.ValuationRequests.Add(ValuationRequest.Create(
+            id, "VR-950", Guid.NewGuid(), "النرجس", propertyType, "مقيم", "2026-11-01", DateTime.UtcNow));
+        db.ValuationApproachSettings.Add(new ValuationApproachSettings
+        {
+            Id = Guid.NewGuid(),
+            ValuationRequestId = id,
+            CostApproachEnabled = true,
+            CostScopeKey = CostScopeKeys.LandAndBuilding,
+        });
+        Guid Comparable(string type)
+        {
+            var compId = Guid.NewGuid();
+            db.ComparableProperties.Add(new ComparableProperty
+            {
+                Id = compId,
+                ReferenceCode = $"CMP-{compId.ToString("N")[..8].ToUpperInvariant()}",
+                ComparablePropertyType = type,
+                TransactionKind = ComparableTransactionKinds.Executed,
+                Source = ComparableSources.Other,
+                City = "الرياض",
+                District = "النرجس",
+                AreaSqm = 500m,
+                Price = 500_000m,
+                PricePerSqm = 1000m,
+                Latitude = 24.83m,
+                Longitude = 46.67m,
+                TransactionDate = new DateOnly(2026, 9, 1),
+                IsActive = true,
+            });
+            return compId;
+        }
+        var landA = Comparable("أرض");
+        var landB = Comparable("أرض");
+        var villa = Comparable("فيلا");
+        await db.SaveChangesAsync();
+
+        var selections = new ValuationComparableSelectionService(
+            new ValuationComparableSelectionRepository(db),
+            new ValuationReportFreezeGate(db),
+            ValuationSettingsAndPriorBankFeedTests.Proxy.Of<IOrganizationSettingsService>((method, _) =>
+                method.ReturnType == typeof(Task<OrganizationSettingsDto>)
+                    ? Task.FromResult(new OrganizationSettingsDto())
+                    : null),
+            caseStudy: caseStudy);
+        return new Seed(db, selections, id, landA, landB, villa);
+    }
 }

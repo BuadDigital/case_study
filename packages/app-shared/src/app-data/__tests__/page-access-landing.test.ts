@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ROLES } from "../constants";
 import { canAccessPathname, defaultLandingPage, defaultLandingPath } from "../page-access";
 import { filterPagesBySubRoles } from "../case-specialist-sub-roles";
+import { pagesForViewport } from "../../contexts/app-access-role";
 import type { CaseSpecialistSubRole } from "@platform/types";
 
 const specialistPages = (subRoles: CaseSpecialistSubRole[]) =>
@@ -25,10 +26,15 @@ describe("defaultLandingPage", () => {
     expect(ROLES["real-estate-appraiser"].pages).toContain("property-appraisal");
   });
 
-  it("lands field inspector on active-inspection", () => {
-    expect(defaultLandingPage(ROLES["field-inspector"].pages)).toBe(
+  // Omar 2026-11-12: the inspector enters from «أعمالي» on a desktop like the appraiser; on a
+  // phone the page is not his (`pagesForViewport`), so the PWA still opens on his queue.
+  it("lands field inspector on «أعمالي» on a desktop and on active-inspection on a phone", () => {
+    const pages = ROLES["field-inspector"].pages;
+    expect(defaultLandingPage(pagesForViewport("field-inspector", pages, true))).toBe("my-work");
+    expect(defaultLandingPage(pagesForViewport("field-inspector", pages, false))).toBe(
       "active-inspection",
     );
+    expect(pages).toContain("active-inspection");
   });
 
   it("lands engineering office on active-survey", () => {

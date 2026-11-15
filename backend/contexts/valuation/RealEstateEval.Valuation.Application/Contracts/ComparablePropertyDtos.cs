@@ -33,6 +33,8 @@ public class ComparablePropertyDto
     public decimal Latitude { get; init; }
     public decimal Longitude { get; init; }
     public decimal AreaSqm { get; init; }
+ /// <summary>A built comparable's land area (m²); null for land and when not entered.</summary>
+    public decimal? LandAreaSqm { get; init; }
  /// <summary>yyyy-MM-dd</summary>
     public required string TransactionDate { get; init; }
     public decimal Price { get; init; }
@@ -120,6 +122,9 @@ public class UpsertComparablePropertyRequest
     public decimal Longitude { get; init; }
 
     public decimal AreaSqm { get; init; }
+
+ /// <summary>A built comparable's land area (m²) — optional; ignored for a land comparable.</summary>
+    public decimal? LandAreaSqm { get; init; }
 
  /// <summary>yyyy-MM-dd — mandatory</summary>
     [Required, MaxLength(16)]

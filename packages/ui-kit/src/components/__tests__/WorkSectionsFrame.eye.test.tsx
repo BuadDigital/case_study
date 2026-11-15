@@ -163,3 +163,25 @@ describe("the rail's eye", () => {
     expect(eye()).toBeNull();
   });
 });
+
+describe("the tint of the cards to work on now (Omar 2026-11-12)", () => {
+  const tinted = () => SECTIONS.map((s) => s.id).filter((id) => card(id).hasAttribute("data-act-now"));
+
+  it("marks the viewer's own current card only", () => {
+    render(<Page mineGroups={["st"]} />);
+    expect(tinted()).toEqual(["study"]);
+  });
+
+  it("marks nothing for a sub-role whose cards are finished or still waiting", () => {
+    const coordinator = render(<Page mineGroups={["co"]} />);
+    expect(tinted()).toEqual([]);
+    coordinator.unmount();
+    render(<Page mineGroups={["rv"]} />);
+    expect(tinted()).toEqual([]);
+  });
+
+  it("marks the current card for a viewer who holds every sub-role", () => {
+    render(<Page mineGroups={["co", "st", "rv"]} />);
+    expect(tinted()).toEqual(["study"]);
+  });
+});

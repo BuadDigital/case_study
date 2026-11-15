@@ -303,12 +303,18 @@ export function PropertyPartiesRailCard({
   propertyId,
   district,
   city,
+  figures = true,
 }: {
   poNumber: string;
   propertyId: string;
   /** The property's district and city — the figures card reads the district's land rates. */
   district?: string | null;
   city?: string | null;
+  /**
+   * The land rates and the valuation's figures under the status. Off on the inspector's page
+   * (2026-11-12): he was never shown the valuation's figures, and the frame does not change that.
+   */
+  figures?: boolean;
 }) {
   const { data: transaction } = useTransactionQuery(propertyId);
   const rows = usePropertyPartyRows(poNumber, propertyId, {
@@ -322,7 +328,9 @@ export function PropertyPartiesRailCard({
           <PartyStatusRows rows={rows} showNames={false} />
         </SideCard>
       </section>
-      <PropertyValuationFiguresCard propertyId={propertyId} district={district} city={city} />
+      {figures ? (
+        <PropertyValuationFiguresCard propertyId={propertyId} district={district} city={city} />
+      ) : null}
     </>
   );
 }

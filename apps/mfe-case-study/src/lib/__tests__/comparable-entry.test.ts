@@ -127,3 +127,40 @@ describe("comparablePlaceLine", () => {
     expect(comparablePlaceLine({ city: "", district: "" })).toBe("");
   });
 });
+
+describe("a built comparable's land area (Omar 2026-11-15)", () => {
+  const villa = {
+    ...emptyComparableEntryDraft(),
+    kind: "building" as const,
+    comparablePropertyType: "فيلا",
+    areaSqm: "300",
+    price: "1000000",
+    transactionDate: "2026-11-01",
+    district: "الملقا",
+    latitude: "24.800000",
+    longitude: "46.600000",
+  };
+  const extras = { intakeChannel: "office" };
+
+  it("is optional: a villa saves without it", () => {
+    expect(validateComparableEntry(villa, true).landAreaSqm).toBeUndefined();
+    expect(comparableDraftToUpsert(villa, extras).landAreaSqm).toBeNull();
+  });
+
+  it("is saved beside the building's area when typed", () => {
+    const upsert = comparableDraftToUpsert({ ...villa, landAreaSqm: "1,250.5" }, extras);
+    expect(upsert.areaSqm).toBe(300);
+    expect(upsert.landAreaSqm).toBe(1250.5);
+  });
+
+  it("must be a real area when typed", () => {
+    expect(validateComparableEntry({ ...villa, landAreaSqm: "0" }, true).landAreaSqm).toContain("مساحة أرض");
+    expect(validateComparableEntry({ ...villa, landAreaSqm: "abc" }, true).landAreaSqm).toContain("مساحة أرض");
+  });
+
+  it("is not kept for a land comparable — its own area is the land", () => {
+    const land = { ...villa, kind: "land" as const, comparablePropertyType: "أرض", landAreaSqm: "900" };
+    expect(validateComparableEntry(land, true).landAreaSqm).toBeUndefined();
+    expect(comparableDraftToUpsert(land, extras).landAreaSqm).toBeNull();
+  });
+});
