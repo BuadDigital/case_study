@@ -7,6 +7,7 @@ import type { PropertyPhotoMarks } from "@platform/app-shared/app-data/property-
 export const POINT_FAMILIES = {
   property: "عقارات النظام",
   comparable: "مقارنات السوق",
+  report: "تقارير التقييم",
 } as const;
 
 export const LAYERS = {
@@ -33,6 +34,13 @@ export const LAYERS = {
     key: "comparables",
     label: "مقارنات السوق",
     family: "comparable" as const,
+    defaultOn: false,
+  },
+  /** Valuation reports imported from the external valuation program — off by default (large). */
+  reports: {
+    key: "reports",
+    label: "تقارير التقييم",
+    family: "report" as const,
     defaultOn: false,
   },
 } as const;
@@ -97,6 +105,18 @@ export type MapComparableRecord = {
   approved: boolean;
   description: string | null;
   coords: MapCoords | null;
+};
+
+/** An imported valuation report as a map point — details load when it is opened. */
+export type MapReportRecord = {
+  /** `${source}:${reportNumber}` — unique across sources. */
+  id: string;
+  source: string;
+  reportNumber: string;
+  propertyType: string;
+  usage: string;
+  valuationDate: string | null;
+  coords: MapCoords;
 };
 
 export type DatePreset =
@@ -332,6 +352,26 @@ export function filterComparables(
   });
 }
 
+/** Imported reports carry no city, so a city filter hides them rather than guessing. */
+export function filterReports(
+  reports: MapReportRecord[],
+  criteria: FilterCriteria = {},
+  now = new Date(),
+): MapReportRecord[] {
+  const c = criteria;
+  if (c.city) return [];
+  const range = criteriaRange(c, now);
+  const q = c.query ? normalize(c.query) : null;
+  return reports.filter((x) => {
+    if (c.kindCat === "أرض" && !isLandType(x.propertyType)) return false;
+    if (c.kindCat === "مبنى" && isLandType(x.propertyType)) return false;
+    if (c.usage && usageOf(x.usage || x.propertyType) !== c.usage) return false;
+    if (!inRange(x.valuationDate, range)) return false;
+    if (q && !normalize(x.reportNumber).includes(q)) return false;
+    return true;
+  });
+}
+
 export function countWithoutCoords(list: { coords: MapCoords | null }[]): number {
   return list.filter((x) => !hasCoords(x)).length;
 }
@@ -512,6 +552,30 @@ type ComparableMapCard = {
   rows: MapCardRow[];
   actionId: string;
 };
+
+/** An imported report's card: only the rows the report has — an empty field is left out, not «-». */
+export function reportCardRows(d: {
+  deedNumber?: string | null;
+  client?: string | null;
+  usage?: string | null;
+  landArea?: number | null;
+  valuationDate?: string | null;
+  inspector?: string | null;
+  approver?: string | null;
+  approvedAt?: string | null;
+}): [string, string][] {
+  const rows: [string, string][] = [
+    ["رقم الصك", d.deedNumber || ""],
+    ["الجهة الطالبة", d.client || ""],
+    ["نوع الاستخدام", d.usage || ""],
+    ["مساحة الأرض", d.landArea ? `${d.landArea.toLocaleString("en-US")} م²` : ""],
+    ["تاريخ التقييم", d.valuationDate ? fmtDate(d.valuationDate) : ""],
+    ["المعاين", d.inspector || ""],
+    ["المعتمد", d.approver || ""],
+    ["تاريخ الإعتماد", d.approvedAt ? fmtDate(d.approvedAt) : ""],
+  ];
+  return rows.filter(([, v]) => v.trim() !== "");
+}
 
 export function comparableCard(c: MapComparableRecord): ComparableMapCard {
   const ppsm = pricePerSqm(c);

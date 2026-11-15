@@ -55,7 +55,7 @@ function pinIcon(
   selected: boolean,
 ): google.maps.Icon {
   const archived = !!m.archived || m.layer === "archive";
-  const base = archived ? 14 : m.layer === "comparables" ? 11 : 18;
+  const base = archived ? 14 : m.layer === "comparables" ? 11 : m.layer === "reports" ? 16 : 18;
   const size = selected ? base + 8 : base;
   const pad = 8; // Room for the ring and badge
   const box = size + pad * 2;
@@ -66,7 +66,10 @@ function pinIcon(
     : "";
 
   let body: string;
-  if (m.layer === "comparables") {
+  if (m.layer === "reports") {
+    // Imported valuation report — a hollow purple ring (see-through, so the map shows inside).
+    body = `<circle cx="${c}" cy="${c}" r="${r - 1}" fill="none" stroke="#8e44ad" stroke-width="3"/>`;
+  } else if (m.layer === "comparables") {
     const fill = m.approved ? "#a4906f" : "#fff";
     const border = m.approved ? "#fff" : "#a4906f";
     const h = size / 1.6;
@@ -120,7 +123,7 @@ function clusterRenderer(g: typeof google, kind: LayerKey): Renderer {
   };
 }
 
-const LAYERS: LayerKey[] = ["active", "archive", "failures", "comparables"];
+const LAYERS: LayerKey[] = ["active", "archive", "failures", "comparables", "reports"];
 
 export function PropertyMapCanvasGoogle({
   markers,
@@ -161,6 +164,7 @@ export function PropertyMapCanvasGoogle({
       archive: [],
       failures: [],
       comparables: [],
+      reports: [],
     };
     const selected = selectedRef.current;
     // Pins on exactly the same spot are drawn a little apart, or zooming in shows only one.

@@ -142,6 +142,13 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageWorkOrders)));
 
             options.AddPolicy(
+                CapabilityPolicyNames.ImportValuationReports,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageSystemConfig,
+                    PlatformCapabilities.ManageValuationRequests)));
+
+            options.AddPolicy(
                 CapabilityPolicyNames.ListDistributionAssignees,
                 policy => policy.RequireAssertion(ctx => HasAnyCapability(
                     ctx,

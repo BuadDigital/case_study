@@ -14,6 +14,7 @@ import type {
   LayerKey,
   MapComparableRecord,
   MapPropertyRecord,
+  MapReportRecord,
   PropertyKindCat,
   PropertyUsageCat,
   groupForMap,
@@ -25,6 +26,7 @@ export type MapGroupedPoint = ReturnType<typeof groupForMap>[number];
 export type PropertyMapSelection =
   | { kind: "property"; record: MapPropertyRecord; groupCount?: number }
   | { kind: "comparable"; record: MapComparableRecord }
+  | { kind: "report"; record: MapReportRecord }
   | { kind: "cluster"; ids: string[] }
   | null;
 
@@ -45,11 +47,16 @@ export const LAYER_CHIPS: {
   label: string;
   color: string;
   diamond?: boolean;
+  /** Ring dot (no fill) — the imported valuation reports. */
+  hollow?: boolean;
   alert?: boolean;
+  /** No «pick items» menu: the layer can hold hundreds of thousands of points. */
+  noMenu?: boolean;
 }[] = [
   { key: "active", label: "العقارات النشطة", color: "#12284C" },
   { key: "archive", label: "العقارات المكتملة", color: "#8a8d96" },
   { key: "comparables", label: "أرشيف المقارنات", color: "#a4906f", diamond: true },
+  { key: "reports", label: "تقارير التقييم", color: "#8e44ad", hollow: true, noMenu: true },
   { key: "failures", label: "التعذّرات", color: "#d9694f", alert: true },
 ];
 
@@ -141,6 +148,7 @@ export function recordsOfGrouped(
 export function buildMapMarkers(
   grouped: MapGroupedPoint[],
   shownComparables: MapComparableRecord[],
+  shownReports: MapReportRecord[] = [],
 ): PropertyMapMarker[] {
   const list: PropertyMapMarker[] = [];
   for (const point of grouped) {
@@ -184,6 +192,15 @@ export function buildMapMarkers(
       subtitle: `${c.city} · ${c.price != null ? fmtSar(c.price, { digits: 3, trim: true }) : ""}`,
     });
   }
+  for (const r of shownReports) {
+    list.push({
+      id: `r:${r.id}`,
+      coords: r.coords,
+      layer: "reports",
+      title: `تقرير ${r.reportNumber}`,
+      subtitle: [r.propertyType, r.usage].filter(Boolean).join(" · "),
+    });
+  }
   return list;
 }
 
@@ -212,6 +229,7 @@ export function selectedMarkerId(
       ? `g:${selection.record.propertyGroupId}`
       : `p:${selection.record.id}`;
   if (selection?.kind === "comparable") return `c:${selection.record.id}`;
+  if (selection?.kind === "report") return `r:${selection.record.id}`;
   if (selection?.kind === "cluster") return selection.ids[0] ?? null;
   return null;
 }

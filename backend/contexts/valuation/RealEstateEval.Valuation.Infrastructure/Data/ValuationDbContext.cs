@@ -44,6 +44,8 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
         Set<ValuationReconciliationMethodLine>();
     public DbSet<ValuationValueDocumentUse> ValuationValueDocumentUses => Set<ValuationValueDocumentUse>();
     public DbSet<EvaluatorRecallRecord> EvaluatorRecallRecords => Set<EvaluatorRecallRecord>();
+    public DbSet<ImportedValuationReport> ImportedValuationReports => Set<ImportedValuationReport>();
+    public DbSet<ValuationReportImportBatch> ValuationReportImportBatches => Set<ValuationReportImportBatch>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<CommandIdempotencyRecord> CommandIdempotencyRecords =>
         Set<CommandIdempotencyRecord>();
@@ -51,6 +53,7 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     protected override void OnModelCreating(ModelBuilder builder) =>
         builder
             .ApplyValuationModel()
+            .ApplyValuationReportImportsModel()
             .ApplyCommandIdempotencyModel()
             .ApplyOutboxModel(ownsMigrations: false);
 }

@@ -629,6 +629,24 @@ export {
 } from "./comparable-properties";
 
 export {
+  commitValuationReportImport,
+  getValuationReport,
+  listValuationReportImportBatches,
+  listValuationReportMapPoints,
+  listValuationReportSources,
+  previewValuationReportImport,
+  type ValuationReportDetailDto,
+  type ValuationReportImportBatchDto,
+  type ValuationReportImportPreviewDto,
+  type ValuationReportImportRequest,
+  type ValuationReportMapPointDto,
+  type ValuationReportNumberGapDto,
+  type ValuationReportRejectedRowDto,
+  type ValuationReportSourceDto,
+  type ValuationReportsApiConfig,
+} from "./valuation-report-imports";
+
+export {
   allocateNumberedDocument,
   type NumberedDocumentDto,
   type NumberedDocumentKind,

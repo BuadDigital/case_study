@@ -13,6 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Reads the periodic Excel exports of external valuation programs (MIT). -->
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
   </ItemGroup>
 
   <ItemGroup>
