@@ -32,9 +32,7 @@ import {
   poPropertyEditPath,
   poPropertyPath,
   poPropertyCoordinationPath,
-  poPropertyWorkPath,
 } from "@platform/app-shared/domain/po-routes";
-import { canAccessPathname } from "@platform/app-shared/app-data/page-access";
 import {
   activeSurveyWorkspacePath,
   caseStudyWorkspacePath,
@@ -98,7 +96,7 @@ export function PoPropertyDetailTopbarActions({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showProgressToast, dismissToast } = useToast();
-  const { role, access, rolePages } = useAppAccess();
+  const { role, access } = useAppAccess();
   const showEdit = canEditPropertyData(role);
   const showFailure = canRaisePropertyFailure(role);
   const canCreateOps = canManageOperationsTasks(access);
@@ -269,19 +267,6 @@ export function PoPropertyDetailTopbarActions({
     if (!isHero) return [];
     return buildPropertyDetailHeroMenuItems({
       // Party viewers raise a failure from here; the tab bar already has دراسة العقار.
-      // The work page, for the staff who may open it (the same rule as the route).
-      workPageHref: canAccessPathname(
-        poPropertyWorkPath(poNumber, propertyId),
-        rolePages,
-      )
-        ? poPropertyWorkPath(poNumber, propertyId)
-        : null,
-      coordinationPageHref: canAccessPathname(
-        poPropertyCoordinationPath(poNumber, propertyId),
-        rolePages,
-      )
-        ? poPropertyCoordinationPath(poNumber, propertyId)
-        : null,
       hideOpenCaseStudy: hideOpenCaseStudy || Boolean(partyFailureRaiser),
       caseStudyWorkspaceHref:
         showCaseStudyLink && task ? caseStudyWorkspacePath(task.id) : null,
@@ -321,7 +306,6 @@ export function PoPropertyDetailTopbarActions({
     propertyId,
     showCaseStudyFeedback,
     openCaseStudy,
-    rolePages,
   ]);
 
   if (!record || !property) return null;
