@@ -88,3 +88,22 @@ export function toPropertyChangeEntries(items: readonly AuditLogDto[]): Property
     ];
   });
 }
+
+/** Circles on one line of the «سجل تعديلات البيانات» chain (Omar 2026-11-15: five, then a new line). */
+export const CHANGE_CHAIN_PER_ROW = 5;
+
+/**
+ * Lays the change log out as the chain the window draws: oldest save first, cut into lines.
+ *
+ * How it works: the API answers newest first, so the list is reversed, then sliced every `perRow`
+ * entries. Edge cases: no entries → no lines; the last line holds what is left (1 to `perRow`).
+ */
+export function propertyChangeChainRows(
+  entries: readonly PropertyChangeEntry[],
+  perRow = CHANGE_CHAIN_PER_ROW,
+): PropertyChangeEntry[][] {
+  const oldestFirst = [...entries].reverse();
+  const rows: PropertyChangeEntry[][] = [];
+  for (let i = 0; i < oldestFirst.length; i += perRow) rows.push(oldestFirst.slice(i, i + perRow));
+  return rows;
+}

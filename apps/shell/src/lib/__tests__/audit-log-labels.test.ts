@@ -161,3 +161,67 @@ describe("auditEntityTypeLabel", () => {
     );
   });
 });
+
+describe("events added since 2026-11 (Omar 2026-11-15)", () => {
+  it("labels every event the backend writes today — none falls back to «إجراء غير مُعرَّف»", () => {
+    for (const action of [
+      "case-study.property.fields-changed",
+      "case-study.billing-ready.marked",
+      "case-study.report.study-approved",
+      "case-study.transaction.received",
+      "case-study.transaction.link-kind-changed",
+      "case-study.transaction-cancellation.requested",
+      "case-study.transaction-cancellation.approved",
+      "case-study.transaction-cancellation.rejected",
+      "case-study.transaction-cancellation.reactivated",
+      "valuation.report-issuance.approval-withdrawn",
+      "TRANSACTION_MERGED",
+      "TRANSACTION_DEED_UNMERGED",
+      "PROPERTY_GROUP_LINK_CONFIRMED",
+      "PROPERTY_GROUP_UNLINKED",
+    ]) {
+      expect(auditActionLabel(action)).not.toContain("غير مُعرَّف");
+    }
+    expect(auditEntityTypeLabel("Transaction")).toBe("معاملة");
+    expect(auditEntityTypeLabel("TransactionCancellation")).toBe("إلغاء معاملة");
+  });
+
+  it("names the changed property fields by their Arabic labels", () => {
+    expect(
+      auditDetailSummary(
+        "case-study.property.fields-changed",
+        { area: "500" },
+        { fields: { area: "600" }, autosave: true },
+      ),
+    ).toBe("تعديل بيانات العقار — المساحة — حفظ تلقائي");
+  });
+
+  it("words a cancellation step with its reason and the step's note", () => {
+    expect(
+      auditDetailSummary("case-study.transaction-cancellation.rejected", null, {
+        poNumber: "PO-7",
+        reasonCode: "duplicate",
+        note: "مكرر",
+        decisionNote: "ليست مكررة",
+      }),
+    ).toBe("رفض إلغاء المعاملة — أمر العمل PO-7 — السبب: معاملة مكررة — ملاحظة القرار: ليست مكررة");
+  });
+
+  it("words a merge and a link-kind change", () => {
+    expect(
+      auditDetailSummary("TRANSACTION_MERGED", null, {
+        deeds: [{ id: "d1" }],
+        linkKind: "one_building",
+        propertyNumber: "PR-26-00161-L",
+        reason: "عمارة على قطعتين",
+      }),
+    ).toBe("دمج صكوك في معاملة واحدة — رقم العقار PR-26-00161-L — مبنى واحد — 1 صك مضاف — السبب: عمارة على قطعتين");
+    expect(
+      auditDetailSummary(
+        "case-study.transaction.link-kind-changed",
+        { linkKind: "one_building" },
+        { linkKind: "contract", reason: "عقد واحد" },
+      ),
+    ).toBe("تغيير نوع ربط الصكوك: مبنى واحد ← أعيان بعقد — السبب: عقد واحد");
+  });
+});
