@@ -9,6 +9,7 @@ import {
   WORKFLOW_STATUS,
   comparableCard,
   propertyCard,
+  reportCardRows,
 } from "../lib/app-data/map-locations-logic";
 import { workflowTone } from "../lib/app-data/property-map-view-state";
 import {
@@ -64,6 +65,8 @@ export function PropertyMapView() {
     pickerNodes,
     comparableChoices,
     shownComparables,
+    shownReports,
+    reportDetail,
     operationType,
     setOperationType,
     approvedOnly,
@@ -267,6 +270,31 @@ export function PropertyMapView() {
           />
         ) : null}
 
+        {selection?.kind === "report" ? (
+          <DetailCard
+            familyLabel={POINT_FAMILIES.report}
+            title={`رقم التقرير ${selection.record.reportNumber}`}
+            tags={
+              <>
+                <Badge tone="default">
+                  مستورد من {reportDetail?.sourceLabelAr ?? selection.record.source}
+                </Badge>
+                {selection.record.propertyType ? (
+                  <Badge tone="info">{selection.record.propertyType}</Badge>
+                ) : null}
+              </>
+            }
+            highlight={
+              reportDetail?.finalValue
+                ? { label: "قيمة التقييم النهائية", value: fmtSar(reportDetail.finalValue, { trim: true }) }
+                : null
+            }
+            rows={reportDetail ? reportCardRows(reportDetail) : []}
+            nearby={[]}
+            onClose={() => setSelection(null)}
+          />
+        ) : null}
+
         {selection?.kind === "cluster" ? (
           <div className={cn(opsFloatPanel, "absolute end-3.5 top-3.5 z-[1100] max-h-[70%] w-[280px] overflow-y-auto")}>
             <div className="flex items-center justify-between border-b border-border px-3 py-2">
@@ -317,6 +345,7 @@ export function PropertyMapView() {
           <LegendDot color="#12284C" label="نشط" ring />
           <LegendDot color="#8a8d96" label="أرشيف" />
           <LegendDot color="#a4906f" label="مقارن" diamond />
+          <LegendDot color="#8e44ad" label="تقرير تقييم" hollow />
           <span className="inline-flex items-center gap-1.5">
             <span className="grid size-[13px] place-items-center rounded-full border-[1.5px] border-white bg-[#d9694f] text-[9px] font-extrabold leading-none text-white">
               !
@@ -329,6 +358,7 @@ export function PropertyMapView() {
               ? `المعروض: ${stats.total} عقارًا (${stats.activeCount} نشط · ${stats.archivedCount} أرشيف)`
               : "لا توجد نتائج مطابقة"}
             {shownComparables.length ? ` · ${shownComparables.length} مقارنًا` : ""}
+            {shownReports.length ? ` · ${shownReports.length.toLocaleString("en-US")} تقرير تقييم` : ""}
             {stats.expiredCount ? ` · ${stats.expiredCount} منتهي الصلاحية` : ""}
             {stats.issuedValueSum ? ` · ${fmtSar(stats.issuedValueSum, { trim: true })}` : ""}
           </span>

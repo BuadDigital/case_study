@@ -64,6 +64,18 @@ export function fmtSar(
   return `${text} ر.س`;
 }
 
+/**
+ * A count short enough for a small badge: 999 as is, then «1.2 ألف», «215 ألف», «1.3 مليون».
+ * The full figure belongs in a tooltip next to it.
+ */
+export function fmtCompactCount(n: number): string {
+  const oneDecimal = (x: number) => String(Math.round(x * 10) / 10);
+  if (n >= 1_000_000) return `${oneDecimal(n / 1_000_000)} مليون`;
+  if (n >= 10_000) return `${Math.round(n / 1000)} ألف`;
+  if (n >= 1000) return `${oneDecimal(n / 1000)} ألف`;
+  return String(n);
+}
+
 // Unit suffixes people type after the number (area, percent, riyal) — longest first.
 const UNIT_SUFFIX = /(م²|م2|m²|m2|%|ر\.س|ريال)/g;
 const THOUSANDS_GROUPED = /^-?\d{1,3}(,\d{3})+$/;

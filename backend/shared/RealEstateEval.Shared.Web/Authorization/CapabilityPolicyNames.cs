@@ -74,6 +74,12 @@ public static class CapabilityPolicyNames
     /// </summary>
     public const string ReadComparableBank = "Capability:read-comparable-bank";
 
+    /// <summary>
+    /// «استيراد تقارير التقييم» — uploading an external valuation program's export and reading the
+    /// import log: system admins and valuation coordinators.
+    /// </summary>
+    public const string ImportValuationReports = "Capability:import-valuation-reports";
+
  /// <summary>Physical-key custody and fee data for operations or finance staff.</summary>
     public const string ReadKeyData = "Capability:read-key-data";
 

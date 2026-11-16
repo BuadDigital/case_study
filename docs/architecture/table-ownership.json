@@ -1216,6 +1216,36 @@
       "note": "Rendered report PDFs (browser-built print HTML → Gotenberg) behind signed .pdf?k= links; newest three per request kept."
     },
     {
+      "table": "ImportedValuationReports",
+      "schema": "valuation",
+      "dbSet": "ImportedValuationReports",
+      "entity": "ImportedValuationReport",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.report-imports",
+      "decision": null,
+      "note": "Valuation reports imported from an outside system's Excel export (one row per source + report number; a re-upload replaces, never deletes); drawn as the map's «تقارير التقييم» layer."
+    },
+    {
+      "table": "ValuationReportImportBatches",
+      "schema": "valuation",
+      "dbSet": "ValuationReportImportBatches",
+      "entity": "ValuationReportImportBatch",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.report-imports",
+      "decision": null,
+      "note": "The log of each uploaded import file: who, when, counts, and the highest report number (for the gap check on the next upload)."
+    },
+    {
       "table": "ValuationMarketApproaches",
       "schema": "valuation",
       "dbSet": "ValuationMarketApproaches",

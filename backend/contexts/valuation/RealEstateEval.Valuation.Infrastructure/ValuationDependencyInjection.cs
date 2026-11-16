@@ -58,6 +58,8 @@ public static class ValuationDependencyInjection
         services.AddHttpClient<ICaseStudyCommands, HttpCaseStudyCommands>();
         services.AddScoped<ValuationTimelineWriter>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
+        services.AddSingleton<IValuationReportSheetReader, ExcelValuationReportSheetReader>();
+        services.AddScoped<IValuationReportImportService, ValuationReportImportService>();
         services.AddScoped<IComparablePropertyRepository, ComparablePropertyRepository>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
         services.AddScoped<PropertyComparableLinkService>();

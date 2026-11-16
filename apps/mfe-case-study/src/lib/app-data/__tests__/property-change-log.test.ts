@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { AuditLogDto } from "@platform/api-client/audit";
-import { propertyFieldLabel, toPropertyChangeEntries } from "../property-change-log";
+import {
+  propertyChangeChainRows,
+  propertyFieldLabel,
+  toPropertyChangeEntries,
+} from "../property-change-log";
 
 function row(overrides: Partial<AuditLogDto>): AuditLogDto {
   return {
@@ -52,5 +56,18 @@ describe("property change log (ruling 2026-11-02)", () => {
 
   it("falls back to the wire key for a field the catalog does not know", () => {
     expect(propertyFieldLabel("someNewField")).toBe("someNewField");
+  });
+
+  it("draws the chain oldest first, five circles a line (Omar 2026-11-15)", () => {
+    // The API answers newest first: a7 is the latest save, a1 the first.
+    const entries = toPropertyChangeEntries(
+      [7, 6, 5, 4, 3, 2, 1].map((n) => row({ id: `a${n}`, after: { fields: { area: String(n) } } })),
+    );
+    const rows = propertyChangeChainRows(entries);
+    expect(rows.map((r) => r.map((e) => e.id))).toEqual([
+      ["a1", "a2", "a3", "a4", "a5"],
+      ["a6", "a7"],
+    ]);
+    expect(propertyChangeChainRows([])).toEqual([]);
   });
 });

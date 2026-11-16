@@ -41,4 +41,5 @@ export const CLUSTER_COLORS: Record<LayerKey, { bg: string; ring: string; fg: st
   archive: { bg: "#8a8d96", ring: "rgba(138,141,150,.35)", fg: "#fff" },
   comparables: { bg: "#a4906f", ring: "rgba(164,144,111,.35)", fg: "#fff" },
   failures: { bg: "#d9694f", ring: "rgba(217,105,79,.35)", fg: "#fff" },
+  reports: { bg: "#8e44ad", ring: "rgba(142,68,173,.3)", fg: "#fff" },
 };

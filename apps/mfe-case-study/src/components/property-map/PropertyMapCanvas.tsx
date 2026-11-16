@@ -176,6 +176,7 @@ export function PropertyMapCanvas({
       archive: 0,
       failures: 0,
       comparables: 0,
+      reports: 0,
     };
 
     (["active", "archive", "failures", "comparables"] as LayerKey[]).forEach((key) => {

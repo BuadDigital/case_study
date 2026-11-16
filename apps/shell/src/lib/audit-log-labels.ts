@@ -3,6 +3,8 @@
  * Codes stay English in storage; only the monitor UI is localized.
  */
 
+import { propertyFieldLabel } from "@case-study/mfe/lib/app-data/property-change-log";
+
 const ACTION_AR: Record<string, string> = {
   CASE_STUDY_INFO_ROLES_SAVED: "تعديل من يجيب على أسئلة دراسة الحالة",
   FIELD_DICTIONARY_SAVED: "تعديل أسماء الحقول في النظام",
@@ -66,6 +68,23 @@ const ACTION_AR: Record<string, string> = {
   "valuation.alert-overrides.updated": "تخطّي تنبيهات على التقييم",
   "valuation.report-issuance.reopened": "إعادة فتح إصدار تقرير التقييم",
   "valuation.report-issuance.code-corrected": "تصحيح رمز إيداع التقرير",
+  // Events added since the labels were last written (Omar 2026-11-15: «سجل التدقيق» showed them
+  // as «إجراء غير مُعرَّف»).
+  "case-study.property.fields-changed": "تعديل بيانات عقار",
+  "case-study.billing-ready.marked": "وسم الصك «جاهز للفوترة»",
+  "case-study.report.study-approved": "اعتماد الدراسة",
+  "case-study.transaction.received": "إرسال المعاملة للدراسة",
+  "case-study.transaction.link-kind-changed": "تغيير نوع ربط الصكوك",
+  "case-study.transaction-cancellation.requested": "طلب إلغاء المعاملة",
+  "case-study.transaction-cancellation.approved": "الموافقة على إلغاء المعاملة",
+  "case-study.transaction-cancellation.rejected": "رفض إلغاء المعاملة",
+  "case-study.transaction-cancellation.reactivated": "إعادة تفعيل المعاملة الملغاة",
+  "valuation.report-issuance.approval-withdrawn": "سحب اعتماد تقرير التقييم",
+  TRANSACTION_MERGED: "دمج صكوك في معاملة واحدة",
+  TRANSACTION_DEED_UNMERGED: "فك صك من المعاملة المدمجة",
+  // The old property link (superseded 2026-10-18); its rows stay in the log.
+  PROPERTY_GROUP_LINK_CONFIRMED: "تأكيد ربط عقارين",
+  PROPERTY_GROUP_UNLINKED: "فك ربط عقار",
 };
 
 const ENTITY_AR: Record<string, string> = {
@@ -98,6 +117,24 @@ const ENTITY_AR: Record<string, string> = {
   PartyFeePricingAssignment: "ربط أتعاب الأطراف",
   ValuationReportIssuance: "إصدار تقرير التقييم",
   inspector_fee_ledger: "سجل أتعاب المعاين",
+  Transaction: "معاملة",
+  transaction: "معاملة",
+  TransactionCancellation: "إلغاء معاملة",
+  property_group: "مجموعة عقارات",
+  po_enfaz_invoice: "فاتورة إنفاذ",
+};
+
+/** How merged deeds belong together, worded as the transaction page words it. */
+const LINK_KIND_AR: Record<string, string> = {
+  one_building: "مبنى واحد",
+  contract: "أعيان بعقد",
+};
+
+/** «إلغاء المعاملة» reasons, worded as the cancellation dialog words them. */
+const CANCELLATION_REASON_AR: Record<string, string> = {
+  duplicate: "معاملة مكررة",
+  wrong_entry: "إدخال خاطئ",
+  other: "أخرى",
 };
 
 const KIND_AR: Record<string, string> = {
@@ -288,6 +325,54 @@ function countLeaves(value: unknown): number {
   if (Array.isArray(value)) return value.length;
   if (typeof value === "object") return Object.keys(value as object).length;
   return 1;
+}
+
+/** «السبب: …» when the payload carries a reason, else nothing. */
+function reasonPart(obj: JsonRecord | null, key = "reason", label = "السبب"): string | null {
+  const reason = readString(obj, key);
+  return reason ? `${label}: ${reason}` : null;
+}
+
+/**
+ * The changed fields of a «تعديل بيانات عقار» row, by their Arabic labels.
+ *
+ * How it works: `after.fields` maps each changed field to its new value; the first four are named
+ * from the property fields catalog, the rest counted. Edge cases: no fields → null; a key missing
+ * from the catalog prints as its wire name.
+ */
+function changedPropertyFields(after: JsonRecord | null): string | null {
+  const keys = Object.keys(asRecord(after?.fields) ?? {});
+  if (keys.length === 0) return null;
+  const named = keys.slice(0, 4).map(propertyFieldLabel).join("، ");
+  const more = keys.length - 4;
+  return more > 0 ? `${named} و${more} غيرها` : named;
+}
+
+/**
+ * One line for a «إلغاء المعاملة» row (requested / approved / rejected / reactivated).
+ *
+ * How it works: every row carries the whole request (reason code, note, decision and
+ * reactivation notes); the line names the PO and the reason, then the note that belongs to the
+ * step — the request's note, the decision's note, or why it was reactivated.
+ */
+function cancellationSummary(key: string, after: JsonRecord | null): string {
+  const reasonCode = readString(after, "reasonCode");
+  const stepNote =
+    key === "case-study.transaction-cancellation.requested"
+      ? reasonPart(after, "note", "ملاحظة")
+      : key === "case-study.transaction-cancellation.reactivated"
+        ? reasonPart(after, "reactivationNote", "سبب إعادة التفعيل")
+        : reasonPart(after, "decisionNote", "ملاحظة القرار");
+  return joinParts([
+    ACTION_AR[key],
+    poPart(readString(after, "poNumber")),
+    reasonCode ? `السبب: ${CANCELLATION_REASON_AR[reasonCode] ?? reasonCode}` : null,
+    stepNote,
+  ]);
+}
+
+function linkKindLabel(kind: string | null): string | null {
+  return kind ? (LINK_KIND_AR[kind] ?? kind) : null;
 }
 
 export function auditActionLabel(action: string): string {
@@ -554,6 +639,58 @@ export function auditDetailSummary(
         poPart(readString(afterObj, "poNumber")),
         readString(afterObj, "reason") ? `السبب: ${readString(afterObj, "reason")}` : null,
       ]);
+    case "case-study.property.fields-changed":
+      return joinParts([
+        "تعديل بيانات العقار",
+        changedPropertyFields(afterObj),
+        afterObj?.autosave === true ? "حفظ تلقائي" : null,
+      ]);
+    case "case-study.billing-ready.marked":
+      return "وسم الصك «جاهز للفوترة»";
+    case "case-study.report.study-approved":
+      return "اعتماد الدراسة في المراجعة";
+    case "case-study.transaction.received":
+      return "إرسال المعاملة للدراسة بعد استلام أعمال الأطراف";
+    case "case-study.transaction.link-kind-changed": {
+      const from = linkKindLabel(readString(beforeObj, "linkKind"));
+      const to = linkKindLabel(readString(afterObj, "linkKind"));
+      return joinParts([
+        from && to ? `تغيير نوع ربط الصكوك: ${from} ← ${to}` : "تغيير نوع ربط الصكوك",
+        reasonPart(afterObj),
+      ]);
+    }
+    case "case-study.transaction-cancellation.requested":
+    case "case-study.transaction-cancellation.approved":
+    case "case-study.transaction-cancellation.rejected":
+    case "case-study.transaction-cancellation.reactivated":
+      return cancellationSummary(key, afterObj);
+    case "valuation.report-issuance.approval-withdrawn":
+      return "سحب اعتماد تقرير التقييم قبل تسجيل رمز الإيداع";
+    case "TRANSACTION_MERGED": {
+      const deeds = asArray(afterObj?.deeds).length;
+      const kind = linkKindLabel(readString(afterObj, "linkKind"));
+      const number = readString(afterObj, "propertyNumber");
+      return joinParts([
+        "دمج صكوك في معاملة واحدة",
+        number ? `رقم العقار ${number}` : null,
+        kind,
+        deeds > 0 ? `${deeds} صك مضاف` : null,
+        reasonPart(afterObj),
+      ]);
+    }
+    case "TRANSACTION_DEED_UNMERGED": {
+      const deed = readString(afterObj, "deedNumber");
+      const number = readString(afterObj, "propertyNumber");
+      return joinParts([
+        deed ? `فك الصك ${deed} من المعاملة المدمجة` : "فك صك من المعاملة المدمجة",
+        number ? `رقمه الجديد ${number}` : null,
+        reasonPart(afterObj),
+      ]);
+    }
+    case "PROPERTY_GROUP_LINK_CONFIRMED":
+      return "تأكيد ربط عقارين";
+    case "PROPERTY_GROUP_UNLINKED":
+      return joinParts(["فك ربط عقار", reasonPart(afterObj)]);
     case "case-study.post-enfaz-decision.recorded":
       return joinParts([
         "تسجيل قرار بعد التسليم لإنفاذ",
