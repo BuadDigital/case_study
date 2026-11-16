@@ -19,6 +19,7 @@ import {
 import { canReopenCaseStudyReport } from "./po-roles";
 import { poPropertyDetailPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { transactionNumberOf } from "./transaction-number";
+import { areaText } from "./appraiser-summary-model";
 import type { TransactionProgress, TransactionParty } from "./my-work-model";
 
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
@@ -97,6 +98,8 @@ export type AllTransactionsQueueRowMeta = {
   waitingParties: readonly TransactionParty[];
   /** The deed's property type, under the place (as «أعمالي»). */
   propertyType?: string;
+  /** The deed's area as «900.21 م²» under the deed number (Omar 2026-11-16); «» when not entered. */
+  area: string;
   /** The work order's description, under its number. */
   poDescription?: string;
   /** The work order's receipt from Enfaz and its deadline. */
@@ -275,6 +278,7 @@ export function buildAllTransactionsQueueRowMeta(
       waitingOn: null,
       waitingParties: [],
       propertyType: task.propertyType,
+      area: areaText(property?.area),
       poDescription: record?.workOrderDescription?.trim() || undefined,
       receivedIso: record?.receivedFromEnfathAt || undefined,
       dueIso: record?.dueDateAt || undefined,

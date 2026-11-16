@@ -361,7 +361,7 @@ describe("buildMyWork — review's single row", () => {
 describe("buildMyWork — order", () => {
   it("lists late rows first, then soon, then the oldest", () => {
     const po = (n: string, due: string) =>
-      [n, { poNumber: n, dueDateAt: due } as PoIntakeRecord] as const;
+      [n, { poNumber: n, dueDateAt: due, properties: [] } as unknown as PoIntakeRecord] as const;
     const a = task({
       id: "a",
       poNumber: "A",
@@ -423,14 +423,15 @@ describe("buildMyWork — when the action arrived", () => {
     expect(items[0]!.arrivedIso).toBe("2026-11-01T00:00:00Z");
   });
 
-  it("carries the PO's receipt and due dates and its description", () => {
+  it("carries the PO's receipt and due dates, its description and the deed's area", () => {
     const t = task({ transactionReceived: true });
     const po = {
       poNumber: "PO-1",
       receivedFromEnfathAt: "2026-10-30",
       dueDateAt: "2026-11-20",
       workOrderDescription: " تقييم عقارات التنفيذ ",
-    } as PoIntakeRecord;
+      properties: [{ id: t.propertyId, area: "900.21" }],
+    } as unknown as PoIntakeRecord;
     const { items } = buildMyWork(
       input({ groups: ["st"], mine: [t], allTasks: [t], poByNumber: new Map([["PO-1", po]]) }),
     );
@@ -438,6 +439,7 @@ describe("buildMyWork — when the action arrived", () => {
       receivedIso: "2026-10-30",
       dueIso: "2026-11-20",
       poDescription: "تقييم عقارات التنفيذ",
+      area: "900.21 م²",
     });
   });
 });

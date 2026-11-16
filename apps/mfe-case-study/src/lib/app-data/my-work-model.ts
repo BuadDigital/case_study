@@ -31,7 +31,8 @@ import {
   filterTasksForPrimaryData,
 } from "./transaction-filters";
 import { isTaskOnSuspendedProperty } from "./suspended-transactions-model";
-import { resolveRemainingTime } from "./my-task-row";
+import { findPropertyForTask, resolveRemainingTime } from "./my-task-row";
+import { areaText } from "./appraiser-summary-model";
 import { caseStudyWorkspacePath, activeInspectionWorkspacePath } from "../my-task-routes";
 
 /** Where the intake of a deed stands — the «إدخال المعاملة» row's line (Omar 2026-11-08). */
@@ -97,6 +98,8 @@ export type MyWorkItem = {
   deedNumber: string;
   transactionNumber?: string;
   propertyType?: string;
+  /** The deed's area as «900.21 م²» under the deed number (Omar 2026-11-16); «» when not entered. */
+  area: string;
   place: string;
   /**
    * When the action reached the viewer (ISO) — the clock of «وقت الإجراء» (Omar 2026-11-08): the
@@ -887,6 +890,7 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
     deedNumber: task.deedNumber?.trim() || "—",
     transactionNumber: task.transactionNumber,
     propertyType: task.propertyType,
+    area: areaText(findPropertyForTask(poByNumber.get(task.poNumber.trim()), task)?.area),
     place: placeOf(task),
     // Not `updatedAt`: any save moves it, so it never said when the action arrived.
     arrivedIso: laterIso(task.lastStepAtUtc, task.createdAt),
@@ -948,6 +952,7 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
         deedNumber: b.deedNumber?.trim() || "—",
         transactionNumber: b.transactionNumber ?? undefined,
         propertyType: deedTask?.propertyType,
+        area: areaText(record?.properties.find((p) => p.id === b.propertyId)?.area),
         place: deedTask ? placeOf(deedTask) : "—",
         arrivedIso: laterIso(deedTask?.lastStepAtUtc, b.createdAtUtc || b.receivedFromEnfathAt),
         receivedIso: b.receivedFromEnfathAt || record?.receivedFromEnfathAt || undefined,

@@ -31,7 +31,7 @@ import {
   type QueueRowContext,
 } from "./active-transaction-queue-tables-state";
 import { queueRowClassName, QueueRowMoreCell } from "./active-transaction-queue-row-parts";
-import { MY_WORK_LONG_VALUE, Muted, MyWorkDates } from "./my-work-table-parts";
+import { DeedWithArea, MY_WORK_LONG_VALUE, Muted, MyWorkDates } from "./my-work-table-parts";
 
 /**
  * Column widths in the header's order: transaction number, deed, city / district, work order, state,
@@ -112,16 +112,7 @@ const AllTransactionsRow = memo(function AllTransactionsRow({
         )}
       </Td>
       <Td className="text-center">
-        {meta.deed && meta.deed !== "—" ? (
-          <bdi
-            dir="ltr"
-            className={cn(MY_WORK_LONG_VALUE, "text-[13px] font-semibold tabular-nums text-heading")}
-          >
-            {meta.deed}
-          </bdi>
-        ) : (
-          <Muted />
-        )}
+        <DeedWithArea deed={meta.deed} area={meta.area} />
       </Td>
       <Td className="text-center">
         <div className="flex min-w-0 flex-col items-center gap-0.5">
