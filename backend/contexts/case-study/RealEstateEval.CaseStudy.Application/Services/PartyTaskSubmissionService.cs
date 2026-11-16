@@ -195,6 +195,16 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         {
             return (null, Error("يمكن تعديل هذه المهمة بعد إرسالها فقط"));
         }
+        // The appraiser corrects the inspection once it is sent (Omar 2026-11-16) — never the
+        // inspector's draft while he is still working on it.
+        if (PartyTaskSubmissionRules.IsAppraiser(actor)
+            && actor is not null
+            && !PoRoleMatrixRules.CanWritePartyTask(
+                actor.PrototypeRole, task.AssigneeId, actor.UserId, actor.DistributionAssigneeId)
+            && entity?.Status is not PartyTaskSubmissionStatus.Submitted)
+        {
+            return (null, Error("يمكن تعديل هذه المهمة بعد إرسالها فقط"));
+        }
 
         var now = _time.UtcNow();
         if (entity is null)
@@ -279,7 +289,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             // Photos the staff added to (or took back from) the sent inspection show on the timeline.
             await RecordStaffPhotoChangeAsync(task, payloadBeforeSave, entity.PayloadJson, actor, now, cancellationToken);
             await AlertAppraiserInspectorDataChangedAsync(
-            task, payloadBeforeSave, entity.PayloadJson, entity.AcceptedAtUtc is not null, cancellationToken);
+            task, payloadBeforeSave, entity.PayloadJson, entity.AcceptedAtUtc is not null, actor, cancellationToken);
             return (await ToDtoAsync(entity, cancellationToken), null);
         }
 
@@ -301,7 +311,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         await _repo.SaveChangesAsync(cancellationToken);
         await AlertAppraiserInspectorDataChangedAsync(
-            task, payloadBeforeSave, entity.PayloadJson, entity.AcceptedAtUtc is not null, cancellationToken);
+            task, payloadBeforeSave, entity.PayloadJson, entity.AcceptedAtUtc is not null, actor, cancellationToken);
 
         // Staff corrections see the current source data; only the inspector's own save
         // (often an offline one replayed later) can be based on an older download.

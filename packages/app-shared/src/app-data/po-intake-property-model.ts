@@ -6,7 +6,11 @@ import {
 } from "@platform/api-client";
 import type { AssignmentType } from "./po-intake-assignment";
 import type { PropertyIdentifierType } from "./po-intake-identifiers";
-import { classificationForPropertyType, textLooksLikeVacantLand } from "./inspector-workspace-data";
+import {
+  classificationForPropertyType,
+  recordsFacadeType,
+  textLooksLikeVacantLand,
+} from "./inspector-workspace-data";
 import type { PropertyPhotoMarks } from "./property-detail-document-types";
 import {
   clearPropertyBoundaryFields,
@@ -178,6 +182,26 @@ export function propertyIsLand(
   property: Pick<PoPropertyIntake, "propertyType" | "inspectedPropertyType" | "effectivePropertyType">,
 ): boolean {
   return textLooksLikeVacantLand(effectivePropertyTypeOf(property));
+}
+
+/**
+ * Whether this property's sides show «نوع الواجهة» — hidden on land in any form and on an apartment
+ * (`recordsFacadeType`, Omar 2026-11-16).
+ *
+ * How it works: the inspector's «الأصل محل التقييم» (or his «أرض فضاء» tick) decides once he gave it;
+ * before that the property's type and classification, the inspector-corrected ones when there are.
+ * Edge cases: no inspection → the property alone.
+ */
+export function propertyRecordsFacadeType(
+  property: Pick<PoPropertyIntake, "classification" | "propertyType" | "inspectedPropertyType" | "effectivePropertyType">,
+  inspector?: { vacantLand?: boolean; featureValues?: Record<string, string> } | null,
+): boolean {
+  return recordsFacadeType({
+    vacantLand: inspector?.vacantLand,
+    assetSubject: inspector?.featureValues?.assetSubject,
+    propertyType: effectivePropertyTypeOf(property),
+    classification: effectiveClassificationOf(property),
+  });
 }
 
 /**

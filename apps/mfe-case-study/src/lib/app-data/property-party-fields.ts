@@ -102,9 +102,9 @@ const readonly = (key: string, label: string): PartyFieldDef => ({
 });
 
 /**
- * The property type is not edited in place: the inspector sets it, and case staff change it with a
- * reason through «تعديل النوع والاستخدام» (`InspectedTypeCorrection`) — the server rejects a change
- * that arrives with the review's autosave.
+ * The property type is not edited here: the inspector sets it, and case staff change it in the
+ * review's «خصائص العقار» field, which sends it through its own command (Omar 2026-11-16) — the
+ * server rejects a change that arrives with the review's autosave.
  */
 const INSPECTOR_OWNED_FEATURE_KEYS = new Set(["assetSubject"]);
 

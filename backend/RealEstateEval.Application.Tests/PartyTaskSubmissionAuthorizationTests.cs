@@ -622,8 +622,10 @@ public class PartyTaskSubmissionAuthorizationTests
     }
 
     [Fact]
-    public async Task Sibling_appraiser_may_not_write_reopen_or_accept_the_inspection()
+    public async Task Sibling_appraiser_corrects_the_sent_inspection_but_may_not_reopen_accept_or_submit_it()
     {
+        // Omar 2026-11-16: the appraiser edits the inspector's information too — he corrects the sent
+        // package; confirming, returning and submitting it stay case staff's / the inspector's.
         var db = CreateDb().CaseStudy;
         SeedInspectionFamily(db, "completed", PartyTaskSubmissionStatus.Submitted);
         var service = CreateService(db);
@@ -636,14 +638,30 @@ public class PartyTaskSubmissionAuthorizationTests
         var (accepted, acceptErrors) = await service.AcceptAsync(TaskId, AppraiserActor());
         var (submitted, submitErrors) = await service.SubmitAsync(TaskId, AppraiserActor());
 
-        Assert.Null(saved);
-        Assert.Contains("صلاحية", saveErrors!["_"]);
+        Assert.Null(saveErrors);
+        Assert.Equal("تعديل", saved!.Payload.GetProperty("propertyDescription").GetString());
+        Assert.Equal("submitted", saved.Status);
         Assert.Null(reopened);
         Assert.Contains("صلاحية", reopenErrors!["_"]);
         Assert.Null(accepted);
         Assert.Contains("صلاحية", acceptErrors!["_"]);
         Assert.Null(submitted);
         Assert.Contains("صلاحية", submitErrors!["_"]);
+    }
+
+    [Fact]
+    public async Task Sibling_appraiser_may_not_write_the_inspectors_unsent_draft()
+    {
+        var db = CreateDb().CaseStudy;
+        SeedInspectionFamily(db, "completed", PartyTaskSubmissionStatus.Draft);
+        var service = CreateService(db);
+        var payload = JsonDocument.Parse("""{"propertyDescription":"تعديل"}""").RootElement;
+
+        var (saved, errors) = await service.SaveDraftAsync(
+            TaskId, new SavePartyTaskSubmissionRequest { Payload = payload }, AppraiserActor());
+
+        Assert.Null(saved);
+        Assert.Equal("يمكن تعديل هذه المهمة بعد إرسالها فقط", errors!["_"]);
     }
 
     private static void SeedTask(CaseStudyDbContext db, string assigneeId)

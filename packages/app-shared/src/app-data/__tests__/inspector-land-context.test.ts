@@ -5,6 +5,7 @@ import {
   reportInspectorPropertyDescription,
   isLandInspectionContext,
   preserveInspectorOwnedFeatureValues,
+  recordsFacadeType,
   resolvedInspectorAssetSubject,
   sanitizeInspectorDraftForLand,
   submittedInspectorAssetIsLand,
@@ -188,5 +189,33 @@ describe("sanitizeInspectorDraftForLand", () => {
         classification: "سكني",
       }).featureValues.buildState,
     ).toBe("جيد");
+  });
+
+  it("clears every side's «نوع الواجهة» on land (Omar 2026-11-16)", () => {
+    const side = (facade: string) => ({ matches: true, mismatchNote: "", facade, deedDesc: "شارع", deedLength: "20" });
+    const saved = draft({
+      featureValues: { assetSubject: "أرض تجارية" },
+      boundaryMatches: { north: side("حجر"), south: side(""), east: side("رخام"), west: side("") },
+    } as Partial<InspectorWorkspaceDraft>);
+    const clean = sanitizeInspectorDraftForLand(saved);
+    for (const key of ["north", "south", "east", "west"] as const) {
+      expect(clean.boundaryMatches[key].facade).toBe("");
+      expect(clean.boundaryMatches[key].deedDesc).toBe("شارع");
+    }
+  });
+});
+
+describe("recordsFacadeType — «نوع الواجهة» per side (Omar 2026-11-16)", () => {
+  it("is off on land in any form and on an apartment, on for any other asset", () => {
+    for (const assetSubject of ["أرض", "أرض فضاء", "أرض سكنية", "أرض تجارية", "أرض زراعية", "ارض صناعية"]) {
+      expect(recordsFacadeType({ assetSubject })).toBe(false);
+    }
+    expect(recordsFacadeType({ vacantLand: true, assetSubject: "فيلا" })).toBe(false);
+    expect(recordsFacadeType({ assetSubject: "شقة" })).toBe(false);
+    expect(recordsFacadeType({ assetSubject: "فيلا" })).toBe(true);
+    expect(recordsFacadeType({ assetSubject: "عمارة" })).toBe(true);
+    // The inspector's answer wins over the PO's type; the PO's type decides before it.
+    expect(recordsFacadeType({ propertyType: "أرض سكنية", assetSubject: "فيلا" })).toBe(true);
+    expect(recordsFacadeType({ propertyType: "أرض سكنية" })).toBe(false);
   });
 });

@@ -25,9 +25,12 @@ const HEAD = "border-b border-border bg-surface-2 px-3 py-2 text-[11px] font-bol
 export function PropertyBoundariesTable({
   rows,
   showInspection = false,
+  showFacade = true,
 }: {
   rows: PropertyBoundariesTableRow[];
   showInspection?: boolean;
+  /** false on land in any form and on an apartment — no «نوع الواجهة» column (Omar 2026-11-16). */
+  showFacade?: boolean;
 }) {
   return (
     <div className={cn("rounded border border-border", showInspection ? "overflow-x-auto" : "overflow-hidden")}>
@@ -39,7 +42,7 @@ export function PropertyBoundariesTable({
             <th className={cn(HEAD, "text-center")}>طول الضلع</th>
             {showInspection ? (
               <>
-                <th className={cn(HEAD, "text-center")}>نوع الواجهة</th>
+                {showFacade ? <th className={cn(HEAD, "text-center")}>نوع الواجهة</th> : null}
                 <th className={cn(HEAD, "text-center")}>على الطبيعة (المعاين)</th>
               </>
             ) : null}
@@ -57,7 +60,9 @@ export function PropertyBoundariesTable({
                 </td>
                 {showInspection ? (
                   <>
-                    <td className={cn("px-3 py-2 text-center text-text", rule)}>{row.facade || "—"}</td>
+                    {showFacade ? (
+                      <td className={cn("px-3 py-2 text-center text-text", rule)}>{row.facade || "—"}</td>
+                    ) : null}
                     <td className={cn("px-3 py-2 text-center text-text", rule)}>
                       {row.match === "غير مطابق" ? (
                         <span className="font-bold text-amber-text">{row.match}</span>

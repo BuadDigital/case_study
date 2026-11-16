@@ -112,13 +112,6 @@ public class InspectedTypeStaffCorrectionTests
         Assert.Equal("", values.GetProperty("buildState").GetString());
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("قصير")]
-    [InlineData("   تسعة أحرف ")]
-    public void A_short_reason_is_no_reason(string? reason) =>
-        Assert.Null(InspectedPropertyTypeRules.StaffChangeReason(reason));
-
     [Fact]
     public async Task The_specialist_changes_the_type_of_an_accepted_inspection_with_a_reason()
     {
@@ -162,28 +155,32 @@ public class InspectedTypeStaffCorrectionTests
     }
 
     [Fact]
-    public async Task A_new_type_needs_a_reason_and_a_listed_type()
+    public async Task A_new_type_needs_a_listed_type_but_no_reason()
     {
         var bundle = CreateDb();
         Seed(bundle.CaseStudy);
         var service = CreateService(bundle);
 
-        var (noReason, noReasonErrors) = await service.CorrectInspectedTypeAsync(
-            TaskId,
-            new CorrectInspectedTypeRequest { PropertyType = "أرض سكنية", Reason = "قصير" },
-            Specialist);
-        Assert.Null(noReason);
-        Assert.Equal(InspectedPropertyTypeRules.StaffChangeReasonRequiredAr, noReasonErrors!["reason"]);
-
         var (unlisted, unlistedErrors) = await service.CorrectInspectedTypeAsync(
             TaskId,
-            new CorrectInspectedTypeRequest { PropertyType = "نوع غير موجود", Reason = Reason },
+            new CorrectInspectedTypeRequest { PropertyType = "نوع غير موجود" },
             Specialist);
         Assert.Null(unlisted);
         Assert.Equal(InspectedPropertyTypeRules.StaffChangeTypeInvalidAr, unlistedErrors!["propertyType"]);
 
         var property = await bundle.CaseStudy.WorkOrderProperties.AsNoTracking().SingleAsync(p => p.Id == PropertyId);
         Assert.Equal("فيلا", property.InspectedPropertyType);
+
+        // Omar 2026-11-16: the type is edited in its field — no reason asked; the timeline omits it.
+        var (changed, changeErrors) = await service.CorrectInspectedTypeAsync(
+            TaskId,
+            new CorrectInspectedTypeRequest { PropertyType = "أرض سكنية" },
+            Specialist);
+        Assert.Null(changeErrors);
+        Assert.NotNull(changed);
+        var row = await bundle.CaseStudy.PropertyTimelineEntries.AsNoTracking()
+            .SingleAsync(e => e.PropertyId == PropertyId && e.Title == "تعديل نوع العقار من الأخصائي");
+        Assert.DoesNotContain("السبب", row.Detail);
     }
 
     [Fact]
@@ -210,6 +207,39 @@ public class InspectedTypeStaffCorrectionTests
             .ToListAsync();
         Assert.Contains("تعديل استخدام العقار من الأخصائي", titles);
         Assert.DoesNotContain("تعديل نوع العقار من الأخصائي", titles);
+    }
+
+    [Fact]
+    public async Task The_appraiser_corrects_the_inspection_but_no_other_party_package()
+    {
+        // Omar 2026-11-16: the appraiser edits the inspector's information too.
+        var appraiser = new PartySubmissionActor
+        {
+            UserId = "appraiser-1",
+            DisplayName = "المقيّم",
+            PrototypeRole = "real-estate-appraiser",
+        };
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        Seed(db, accepted: true);
+        var service = CreateService(bundle);
+
+        var (result, errors) = await service.CorrectInspectedTypeAsync(
+            TaskId,
+            new CorrectInspectedTypeRequest { PropertyType = "عمارة" },
+            appraiser);
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        var property = await db.WorkOrderProperties.AsNoTracking().SingleAsync(p => p.Id == PropertyId);
+        Assert.Equal("عمارة", property.InspectedPropertyType);
+
+        var inspection = await db.WorkflowTasks.AsNoTracking().SingleAsync(t => t.Id == TaskId);
+        Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(appraiser, inspection));
+        var survey = WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey, "PO-701", DateTime.UtcNow, title: "رفع مساحي", propertyId: PropertyId);
+        Assert.False(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(appraiser, survey));
+        Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(Specialist, survey));
     }
 
     [Fact]

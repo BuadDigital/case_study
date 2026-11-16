@@ -140,11 +140,12 @@ public class PartyTaskSubmissionsController : ControllerBase
     }
 
     /// <summary>
-    /// Case staff correct the property type (with a reason) and / or «استخدام العقار» of a submitted
-    /// inspection — also after its acceptance, until review approves the study.
+    /// Case staff and the appraiser correct the property type and / or «استخدام العقار» of a submitted
+    /// inspection — also after its acceptance, until review approves the study. The service decides
+    /// who (<c>StaffMayCorrectPartyPackage</c>); the appraiser holds no manage-work-orders (2026-11-16).
     /// </summary>
     [HttpPost("{taskId:guid}/inspected-type")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<ActionResult<PartyTaskSubmissionDto>> CorrectInspectedType(
         Guid taskId,
         [FromBody] CorrectInspectedTypeRequest request,

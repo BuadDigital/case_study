@@ -24,8 +24,8 @@ public sealed partial class PartyTaskSubmissionService
     /// study (Omar 2026-11-04); the office is added from «مهمة جديدة», type «رفع مساحي» (Omar 2026-11-11 —
     /// the note that sat in the inspector's section is gone). <paramref name="staffReason"/> set = case
     /// staff changed the type after the inspection was sent (Omar 2026-11-12): the timeline row says so
-    /// and carries the reason, the audit row stores it, and a missing name reads «الأخصائي» — never the
-    /// inspector's name.
+    /// and carries the reason when one was given (empty since 2026-11-16, when the reason stopped being
+    /// asked), the audit row stores it, and a missing name reads «الأخصائي» — never the inspector's name.
     /// </summary>
     private async Task OnInspectedTypeChangedAsync(
         WorkflowTask inspectionTask,
@@ -47,7 +47,7 @@ public sealed partial class PartyTaskSubmissionService
             propertyId,
             $"inspected-type:{inspectionTask.Id}:{now.Ticks}",
             byStaff ? "تعديل نوع العقار من الأخصائي" : "تغيير نوع العقار ميدانياً",
-            byStaff
+            byStaff && staffReason!.Length > 0
                 ? $"من «{from}» إلى «{change.NewType}» — {by} — السبب: {staffReason}"
                 : $"من «{from}» إلى «{change.NewType}» — {by}",
             PropertyTimelineTones.Warn,
@@ -73,7 +73,7 @@ public sealed partial class PartyTaskSubmissionService
                         classification = PropertyTypeCatalog.ClassificationOf(change.NewType),
                         poNumber = inspectionTask.PoNumber,
                         changedBy = "staff",
-                        reason = staffReason,
+                        reason = staffReason!.Length > 0 ? staffReason : null,
                     })
                 : _audit.Create(
                     actorId: actorId,
@@ -108,8 +108,8 @@ public sealed partial class PartyTaskSubmissionService
     /// (<see cref="PartyTaskSubmissionRules.StaffMayCorrectPartyPackage"/>), on a package that is
     /// submitted — accepted or not — and until review approves the study (the lock of every other
     /// property field) or the transaction is delivered to Enfaz. A new type must be on the system's
-    /// list and carry a reason of 10 characters;
-    /// a new usage needs none (as in the review). The payload, the workspace row, the property's
+    /// list; neither it nor a new usage needs a reason (Omar 2026-11-16: the type is edited in its
+    /// field on the review like any other answer — the 2026-11-12 reason of 10 characters is gone). The payload, the workspace row, the property's
     /// inspected type / usage and the field provenance are saved together; then the timeline and
     /// audit rows, the survey rule of the new type (ask for the office / withdraw the open survey)
     /// and the appraiser's «inspection data changed» alert follow, as after the inspector's own change.
@@ -155,15 +155,11 @@ public sealed partial class PartyTaskSubmissionService
             && !string.Equals(requestedUsage, usageBefore, StringComparison.Ordinal);
 
         var errors = new Dictionary<string, string>();
-        string? reason = null;
-        if (typeChanges)
-        {
-            if (!PropertyTypeCatalog.IsInspectorValue(requestedType))
-                errors["propertyType"] = InspectedPropertyTypeRules.StaffChangeTypeInvalidAr;
-            reason = InspectedPropertyTypeRules.StaffChangeReason(request.Reason);
-            if (reason is null)
-                errors["reason"] = InspectedPropertyTypeRules.StaffChangeReasonRequiredAr;
-        }
+        if (typeChanges && !PropertyTypeCatalog.IsInspectorValue(requestedType))
+            errors["propertyType"] = InspectedPropertyTypeRules.StaffChangeTypeInvalidAr;
+        // Omar 2026-11-16: the type is edited in its own field like any other answer, so no reason is
+        // asked any more; one sent is still written on the timeline and the audit row.
+        var reason = (request.Reason ?? "").Trim();
         if (usageChanges
             && (requestedUsage.Length > InspectedUsageRules.MaxLength
                 || PropertyTypeCatalog.IsClassification(requestedUsage)))
@@ -212,7 +208,7 @@ public sealed partial class PartyTaskSubmissionService
             await OnInspectedTypeChangedAsync(task, typeChange, actor, now, cancellationToken, reason);
 
         await AlertAppraiserInspectorDataChangedAsync(
-            task, payloadBefore, entity.PayloadJson, entity.AcceptedAtUtc is not null, cancellationToken);
+            task, payloadBefore, entity.PayloadJson, entity.AcceptedAtUtc is not null, actor, cancellationToken);
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
 

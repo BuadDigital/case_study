@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
+import { propertyRecordsFacadeType } from "@platform/app-shared/app-data/po-intake-property-model";
 import {
   deedMatchDissent,
   DeedNatureMatchOutcomes,
@@ -95,7 +96,13 @@ export function CaseStudyDeedNatureMatchReview({
           form ?? emptyCaseStudyReportDraft(caseStudyTaskId, { propertyId: property.id, poNumber });
         setDraft(nextDraft);
         const inspectorSubmitted = inspector?.status === "submitted" || isInspectorWorkspaceAccepted(inspector);
-        setSides(inspectorSubmitted ? deedMatchSideRows(inspector, property) : []);
+        // Land in any form and an apartment have no «نوع الواجهة» — the column stays off (Omar 2026-11-16).
+        const sideRows = inspectorSubmitted ? deedMatchSideRows(inspector, property) : [];
+        setSides(
+          propertyRecordsFacadeType(property, inspector)
+            ? sideRows
+            : sideRows.map((side) => ({ ...side, facade: "" })),
+        );
         const engineeringSubmitted = survey?.status === "submitted" || Boolean(survey?.acceptedAtUtc?.trim());
         setProposal(
           proposeDeedNatureMatch({

@@ -6,9 +6,10 @@
  * the link to the property's details and the study's part of the summary section. The valuation
  * sections themselves are the evaluator app's (`EvaluatorWindow`).
  */
-import { useReducer } from "react";
+import { useMemo, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { Badge, Button, Note, WORK_FORM_GRID_CLASS } from "@platform/ui-kit";
 import {
   loadSpecialistFinishingLevel,
@@ -16,9 +17,16 @@ import {
 } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
 import { DEED_NATURE_MATCH_OPTIONS } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { poPropertyDetailPath } from "@platform/app-shared/domain/po-routes";
-import { VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
+import { propertyRecordsFacadeType } from "@platform/app-shared/app-data/po-intake-property-model";
+import {
+  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { PropertyBoundariesTable } from "../components/po-intake/PropertyBoundariesTable";
+import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
+import type { PropertyDetailPartyCard } from "../lib/app-data/property-detail-parties";
+import { canAcceptPartyWork } from "../lib/app-data/po-roles";
 import { InsReadField } from "../components/po-intake/PropertyDetailInspectionFields";
 import { SummaryGroup } from "../components/po-intake/SummaryGroup";
 import {
@@ -133,12 +141,18 @@ export function AppraiserStudySummary({
     retry: false,
     queryFn: () => loadEngineeringSurveySubmissionSnapshot(surveyTaskId),
   });
-  const { data: inspector } = useQuery({
+  const { data: inspector, refetch: refetchInspector } = useQuery({
     queryKey: ["appraiser-summary", "inspector", inspectionTaskId],
     enabled: Boolean(inspectionTaskId),
     staleTime: 60_000,
     retry: false,
     queryFn: () => loadInspectorWorkspaceSnapshot(inspectionTaskId),
+  });
+  // His own edits below (and anyone else's) refresh the facts above.
+  useWindowEvents({
+    [FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT]: () => {
+      if (inspectionTaskId) void refetchInspector();
+    },
   });
   const areas = appraiserAreaFacts({
     deedArea: property.area,
@@ -178,7 +192,11 @@ export function AppraiserStudySummary({
       </SummaryGroup>
 
       <SummaryGroup title="الحدود والأطوال" testId="appraiser-boundaries">
-        <PropertyBoundariesTable rows={appraiserBoundaryRows(property, inspector ?? null)} showInspection />
+        <PropertyBoundariesTable
+          rows={appraiserBoundaryRows(property, inspector ?? null)}
+          showInspection
+          showFacade={propertyRecordsFacadeType(property, inspector)}
+        />
       </SummaryGroup>
 
       <SummaryGroup title="المساحات" testId="appraiser-areas">
@@ -236,6 +254,66 @@ export function AppraiserStudySummary({
           تُقرأ من دراسة الحالة ولا تُعدَّل من هنا.
         </p>
       </SummaryGroup>
+
+      {inspectionTaskId && inspector?.status === "submitted" ? (
+        <AppraiserInspectorEditor property={property} task={task} inspectionTaskId={inspectionTaskId} />
+      ) : null}
     </div>
+  );
+}
+
+const INSPECTION_CARD: PropertyDetailPartyCard = {
+  roleKey: "inspection",
+  role: "المعاين",
+  name: "المعاين",
+  unassigned: false,
+  state: "done",
+  enabled: true,
+};
+
+/**
+ * «مدخلات المعاين» on the appraiser's page (Omar 2026-11-16: the appraiser edits the inspector's
+ * information too) — the same editor the study uses, in correction mode: the features, the type and
+ * usage, the location, the boundaries, the photos and the remarks save as he types.
+ *
+ * How it works: his task list does not hold the inspection task, so the editor gets one made from
+ * his own task with the inspection's id (it reads only the id, the PO, the property and its slot).
+ * The server lets the appraiser correct the inspection and nothing else of the parties'; a changed
+ * type goes through its own command (timeline, survey rule) as for case staff.
+ * Edge cases: shown only once the inspector has sent his package, and only while the appraisal is
+ * open — after he sends his valuation the facts above are what he reads; confirming or returning
+ * the package stays case staff's.
+ */
+function AppraiserInspectorEditor({
+  property,
+  task,
+  inspectionTaskId,
+}: {
+  property: PoPropertyIntake;
+  task: WorkflowTask;
+  inspectionTaskId: string;
+}) {
+  const { access, role } = useAppAccess();
+  const mayEdit =
+    (role === "real-estate-appraiser" || canAcceptPartyWork(access)) && task.status !== "completed";
+  const inspectionTask = useMemo(
+    (): WorkflowTask => ({ ...task, id: inspectionTaskId, kind: "field-inspection" }),
+    [task, inspectionTaskId],
+  );
+  if (!mayEdit) return null;
+  return (
+    <SummaryGroup title="مدخلات المعاين — تعديل" testId="appraiser-inspection-edit">
+      <PropertyDetailInspectionTab
+        property={property}
+        inspectionTask={inspectionTask}
+        inspectionCard={INSPECTION_CARD}
+        editMode
+        lockEditMode
+        correctionOnly
+        serviceProofFromTransactionPhotos
+        specialistComponents="hidden"
+        submitFooterAfter={<></>}
+      />
+    </SummaryGroup>
   );
 }
