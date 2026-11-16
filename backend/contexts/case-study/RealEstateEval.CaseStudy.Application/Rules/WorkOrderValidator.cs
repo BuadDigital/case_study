@@ -67,10 +67,8 @@ public static class WorkOrderValidator
         var policy = fieldPolicy ?? ClientFieldPolicy.Default;
         var errors = new Dictionary<string, string>();
 
-        // The deed (or registry) number and the authorization letter.
+        // The deed (or registry) number. «خطاب التكليف» is optional (Omar 2026-11-16).
         ValidateDeedOrRealEstateReg(dto, errors);
-        if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
-            errors["delegationLetterFileNames"] = "خطاب التكليف مطلوب";
 
         ValidateSharedEnfathFields(dto, assignmentType, excludePropertyId, deedExistsInPo, policy, errors);
 

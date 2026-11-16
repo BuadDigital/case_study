@@ -73,7 +73,7 @@ export function PoPropertyEnfathDocumentFields({
       {showDelegationDoc ? (
         <PropertyFileUploadField
           id={`delegation_${property.id}`}
-          label="خطاب التكليف *"
+          label="خطاب التكليف"
           fileNames={property.delegationLetterFileNames}
           error={fieldErrors.delegationLetterFileNames}
           attachPo={attachPo}
