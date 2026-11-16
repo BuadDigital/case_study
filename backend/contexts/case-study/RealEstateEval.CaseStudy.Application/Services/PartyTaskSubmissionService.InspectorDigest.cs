@@ -120,8 +120,10 @@ public partial class PartyTaskSubmissionService
         string payloadBefore,
         string payloadAfter,
         bool packageAccepted,
+        PartySubmissionActor? actor,
         CancellationToken cancellationToken) =>
-        task.Kind == WorkflowTaskKind.FieldInspection
+        // The appraiser's own correction (Omar 2026-11-16) is not news to him.
+        task.Kind == WorkflowTaskKind.FieldInspection && !PartyTaskSubmissionRules.IsAppraiser(actor)
             ? BestEffortAsync(() =>
                 NotifyAppraiserInspectorDataChangedAsync(task, payloadBefore, payloadAfter, packageAccepted, cancellationToken))
             : Task.CompletedTask;

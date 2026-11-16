@@ -3,7 +3,10 @@
  * Codes stay English in storage; only the monitor UI is localized.
  */
 
-import { propertyFieldLabel } from "@case-study/mfe/lib/app-data/property-change-log";
+import {
+  propertyFieldLabel,
+  visiblePropertyChangeKeys,
+} from "@case-study/mfe/lib/app-data/property-change-log";
 
 const ACTION_AR: Record<string, string> = {
   CASE_STUDY_INFO_ROLES_SAVED: "تعديل من يجيب على أسئلة دراسة الحالة",
@@ -341,7 +344,7 @@ function reasonPart(obj: JsonRecord | null, key = "reason", label = "السبب"
  * from the catalog prints as its wire name.
  */
 function changedPropertyFields(after: JsonRecord | null): string | null {
-  const keys = Object.keys(asRecord(after?.fields) ?? {});
+  const keys = visiblePropertyChangeKeys(Object.keys(asRecord(after?.fields) ?? {}));
   if (keys.length === 0) return null;
   const named = keys.slice(0, 4).map(propertyFieldLabel).join("، ");
   const more = keys.length - 4;

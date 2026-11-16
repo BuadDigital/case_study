@@ -29,13 +29,19 @@ public static class PartyTaskSubmissionRules
     /// Case staff may correct a party package from the property-edit screen: a submitted
     /// inspection / survey package (field values, map pin, etc.), and an inspection draft (the
     /// specialist's long-standing inspection-tab edits). Never the appraiser's package: his numbers
-    /// are accepted or returned, not edited by staff.
+    /// are accepted or returned, not edited by staff. The appraiser corrects the inspector's package too
+    /// (Omar 2026-11-16) — the inspection only; accepting or returning it stays case staff's.
     /// </summary>
     public static bool StaffMayCorrectPartyPackage(PartySubmissionActor? actor, WorkflowTask task) =>
         actor is not null
         && IsPartySubmissionKind(task.Kind)
         && task.Kind != WorkflowTaskKind.PropertyAppraisal
-        && PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(actor.Staff);
+        && (PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(actor.Staff)
+            || (task.Kind == WorkflowTaskKind.FieldInspection && IsAppraiser(actor)));
+
+    /// <summary>The caller is the appraiser — his own edits never raise «data changed» alerts to him.</summary>
+    public static bool IsAppraiser(PartySubmissionActor? actor) =>
+        actor?.Staff.NormalizedRole == StaffRoleIds.RealEstateAppraiser;
 
     /// <summary>
     /// Survey / appraisal drafts belong to their party — the party's next autosave would overwrite a
@@ -75,12 +81,14 @@ public static class PartyTaskSubmissionRules
     /// hand; it now delegates, and a test compares it with the original over every role × kind × identity.
     /// </remarks>
     public static bool MaySubmit(PartySubmissionActor? actor, WorkflowTask task) =>
-        // Same rule as writing a draft; the only difference is that staff may submit only a field inspection.
+        // Same rule as writing a draft; the only difference is that staff may submit only a field
+        // inspection — and the appraiser, who corrects it, never submits it for the inspector.
         MayWriteDraft(
             actor,
             task,
             staffMayCorrect: task.Kind == WorkflowTaskKind.FieldInspection
-                && StaffMayCorrectPartyPackage(actor, task));
+                && StaffMayCorrectPartyPackage(actor, task)
+                && !IsAppraiser(actor));
 
     /// <summary>Acceptance is stamped with the actor's user id, or «system» when there is none.</summary>
     public static string AcceptActorUserId(PartySubmissionActor actor) =>

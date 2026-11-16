@@ -113,7 +113,8 @@ public class SavePartyTaskSubmissionRequest
 
 /// <summary>
 /// Case staff correct the property type and / or «استخدام العقار» of a submitted inspection (Omar
-/// 2026-11-12). A field left null or blank is not changed; a new type needs <see cref="Reason"/>.
+/// 2026-11-12). A field left null or blank is not changed; <see cref="Reason"/> is optional since
+/// 2026-11-16 (the type is edited in its own field).
 /// </summary>
 public class CorrectInspectedTypeRequest
 {

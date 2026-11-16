@@ -8,7 +8,6 @@ import { SpecialistValuationReportInputs } from "../po-intake/SpecialistValuatio
 import { ReturnInspectionDialog } from "../po-intake/ReturnInspectionDialog";
 import { returnInspectionSuccessMessage } from "../../lib/app-data/return-inspection-state";
 import { CaseStudyDeedNatureMatchReview } from "./CaseStudyDeedNatureMatchReview";
-import { InspectedTypeCorrection } from "./InspectedTypeCorrection";
 import { reviewLockOf } from "../../lib/app-data/work-page-model";
 import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
 import { PropertyDetailInspectionTab } from "../po-intake/PropertyDetailInspectionTab";
@@ -96,7 +95,6 @@ export function CaseStudyAppraisalPanel({
   const [inspectionPackageStatus, setInspectionPackageStatus] =
     useState<InspectorWorkspaceStatus | null>(null);
   const [inspectionAssetSubject, setInspectionAssetSubject] = useState("");
-  const [inspectionUsage, setInspectionUsage] = useState("");
   const [inspectionSnapshotLoaded, setInspectionSnapshotLoaded] =
     useState(false);
   const [inspectionSnapshotTaskId, setInspectionSnapshotTaskId] = useState<
@@ -157,7 +155,6 @@ export function CaseStudyAppraisalPanel({
           setInspectionSnapshotTaskId(inspectionTask.id);
           setInspectionPackageStatus(draft?.status ?? null);
           setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
-          setInspectionUsage(draft?.featureValues.propertyUsage ?? "");
           setInspectionSnapshotLoaded(true);
           setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
         })
@@ -166,7 +163,6 @@ export function CaseStudyAppraisalPanel({
           setInspectionSnapshotTaskId(inspectionTask.id);
           setInspectionPackageStatus(null);
           setInspectionAssetSubject("");
-          setInspectionUsage("");
           setInspectionSnapshotLoaded(false);
           setInspectionAccepted(false);
           showToast(
@@ -277,7 +273,16 @@ export function CaseStudyAppraisalPanel({
   const awaitingReview =
     currentInspectionPackageStatus === "submitted" && !currentInspectionAccepted;
   const readOnlyPage = !stage && !awaitingReview;
-  const reviewEditable = mayAccept && stage !== "study" && !readOnlyPage;
+  // Omar 2026-11-16: the study corrects the inspector's inputs itself — before and after the
+  // confirmation — until review approves the study (the lock of every other property field).
+  // Confirming them stays coordination's.
+  const studyCorrects =
+    stage === "study" &&
+    mayAccept &&
+    !studyClosed &&
+    currentInspectionPackageStatus === "submitted" &&
+    reviewLockOf(caseStudyTask, getReportDraftState(property.id)) === null;
+  const reviewEditable = studyCorrects || (mayAccept && stage !== "study" && !readOnlyPage);
 
   return (
     <div className="pt-5">
@@ -304,7 +309,7 @@ export function CaseStudyAppraisalPanel({
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2.5">
           {currentInspectionAccepted ? (
             <span className="rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-3 py-1.5 text-[11.5px] font-semibold text-heading">
-              مؤكَّدة — القسم مقفل
+              {studyCorrects ? "مؤكَّدة" : "مؤكَّدة — القسم مقفل"}
             </span>
           ) : null}
           {canReturnToInspector ? (
@@ -334,25 +339,6 @@ export function CaseStudyAppraisalPanel({
           />
         ) : null}
 
-        {/* Omar 2026-11-12: the type and the usage the inspection states, with their correction for
-            case staff — on every page of the review, also after the acceptance (the study), until
-            review approves the study. */}
-        {inspectionTask && currentInspectionPackageStatus === "submitted" ? (
-          <InspectedTypeCorrection
-            inspectionTaskId={inspectionTask.id}
-            currentType={currentInspectionAssetSubject}
-            currentUsage={inspectionSnapshotIsCurrent ? inspectionUsage : ""}
-            bourseType={property.propertyType ?? ""}
-            // The lock of every other property field: review approved the study, or the report
-            // is approved / deposited (the server also refuses a transaction delivered to Enfaz).
-            canCorrect={
-              mayAccept &&
-              reviewLockOf(caseStudyTask, getReportDraftState(property.id)) === null
-            }
-            onCorrected={() => setInspectionReloadKey((n) => n + 1)}
-          />
-        ) : null}
-
         {/* Omar 2026-11-08: the inspector's photos are classed in his section (the Enfaz photo files are
             built from them) — on the coordinator's page and on the work page alike. */}
         {stage === "follow" && inspectionTask ? (
@@ -379,6 +365,8 @@ export function CaseStudyAppraisalPanel({
             inspectionCard={inspectionCard}
             editMode={reviewEditable}
             lockEditMode={reviewEditable}
+            correctionOnly={studyCorrects}
+            onInspectedTypeChanged={() => setInspectionReloadKey((n) => n + 1)}
             specialistComponents={
               stage === "follow"
                 ? "hidden"

@@ -15,7 +15,7 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import {
   effectiveDeedVerdict,
-  isApartmentInspectionContext,
+  recordsFacadeType,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
@@ -71,8 +71,8 @@ export function InspectorBoundaryMatchTable({
   const boundariesUnavailable = boundariesMarkedUnavailable(property.boundariesAvailability);
   // Per-side verdicts + notes only under «غير مطابق» (explicit, or derived from a legacy payload).
   const showMatchCols = effectiveDeedVerdict(draft) === "no";
-  // An apartment records no facades — no «نوع الواجهة» column.
-  const showFacade = !isApartmentInspectionContext(inspectionContextOf(draft, property));
+  // Land in any form and an apartment record no «نوع الواجهة» — no column (recordsFacadeType).
+  const showFacade = recordsFacadeType(inspectionContextOf(draft, property));
 
   return (
     <>

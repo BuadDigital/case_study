@@ -33,18 +33,16 @@ describe("buildPropertyDetailHeroMenuItems", () => {
     expect(onNavigate).toHaveBeenCalledWith("/case-study/t1");
   });
 
-  it("opens the work page first when the viewer may open it", () => {
-    const onNavigate = vi.fn();
+  // Omar 2026-11-16: «صفحة المنسق» and «صفحة العمل» are not in the header's menu.
+  it("offers neither the coordinator's page nor the work page", () => {
     const items = buildPropertyDetailHeroMenuItems({
-      workPageHref: "/po/x/property/p/work",
       hideOpenCaseStudy: true,
       caseStudyWorkspaceHref: null,
       reportTabHref: null,
-      onNavigate,
+      onNavigate: vi.fn(),
+      generalItems: [failureItem],
     });
-    expect(items.map((item) => item.label)).toEqual(["صفحة العمل"]);
-    items[0]?.onClick();
-    expect(onNavigate).toHaveBeenCalledWith("/po/x/property/p/work");
+    expect(items.map((item) => item.label)).toEqual(["تسجيل تعذّر"]);
   });
 
   it("falls back to the report tab when the workspace is not available", () => {

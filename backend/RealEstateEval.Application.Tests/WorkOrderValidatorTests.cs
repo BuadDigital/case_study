@@ -115,6 +115,22 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
+    public void ValidatePropertyEnfath_does_not_require_the_delegation_letter()
+    {
+        // Omar 2026-11-16: «خطاب التكليف» is optional.
+        var dto = ValidDeedProperty();
+        dto.DelegationLetterFileNames = [];
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Execution,
+            null,
+            (_, _) => false);
+
+        Assert.DoesNotContain(errors, e => e.Key == "delegationLetterFileNames");
+    }
+
+    [Fact]
     public void ValidatePropertyEnfath_rejects_invalid_contact_national_id()
     {
         var dto = ValidDeedProperty();

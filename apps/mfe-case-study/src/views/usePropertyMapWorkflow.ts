@@ -58,6 +58,11 @@ import {
   type PropertyMapSelection,
 } from "../lib/app-data/property-map-view-state";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
+import {
+  LAND_LAYERS_OFF,
+  type LandLayerKey,
+  type LandLayers,
+} from "../lib/app-data/parcel-layer-logic";
 
 /**
  * Owns the property map screen: the two live sources, the layer/filter/
@@ -145,6 +150,10 @@ export function usePropertyMapWorkflow() {
   const [dateTo, setDateTo] = useState("");
   const [dateLabel, setDateLabel] = useState("");
   const [dateOpen, setDateOpen] = useState(false);
+  // The land layers (Omar 2026-11-16) — their own source, apart from the pins and their counts.
+  const [landLayers, setLandLayers] = useState<LandLayers>(LAND_LAYERS_OFF);
+  // Their list opens from one «الأراضي» pill, so the bar stays on one row (Omar 2026-11-16).
+  const [landOpen, setLandOpen] = useState(false);
   const [operationType, setOperationType] = useState("");
   const [approvedOnly, setApprovedOnly] = useState(false);
   const [selection, setSelection] = useState<PropertyMapSelection>(null);
@@ -303,8 +312,13 @@ export function usePropertyMapWorkflow() {
   useEscapeKey(true, () => {
     setSelection(null);
     setDateOpen(false);
+    setLandOpen(false);
     setLayerPanel(null);
   });
+
+  function toggleLandLayer(key: LandLayerKey) {
+    setLandLayers((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   function toggleLayer(key: LayerKey) {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -498,6 +512,10 @@ export function usePropertyMapWorkflow() {
     // Layers and selection.
     layers,
     toggleLayer,
+    landLayers,
+    toggleLandLayer,
+    landOpen,
+    setLandOpen,
     openLayerPanel,
     hideLayer,
     layerPanel,

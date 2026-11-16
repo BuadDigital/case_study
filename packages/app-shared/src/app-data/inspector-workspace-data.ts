@@ -627,7 +627,8 @@ export function isLandInspectionContext(input: {
 
 /**
  * Drop values/photos the asset type does not record so they cannot fail validation or print:
- * building-only rows on vacant land, every facade (direction + boundary facade type) on an apartment.
+ * building-only rows and the boundary facade types on land, every facade (direction + boundary
+ * facade type) on an apartment.
  */
 export function sanitizeInspectorDraftForLand(
   draft: InspectorWorkspaceDraft,
@@ -663,8 +664,44 @@ export function sanitizeInspectorDraftForLand(
     featureValues[OCCUPANCY_DESCRIPTION_KEY] = "";
     changed = true;
   }
+  // Land records no «نوع الواجهة» per side either (Omar 2026-11-16).
+  const boundaryMatches = withoutBoundaryFacades(draft.boundaryMatches);
+  if (boundaryMatches !== draft.boundaryMatches) changed = true;
   if (!changed) return draft;
-  return { ...draft, featureValues, featurePhotoAttachments };
+  return { ...draft, featureValues, featurePhotoAttachments, boundaryMatches };
+}
+
+/**
+ * The boundary sides with their «نوع الواجهة» emptied.
+ *
+ * How it works: copies the sides only when one of them holds a facade type.
+ * Edge cases: nothing to clear → the same object back, so callers can tell nothing changed.
+ */
+function withoutBoundaryFacades(
+  boundaryMatches: InspectorWorkspaceDraft["boundaryMatches"],
+): InspectorWorkspaceDraft["boundaryMatches"] {
+  if (!INSPECTOR_BOUNDARY_KEYS.some((side) => boundaryMatches?.[side]?.facade)) return boundaryMatches;
+  const next = { ...boundaryMatches };
+  for (const side of INSPECTOR_BOUNDARY_KEYS) {
+    if (next[side]?.facade) next[side] = { ...next[side], facade: "" };
+  }
+  return next;
+}
+
+/**
+ * Whether the sides of the property carry «نوع الواجهة» (the facade finish: حجر، رخام…).
+ *
+ * How it works: never on land in any form — vacant, residential, commercial, agricultural… (Omar
+ * 2026-11-16) — and never on an apartment (2026-10-20); every other asset records it. The inspector's
+ * «الأصل محل التقييم» decides once chosen, the property's type before it (as `isLandInspectionContext`).
+ */
+export function recordsFacadeType(input: {
+  classification?: string | null;
+  propertyType?: string | null;
+  assetSubject?: string | null;
+  vacantLand?: boolean;
+}): boolean {
+  return !isLandInspectionContext(input) && !isApartmentInspectionContext(input);
 }
 
 /** Residential / villa component rows — hidden for commercial shops. */
@@ -753,16 +790,8 @@ function sanitizeInspectorDraftForApartment(
       changed = true;
     }
   }
-  let boundaryMatches = draft.boundaryMatches;
-  if (INSPECTOR_BOUNDARY_KEYS.some((side) => boundaryMatches?.[side]?.facade)) {
-    boundaryMatches = { ...boundaryMatches };
-    for (const side of INSPECTOR_BOUNDARY_KEYS) {
-      if (boundaryMatches[side]?.facade) {
-        boundaryMatches[side] = { ...boundaryMatches[side], facade: "" };
-      }
-    }
-    changed = true;
-  }
+  const boundaryMatches = withoutBoundaryFacades(draft.boundaryMatches);
+  if (boundaryMatches !== draft.boundaryMatches) changed = true;
   if (!changed) return draft;
   return { ...draft, featureValues, featurePhotoAttachments, boundaryMatches };
 }

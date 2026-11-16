@@ -10,7 +10,7 @@ import { cn, formControlClassName, Input, Select, Textarea } from "@platform/ui-
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   effectiveDeedVerdict,
-  isApartmentInspectionContext,
+  recordsFacadeType,
   type InspectorWorkspaceDraft,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
@@ -76,8 +76,8 @@ export function InspectorBoundariesCard({
 }) {
   // Per-side toggles + notes exist only under «غير مطابق» (explicit, or derived from a legacy payload).
   const showMatchRows = effectiveDeedVerdict(draft) === "no";
-  // An apartment records no facades — no «نوع الواجهة» per side.
-  const showFacade = !isApartmentInspectionContext(inspectionContextOf(draft, property));
+  // Land in any form and an apartment record no «نوع الواجهة» per side (recordsFacadeType).
+  const showFacade = recordsFacadeType(inspectionContextOf(draft, property));
   return (
     <div id="ins-boundaries-section">
     <InspectorCard

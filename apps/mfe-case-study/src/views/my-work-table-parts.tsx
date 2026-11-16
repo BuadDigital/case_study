@@ -25,6 +25,31 @@ export function Muted() {
 }
 
 /**
+ * «رقم الصك / التسجيل العيني»: the deed number with its area under it («900.21 م²», Omar 2026-11-16).
+ *
+ * How it works: the number in the column's bold heading style, the area on a second line in the
+ * 12px text-2 style the place column uses for the property type.
+ * Edge cases: no deed number → «—»; no area entered → the line is left out, the number stands alone.
+ */
+export function DeedWithArea({ deed, area }: { deed: string | undefined; area: string }) {
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-0.5">
+      {deed && deed !== "—" ? (
+        <bdi
+          dir="ltr"
+          className={cn(MY_WORK_LONG_VALUE, "text-[13px] font-semibold tabular-nums text-heading")}
+        >
+          {deed}
+        </bdi>
+      ) : (
+        <Muted />
+      )}
+      {area ? <span className="text-[12px] tabular-nums text-text-2">{area}</span> : null}
+    </div>
+  );
+}
+
+/**
  * «تاريخ الاستلام / الاستحقاق»: the PO's receipt date over its deadline, the deadline coloured by how
  * close it is (late red, today/tomorrow gold) with the short state («متأخرة», «تنتهي غدًا») beside it.
  */

@@ -384,7 +384,7 @@ export async function acceptPartyTaskSubmission(
 
 /**
  * Case staff's correction of a submitted inspection's property type and / or «استخدام العقار».
- * A field left out is not changed; a new type needs `reason` (10 characters or more).
+ * A field left out is not changed; `reason` is optional (Omar 2026-11-16: the type is edited in its field).
  */
 export type CorrectInspectedTypeRequest = {
   propertyType?: string;

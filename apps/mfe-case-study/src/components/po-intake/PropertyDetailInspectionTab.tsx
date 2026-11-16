@@ -28,7 +28,14 @@ import {
   type InspectorWorkspacePatchInput,
 } from "../../lib/app-data/inspector-workspace-model";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
-import { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
+import {
+  correctInspectedTypeOfWorkspace,
+  updateInspectorWorkspace,
+} from "../../lib/app-data/inspector-workspace-commands";
+import {
+  inspectedTypeChanged,
+  inspectedTypeCrossingNote,
+} from "../../lib/app-data/inspected-type-correction";
 import {
   INSPECTOR_SERVICE_OPTIONS,
   INSPECTOR_AMENITY_OPTIONS,
@@ -132,6 +139,7 @@ export function PropertyDetailInspectionTab({
   onEditModeChange,
   lockEditMode = false,
   onSubmitted,
+  onInspectedTypeChanged,
   steps = false,
   caseStudyDef,
   includeRetiredFeatureKeys,
@@ -142,6 +150,7 @@ export function PropertyDetailInspectionTab({
   submitSuccessToast,
   specialistComponents: componentsMode = "with-review",
   boundariesShownAbove = false,
+  correctionOnly = false,
   railAside,
 }: {
   /** With `steps`: the host's cards under the sections rail (the parties' status). */
@@ -157,6 +166,8 @@ export function PropertyDetailInspectionTab({
   /** Keep input mode (inspector workspace). Cancel exits via onEditModeChange(false). */
   lockEditMode?: boolean;
   onSubmitted?: () => void;
+  /** Case staff changed «الأصل محل التقييم» of the sent inspection — the host reloads what depends on it. */
+  onInspectedTypeChanged?: () => void;
   /** The inspector's own page: the three steps as numbered sections on the work page's frame. */
   steps?: boolean;
   /** Enables case-study questions card when provided. */
@@ -178,6 +189,11 @@ export function PropertyDetailInspectionTab({
   specialistComponents?: "with-review" | "hidden" | { locked: boolean };
   /** The host shows the four sides above this tab — see the wizard's prop of the same name. */
   boundariesShownAbove?: boolean;
+  /**
+   * The study's correction (Omar 2026-11-16): the submitted package stays editable after the
+   * confirmation, and there is no «تأكيد مدخلات المعاين» footer — confirming is coordination's.
+   */
+  correctionOnly?: boolean;
 }) {
   const { showToast } = useToast();
   const { role } = useAppAccess();
@@ -301,6 +317,7 @@ export function PropertyDetailInspectionTab({
 
   const locked = Boolean(
     draft &&
+      !(correctionOnly && draft.status === "submitted") &&
       isInspectorWorkspaceReviewLocked(draft, {
         specialistReview: serviceProofFromTransactionPhotos,
       }),
@@ -402,6 +419,17 @@ export function PropertyDetailInspectionTab({
    */
   function patchDraft(input: InspectorWorkspacePatchInput) {
     if (!inspectionTask || locked) return;
+    // Staff change the sent inspection's type in its field (Omar 2026-11-16) — through its own
+    // command, since the autosave never changes the type (timeline, survey rule, appraiser alert).
+    if (serviceProofFromTransactionPhotos && draft?.status === "submitted") {
+      const currentType = draft.featureValues.assetSubject ?? "";
+      const nextType =
+        resolveInspectorWorkspacePatch(draft, input).featureValues?.assetSubject ?? "";
+      if (inspectedTypeChanged(currentType, nextType)) {
+        void changeInspectedType(currentType, nextType.trim());
+        return;
+      }
+    }
     // Built from the latest draft each time it is applied (see InspectorWorkspacePatchInput).
     const apply = (current: InspectorWorkspaceDraft): InspectorWorkspacePatch => {
       const patch = resolveInspectorWorkspacePatch(current, input);
@@ -447,6 +475,26 @@ export function PropertyDetailInspectionTab({
           "error",
         );
       });
+  }
+
+  /**
+   * Case staff's new «الأصل محل التقييم» for the sent inspection.
+   *
+   * How it works: `correctInspectedTypeOfWorkspace` sends any waiting autosave first, then the type;
+   * the saved package replaces the draft on screen and the host reloads what depends on the type.
+   * Edge cases: a refusal (review approved the study, delivered to Enfaz…) leaves the old type and
+   * says why; a change between land and a built type says what happens to the building answers.
+   */
+  async function changeInspectedType(currentType: string, nextType: string) {
+    if (!inspectionTask) return;
+    const saved = await correctInspectedTypeOfWorkspace(inspectionTask.id, { propertyType: nextType });
+    if (!saved.ok) {
+      showToast(saved.errors?.propertyType ?? saved.error, "error");
+      return;
+    }
+    setDraft(saved.data);
+    showToast(inspectedTypeCrossingNote(currentType, nextType) ?? "تم تعديل نوع العقار", "success");
+    onInspectedTypeChanged?.();
   }
 
   /**
@@ -731,7 +779,7 @@ export function PropertyDetailInspectionTab({
 
       {submitFooterAfter}
 
-      {submitFooterAfter && showEditFields && draft ? (
+      {submitFooterAfter && showEditFields && draft && !correctionOnly ? (
         <InspectorWorkspaceSubmitFooter
           draft={draft}
           saving={submitBusy}

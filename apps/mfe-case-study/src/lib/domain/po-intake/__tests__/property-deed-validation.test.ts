@@ -28,6 +28,12 @@ describe("validatePropertyEnfathFields — field policy", () => {
     expect(errors.ownerName).toBeUndefined();
   });
 
+  it("never requires خطاب التكليف (Omar 2026-11-16)", () => {
+    const prop = { ...deedProperty(), delegationLetterFileNames: [] };
+    const errors = validatePropertyEnfathFields(prop, "تنفيذ", relaxedPolicy);
+    expect(errors.delegationLetterFileNames).toBeUndefined();
+  });
+
   it("validates a stored bourse-inquiry row like any deed (no separate rules)", () => {
     const prop = { ...deedProperty(), identifierType: "bourse_inquiry" as const };
     const errors = validatePropertyEnfathFields(prop, "تنفيذ", relaxedPolicy);

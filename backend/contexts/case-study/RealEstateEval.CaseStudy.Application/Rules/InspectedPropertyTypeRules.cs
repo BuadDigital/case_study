@@ -91,20 +91,7 @@ public static class InspectedPropertyTypeRules
         return root.ToJsonString();
     }
 
-    /// <summary>A staff change of the type states why, in at least this many characters.</summary>
-    public const int StaffChangeReasonMinLength = 10;
-
-    public const string StaffChangeReasonRequiredAr =
-        "اذكر سبب تعديل نوع العقار (10 أحرف على الأقل)";
-
     public const string StaffChangeTypeInvalidAr = "اختر نوع العقار من القائمة";
-
-    /// <summary>The reason a staff change of the type must carry (Omar 2026-11-12), trimmed; null when too short.</summary>
-    public static string? StaffChangeReason(string? reason)
-    {
-        var trimmed = (reason ?? "").Trim();
-        return trimmed.Length >= StaffChangeReasonMinLength ? trimmed : null;
-    }
 
     /// <summary>
     /// Writes case staff's corrected type and / or usage into a submitted inspection payload (Omar

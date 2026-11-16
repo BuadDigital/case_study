@@ -22,6 +22,7 @@ import {
   PROPERTY_BOUNDARY_ROWS,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
+import { propertyRecordsFacadeType } from "@platform/app-shared/app-data/po-intake-property-model";
 import { useFacadeOptions } from "../../query/use-facade-options";
 import { FALLBACK_FACADE_OPTIONS } from "../field-inspection/inspector-wizard-state";
 
@@ -44,6 +45,8 @@ export function PoPropertyBoundariesEntrySection({
   // Same admin list («أنواع الواجهات») the inspector picks from.
   const facadeOptions = useFacadeOptions() ?? FALLBACK_FACADE_OPTIONS;
   const isDesktop = useViewportDesktop();
+  // Land in any form and an apartment have no «نوع الواجهة» (Omar 2026-11-16).
+  const showFacade = propertyRecordsFacadeType(property);
 
   /**
    * One side's three editors — shared by the desktop row and the phone card.
@@ -120,7 +123,9 @@ export function PoPropertyBoundariesEntrySection({
         </span>
       </div>
       <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-        أدخل كل حد وطوله ونوع واجهته — قيمة المعاين الميداني تتقدّم عليها في التقرير.
+        {showFacade
+          ? "أدخل كل حد وطوله ونوع واجهته — قيمة المعاين الميداني تتقدّم عليها في التقرير."
+          : "أدخل كل حد وطوله — قيمة المعاين الميداني تتقدّم عليها في التقرير."}
       </p>
       {/* Phones: one card per side with full-width editors — not a 720px table. */}
       {isDesktop === true ? null : (
@@ -133,7 +138,7 @@ export function PoPropertyBoundariesEntrySection({
                   <PhoneField label="الحد">{c.desc}</PhoneField>
                   <div className="grid grid-cols-2 gap-2.5">
                     <PhoneField label="الطول (م)">{c.len}</PhoneField>
-                    <PhoneField label="نوع الواجهة">{c.facade}</PhoneField>
+                    {showFacade ? <PhoneField label="نوع الواجهة">{c.facade}</PhoneField> : null}
                   </div>
                 </div>
               </MobileRecordCard>
@@ -148,7 +153,7 @@ export function PoPropertyBoundariesEntrySection({
               <Th>الجهة</Th>
               <Th>الحد</Th>
               <Th className="w-28">الطول (م)</Th>
-              <Th>نوع الواجهة</Th>
+              {showFacade ? <Th>نوع الواجهة</Th> : null}
             </Tr>
           </THead>
           <TBody>
@@ -161,7 +166,7 @@ export function PoPropertyBoundariesEntrySection({
                   </Td>
                   <Td className="align-top">{c.desc}</Td>
                   <Td className="align-top">{c.len}</Td>
-                  <Td className="align-top">{c.facade}</Td>
+                  {showFacade ? <Td className="align-top">{c.facade}</Td> : null}
                 </Tr>
               );
             })}

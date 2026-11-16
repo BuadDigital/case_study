@@ -81,13 +81,10 @@ export function validatePropertyEnfathFields(
     ),
   );
 
-  if (p.delegationLetterFileNames.length === 0) {
-    errors.delegationLetterFileNames = "خطاب التكليف مطلوب";
-  }
-
   validateDeedOrRealEstateReg(p, errors);
 
-  // «قرار الإسناد» is optional (2026-11-15): some assignments come without it.
+  // «قرار الإسناد» is optional (2026-11-15) and so is «خطاب التكليف» (Omar 2026-11-16):
+  // some assignments come without them.
 
   return errors;
 }

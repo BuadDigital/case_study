@@ -2,11 +2,9 @@ import type { RowMoreMenuItem } from "@platform/ui-kit";
 
 export const CASE_STUDY_OPEN_PROGRESS_MESSAGE = "جاري فتح دراسة العقار…";
 
+// Omar 2026-11-16: «صفحة المنسق» and «صفحة العمل» left this menu — the header is on those pages
+// already, and «أعمالي» and the lists open them.
 type PropertyDetailHeroMenuInput = {
-  /** The transaction's work page (input and actions); null when the viewer may not open it. */
-  workPageHref?: string | null;
-  /** The coordinator's page (intake and the parties' follow-up, Omar 2026-11-08); null when not offered. */
-  coordinationPageHref?: string | null;
   hideOpenCaseStudy: boolean;
   /** Full case-study workspace, preferred when the viewer can open it. */
   caseStudyWorkspaceHref: string | null;
@@ -26,26 +24,6 @@ export function buildPropertyDetailHeroMenuItems(
 ): RowMoreMenuItem[] {
   const items: RowMoreMenuItem[] = [];
   const caseStudyHref = input.caseStudyWorkspaceHref ?? input.reportTabHref;
-  const workPageHref = input.workPageHref;
-
-  const coordinationPageHref = input.coordinationPageHref;
-  if (coordinationPageHref) {
-    items.push({
-      id: "coordination-page",
-      label: "صفحة المنسق",
-      disabled: Boolean(input.caseStudyBusy),
-      onClick: () => input.onNavigate(coordinationPageHref),
-    });
-  }
-
-  if (workPageHref) {
-    items.push({
-      id: "work-page",
-      label: "صفحة العمل",
-      disabled: Boolean(input.caseStudyBusy),
-      onClick: () => input.onNavigate(workPageHref),
-    });
-  }
 
   if (!input.hideOpenCaseStudy && caseStudyHref) {
     items.push({

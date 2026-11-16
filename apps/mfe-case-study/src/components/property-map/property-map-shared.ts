@@ -4,6 +4,7 @@
  * cluster palette — switching canvases stays one line in PropertyMapView.
  */
 import type { LayerKey, MapCoords } from "../../lib/app-data/map-locations-logic";
+import type { LandLayers } from "../../lib/app-data/parcel-layer-logic";
 
 export type PropertyMapMarker = {
   id: string;
@@ -31,6 +32,8 @@ export type PropertyMapCanvasProps = {
   onBackgroundClick: () => void;
   onBasemapChange: (basemap: MapBasemap) => void;
   onRecenter: () => void;
+  /** The land layers switched on in the top bar — drawn by the Google canvas only. */
+  landLayers?: LandLayers;
 };
 
 export const SAUDI_CENTER: [number, number] = [24.2, 45.0];

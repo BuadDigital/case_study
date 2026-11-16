@@ -73,7 +73,7 @@ import { FavoriteStar } from "../components/ui/FavoriteStar";
 import { MY_WORK_PIN_LIMIT, pinnedFirst, useMyWorkPins } from "../lib/app-data/my-work-pins";
 import { QueueRowMoreCell } from "./active-transaction-queue-row-parts";
 import { useMyWorkRowMenu } from "./useMyWorkRowMenu";
-import { MY_WORK_LONG_VALUE, Muted, MyWorkDates } from "./my-work-table-parts";
+import { DeedWithArea, MY_WORK_LONG_VALUE, Muted, MyWorkDates } from "./my-work-table-parts";
 import { useActiveReopeningsQuery } from "../query/use-active-reopenings-query";
 
 const EMPTY_TASKS: WorkflowTask[] = [];
@@ -638,16 +638,7 @@ export function MyWorkView() {
                         )}
                       </Td>
                       <Td className="text-center">
-                        {item.deedNumber && item.deedNumber !== "—" ? (
-                          <bdi
-                            dir="ltr"
-                            className={cn(MY_WORK_LONG_VALUE, "text-[13px] font-semibold tabular-nums text-heading")}
-                          >
-                            {item.deedNumber}
-                          </bdi>
-                        ) : (
-                          <Muted />
-                        )}
+                        <DeedWithArea deed={item.deedNumber} area={item.area} />
                       </Td>
                       <Td className="text-center">
                         <div className="flex min-w-0 flex-col items-center gap-0.5">

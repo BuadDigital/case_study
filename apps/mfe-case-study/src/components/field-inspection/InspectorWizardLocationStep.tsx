@@ -310,8 +310,12 @@ export function InspectorWizardLocationStep({
             movablesDescriptionError={fieldErrors.movablesDescription}
             occupancyDescriptionError={fieldErrors.occupancyDescription}
             disabled={!editable}
+            // Case staff change the type of a sent inspection in this field (Omar 2026-11-16 — the
+            // review routes it to its own command); before the inspector sends, it is his.
             readOnlyFeatureKeys={
-              serviceProofFromTransactionPhotos ? ["assetSubject"] : []
+              serviceProofFromTransactionPhotos && draft.status !== "submitted"
+                ? ["assetSubject"]
+                : []
             }
             sourceNotes={bourseSourceNotes(draft.featureValues, property)}
             showPropertyAge={!isLand}

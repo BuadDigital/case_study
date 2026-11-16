@@ -19,6 +19,15 @@ import {
   fmtShort,
 } from "../lib/app-data/property-map-view-state";
 import { LayerPill } from "../components/property-map/PropertyMapPanels";
+import {
+  LAND_LAYER_CHIPS,
+  parcelTilesBase,
+  type LandLayerKey,
+  type LandLayers,
+} from "../lib/app-data/parcel-layer-logic";
+
+/** The land layers' tile server — none set, no land chips. */
+const PARCEL_TILES = parcelTilesBase();
 import type { PropertyMapWorkflow } from "./usePropertyMapWorkflow";
 
 /**
@@ -35,6 +44,10 @@ export function PropertyMapToolbar({
     layers,
     layerPanel,
     toggleLayer,
+    landLayers,
+    toggleLandLayer,
+    landOpen,
+    setLandOpen,
     openLayerPanel,
     partitioned,
     filteredComparables,
@@ -91,7 +104,16 @@ export function PropertyMapToolbar({
             onMenu={chip.noMenu ? undefined : () => openLayerPanel(chip.key)}
           />
         ))}
+        {PARCEL_TILES ? (
+          <LandLayersMenu
+            layers={landLayers}
+            open={landOpen}
+            onOpenChange={setLandOpen}
+            onToggle={toggleLandLayer}
+          />
+        ) : null}
       </div>
+
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
         <OperationalToolbarSearch
@@ -237,6 +259,76 @@ export function PropertyMapToolbar({
           </button>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * «الأراضي» — one pill among the layers, its count the land layers switched on, opening the list
+ * of the three (Omar 2026-11-16: three chips of their own wrapped the bar onto a second row).
+ * Each is MOMRAH's data, apart from the properties' pins; the list says from which zoom it shows.
+ */
+function LandLayersMenu({
+  layers,
+  open,
+  onOpenChange,
+  onToggle,
+}: {
+  layers: LandLayers;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onToggle: (key: LandLayerKey) => void;
+}) {
+  const on = LAND_LAYER_CHIPS.filter((c) => layers[c.key]).length;
+  return (
+    <div className="relative">
+      <LayerPill
+        active={on > 0}
+        label="الأراضي"
+        count={on}
+        color="#d4880f"
+        diamond
+        menuOpen={open}
+        onClick={() => onOpenChange(!open)}
+        onMenu={() => onOpenChange(!open)}
+      />
+      {open ? (
+        <div
+          className={cn(opsFloatPanel, "absolute start-0 top-[calc(100%+6px)] z-[1100] w-[248px] p-2")}
+          role="group"
+          aria-label="طبقات الأراضي"
+        >
+          <div className="px-2 pb-1.5 pt-1">
+            <div className="text-[12.5px] font-bold text-heading">طبقات الأراضي</div>
+            <div className="text-[11px] text-text-3">من بيانات وزارة البلديات — مستقلة عن العقارات</div>
+          </div>
+          {LAND_LAYER_CHIPS.map((chip) => (
+            <label
+              key={chip.key}
+              className={cn(
+                "flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-[12.5px]",
+                layers[chip.key] ? "bg-gold-soft" : "hover:bg-row-hover",
+              )}
+            >
+              <input
+                type="checkbox"
+                className="size-4 shrink-0 accent-[var(--ink)]"
+                checked={layers[chip.key]}
+                onChange={() => onToggle(chip.key)}
+              />
+              <span
+                className="inline-block h-[3px] w-4 shrink-0 rounded-full"
+                style={{ background: chip.color }}
+                aria-hidden
+              />
+              <span className={cn("flex-1", layers[chip.key] ? "font-bold text-heading" : "font-medium text-text")}>
+                {chip.label}
+              </span>
+              <span className="text-[10.5px] text-text-3">من تقريب {chip.minZoom}</span>
+            </label>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

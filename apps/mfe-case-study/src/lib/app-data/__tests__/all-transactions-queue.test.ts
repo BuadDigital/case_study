@@ -45,6 +45,7 @@ function row(
     propertyId: "prop-1",
     transactionNumber: null,
     transactionDeedCount: 1,
+    area: "",
     waitingOn: null,
     waitingParties: [],
     closed: false,
