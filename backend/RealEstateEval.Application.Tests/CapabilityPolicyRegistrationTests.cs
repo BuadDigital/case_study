@@ -36,6 +36,7 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.ReadPriorDeeds,
                      CapabilityPolicyNames.WriteComparableBank,
                      CapabilityPolicyNames.ReadComparableBank,
+                     CapabilityPolicyNames.ImportValuationReports,
                      CapabilityPolicyNames.ListDistributionAssignees,
                      CapabilityPolicyNames.ManageOperationsTasks,
                      CapabilityPolicyNames.ManagePartyFeePricing,

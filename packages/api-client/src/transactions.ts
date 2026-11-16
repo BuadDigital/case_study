@@ -205,7 +205,7 @@ type CommandErr = ApiErr & { message?: string };
  * 5xx → server, 4xx → validation, both with the message from `readProblemMessage`; success parses
  * the JSON body.
  */
-async function readCommand<T>(res: Response): Promise<ApiOk<T> | CommandErr> {
+export async function readCommand<T>(res: Response): Promise<ApiOk<T> | CommandErr> {
   if (res.status === 401) return { ok: false, kind: "auth" };
   if (res.status === 403) return { ok: false, kind: "forbidden", message: await readProblemMessage(res) };
   if (res.status === 404) return { ok: false, kind: "not_found" };
