@@ -58,6 +58,43 @@ describe("property change log (ruling 2026-11-02)", () => {
     expect(propertyFieldLabel("someNewField")).toBe("someNewField");
   });
 
+  it("words codes, ticks and ids in Arabic (Omar 2026-11-16: «ownershipType: shared ← absolute»)", () => {
+    const [entry] = toPropertyChangeEntries([
+      row({
+        before: {
+          ownershipType: "shared",
+          isSharedOwnership: true,
+          cityId: "c1",
+          city: "الرياض",
+          restrictionType: "mortgaged",
+          northBoundaryType: "",
+          hasRequestNumber: false,
+          specialistReportExtrasJson: "{}",
+        },
+        after: {
+          fields: {
+            ownershipType: "absolute",
+            isSharedOwnership: false,
+            cityId: "c2",
+            city: "جدة",
+            restrictionType: "mortgaged,suspended",
+            northBoundaryType: "street",
+            hasRequestNumber: true,
+            specialistReportExtrasJson: '{"esg":"x"}',
+          },
+        },
+      }),
+    ]);
+    expect(entry.lines.map((l) => `${l.label}: ${l.before} ← ${l.after}`)).toEqual([
+      "نوع الملكية: مشاع ← ملكية مطلقة",
+      "المدينة: الرياض ← جدة",
+      "نوع القيد: مرهون ← مرهون، موقوف",
+      "نوع الحد — الحد الشمالي: — ← شارع",
+      "يوجد رقم طلب: لا ← نعم",
+      "إضافات الأخصائي للتقرير: قيمة مركّبة ← قيمة مركّبة",
+    ]);
+  });
+
   it("draws the chain oldest first, five circles a line (Omar 2026-11-15)", () => {
     // The API answers newest first: a7 is the latest save, a1 the first.
     const entries = toPropertyChangeEntries(
