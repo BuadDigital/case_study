@@ -95,6 +95,8 @@ export function PropertyMapView() {
     poLoadError,
     retryPoLoad,
     poRetrying,
+    landLayers,
+    setLandOpen,
   } = workflow;
 
   return (
@@ -112,10 +114,12 @@ export function PropertyMapView() {
           onBackgroundClick={() => {
             setSelection(null);
             setDateOpen(false);
+            setLandOpen(false);
             setLayerPanel(null);
           }}
           onBasemapChange={setBasemap}
           onRecenter={() => sendCommand({ type: "fit" })}
+          landLayers={landLayers}
         />
 
         {poLoadFailed ? (

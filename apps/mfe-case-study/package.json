@@ -19,6 +19,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@deck.gl/core": "9.4.1",
+    "@deck.gl/extensions": "9.4.1",
+    "@deck.gl/geo-layers": "9.4.1",
+    "@deck.gl/google-maps": "9.4.1",
+    "@deck.gl/layers": "9.4.1",
+    "@loaders.gl/mvt": "4.5.4",
     "@engineering-office/mfe": "*",
     "@failures/mfe": "*",
     "@googlemaps/markerclusterer": "^2.6.2",

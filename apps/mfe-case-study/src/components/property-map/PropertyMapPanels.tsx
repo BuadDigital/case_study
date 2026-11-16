@@ -29,7 +29,8 @@ export function LayerPill({
 }: {
   active: boolean;
   label: string;
-  count: number;
+  /** Left out for a layer that is not a set of pins (the land layers). */
+  count?: number;
   color: string;
   diamond?: boolean;
   /** Ring dot (no fill) — the imported valuation reports. */
@@ -73,21 +74,23 @@ export function LayerPill({
         />
       )}
       {label}
-      <span
-        className={cn(
-          "grid min-w-[17px] place-items-center rounded-full px-1 text-[10px] font-bold",
-          alert
-            ? active
-              ? "bg-white/25 text-white"
-              : "bg-danger-bg text-danger-text"
-            : active
-              ? "bg-gold/25 text-gold"
-              : "bg-gold-soft text-gold-d",
-        )}
-        title={count.toLocaleString("en-US")}
-      >
-        {fmtCompactCount(count)}
-      </span>
+      {count === undefined ? null : (
+        <span
+          className={cn(
+            "grid min-w-[17px] place-items-center rounded-full px-1 text-[10px] font-bold",
+            alert
+              ? active
+                ? "bg-white/25 text-white"
+                : "bg-danger-bg text-danger-text"
+              : active
+                ? "bg-gold/25 text-gold"
+                : "bg-gold-soft text-gold-d",
+          )}
+          title={count.toLocaleString("en-US")}
+        >
+          {fmtCompactCount(count)}
+        </span>
+      )}
       {active && onMenu ? (
         <span
           role="presentation"

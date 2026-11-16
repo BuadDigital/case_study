@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { MarkerClusterer, type Renderer } from "@googlemaps/markerclusterer";
 import { loadGoogleMapsApi } from "@platform/ui-kit";
 import { spreadSameSpot, type LayerKey } from "../../lib/app-data/map-locations-logic";
+import {
+  LAND_LAYERS_OFF,
+  landLayerHint,
+  parcelFacts,
+  parcelTilesBase,
+  type ParcelProps,
+} from "../../lib/app-data/parcel-layer-logic";
+import type { ParcelsOverlay } from "./parcels-overlay";
 import {
   CLUSTER_COLORS,
   SAUDI_CENTER,
@@ -125,6 +133,22 @@ function clusterRenderer(g: typeof google, kind: LayerKey): Renderer {
 
 const LAYERS: LayerKey[] = ["active", "archive", "failures", "comparables", "reports"];
 
+/** The land layers' tile server (Omar 2026-11-16); none set → no land layers. */
+const PARCEL_TILES = parcelTilesBase();
+
+/** A clicked parcel's attributes, as the info window shows them. */
+function parcelInfoHtml(parcel: ParcelProps): string {
+  const rows = parcelFacts(parcel)
+    .map(
+      (f) =>
+        `<div><span style="color:#73767f">${escapeText(f.label)}:</span> <b>${
+          f.ltr ? `<bdi dir="ltr">${escapeText(f.value)}</bdi>` : escapeText(f.value)
+        }</b></div>`,
+    )
+    .join("");
+  return `<div dir="rtl" style="font:500 12px/1.8 Tajawal,sans-serif;color:#12284C;min-width:170px">${rows}</div>`;
+}
+
 export function PropertyMapCanvasGoogle({
   markers,
   selectedId,
@@ -134,6 +158,7 @@ export function PropertyMapCanvasGoogle({
   onBackgroundClick,
   onBasemapChange,
   onRecenter,
+  landLayers = LAND_LAYERS_OFF,
 }: PropertyMapCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const gRef = useRef<typeof google | null>(null);
@@ -146,9 +171,17 @@ export function PropertyMapCanvasGoogle({
 
   const markersRef = useLatestRef(markers);
   const selectedRef = useLatestRef(selectedId);
+  const basemapRef = useLatestRef(basemap);
   const onSelectRef = useLatestRef(onSelect);
   const onBackgroundClickRef = useLatestRef(onBackgroundClick);
   const lastCommandSeq = useRef(0);
+  // The land layers: the zoom they are drawn for, and the overlay once loaded.
+  const [mapReady, setMapReady] = useState(false);
+  const [zoom, setZoom] = useState(SAUDI_ZOOM);
+  const anyLand = landLayers.plans || landLayers.parcels || landLayers.numbers;
+  const landLayersRef = useLatestRef(landLayers);
+  const parcelsRef = useRef<ParcelsOverlay | null>(null);
+  const parcelInfoRef = useRef<google.maps.InfoWindow | null>(null);
 
   const paint = useEffectEvent(() => {
     const g = gRef.current;
@@ -229,6 +262,7 @@ export function PropertyMapCanvasGoogle({
           clickableIcons: false,
         });
         map.addListener("click", () => onBackgroundClickRef.current());
+        map.addListener("zoom_changed", () => setZoom(map.getZoom() ?? SAUDI_ZOOM));
         mapRef.current = map;
         infoRef.current = new g.maps.InfoWindow({ disableAutoPan: true });
 
@@ -241,6 +275,7 @@ export function PropertyMapCanvasGoogle({
         }
 
         readyRef.current = true;
+        setMapReady(true);
         paint();
 
         if (typeof ResizeObserver !== "undefined") {
@@ -268,6 +303,10 @@ export function PropertyMapCanvasGoogle({
       markerObjsRef.current = [];
       infoRef.current?.close();
       infoRef.current = null;
+      parcelInfoRef.current?.close();
+      parcelInfoRef.current = null;
+      parcelsRef.current?.destroy();
+      parcelsRef.current = null;
       mapRef.current = null;
       gRef.current = null;
       readyRef.current = false;
@@ -279,6 +318,51 @@ export function PropertyMapCanvasGoogle({
   useEffect(() => {
     if (readyRef.current) paint();
   }, [markers, selectedId]);
+
+  /**
+   * The land layers (Omar 2026-11-16): deck.gl is loaded the first time one is switched on; with
+   * all three off the overlay is removed and a parcel's window closed.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!anyLand || !mapReady || !map || !PARCEL_TILES) return;
+    let cancelled = false;
+    void import("./parcels-overlay").then(({ createParcelsOverlay }) => {
+      if (cancelled || !gRef.current) return;
+      const g = gRef.current;
+      parcelsRef.current = createParcelsOverlay(map, {
+        tilesBase: PARCEL_TILES,
+        view: {
+          zoom: map.getZoom() ?? SAUDI_ZOOM,
+          satellite: basemapRef.current === "satellite",
+          show: landLayersRef.current,
+        },
+        onPick: (parcel, at) => {
+          const info = (parcelInfoRef.current ??= new g.maps.InfoWindow());
+          info.setContent(parcelInfoHtml(parcel));
+          info.setPosition(at);
+          info.open({ map });
+          g.maps.event.clearListeners(info, "closeclick");
+          info.addListener("closeclick", () => parcelsRef.current?.clearSelection());
+        },
+      });
+    });
+    return () => {
+      cancelled = true;
+      parcelInfoRef.current?.close();
+      parcelsRef.current?.destroy();
+      parcelsRef.current = null;
+    };
+  }, [anyLand, mapReady, basemapRef, landLayersRef]);
+
+  useEffect(() => {
+    parcelsRef.current?.update({ zoom, satellite: basemap === "satellite", show: landLayers });
+    // A parcel's window belongs to the parcels' outlines.
+    if (!landLayers.parcels) {
+      parcelInfoRef.current?.close();
+      parcelsRef.current?.clearSelection();
+    }
+  }, [zoom, basemap, landLayers]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -330,6 +414,11 @@ export function PropertyMapCanvasGoogle({
         onBasemapChange={onBasemapChange}
         onRecenter={onRecenter}
       />
+      {PARCEL_TILES && landLayerHint(landLayers, zoom) ? (
+        <div className="pointer-events-none absolute top-3 left-1/2 z-[5] -translate-x-1/2 rounded-full bg-[#12284C] px-4 py-1.5 text-[12px] font-semibold text-white shadow-lg">
+          {landLayerHint(landLayers, zoom)}
+        </div>
+      ) : null}
     </div>
   );
 }
