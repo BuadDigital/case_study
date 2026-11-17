@@ -104,6 +104,16 @@ describe("marketApproachBody", () => {
     });
   });
 
+  it("keeps the stored area when the measured draft is blank — never sends 0", () => {
+    const blank = { subjectArea: "", adjustmentBasis: "price_per_sqm", analysisNotes: "" };
+    expect(marketApproachBody({ ...blank, storedAreaSqm: 917 }).subjectAreaSqm).toBe(917);
+    expect(marketApproachBody({ ...blank, storedAreaSqm: null }).subjectAreaSqm).toBeNull();
+    expect(marketApproachBody({ ...blank, storedAreaSqm: 0 }).subjectAreaSqm).toBeNull();
+    expect(
+      marketApproachBody({ ...blank, subjectArea: "640", storedAreaSqm: 917 }).subjectAreaSqm,
+    ).toBe(640);
+  });
+
   it("strips the demo seed filler instead of saving it", () => {
     expect(
       marketApproachBody({
