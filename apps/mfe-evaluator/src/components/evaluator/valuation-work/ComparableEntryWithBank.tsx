@@ -3,26 +3,15 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ComparablePropertyDto } from "@platform/api-client";
-import type {
-  ComparableEntryDraft,
-  ComparableEntryFieldErrors,
-} from "@platform/app-shared/app-data/comparable-entry";
+import type { ComparableEntryDraft, ComparableEntryFieldErrors } from "@platform/app-shared/app-data/comparable-entry";
 import { useNearbyBankComparables } from "@platform/app-shared/comparables/NearbyBankComparables";
-import { parseLatLng, type LatLng } from "@platform/app-shared/domain/geo";
+import { parseCoordinatePair, parseLatLng, type LatLng } from "@platform/app-shared/domain/geo";
 import type { ComparableBankBrowse } from "@platform/app-shared/evaluator/comparable-entry-fields-slot";
 import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import { Input, Select } from "@platform/ui-kit";
 import { ComparablePropertyEntryFields } from "../ComparablePropertyEntryFieldsSlot";
-import {
-  isVacantLandComparable,
-  searchBankComparables,
-  type BankDisplayRow,
-} from "./lib/bank-ranking";
-import {
-  comparableFilterOptions,
-  filterMapComparables,
-  mapPickerPool,
-} from "./lib/comparables-map";
+import { isVacantLandComparable, searchBankComparables, type BankDisplayRow } from "./lib/bank-ranking";
+import { comparableFilterOptions, filterMapComparables, mapPickerPool } from "./lib/comparables-map";
 import { apiConfig } from "./lib/shell-utils";
 
 /** How far around the point the map rests on the bank is read. */
@@ -82,7 +71,10 @@ export function ComparableEntryWithBank({
   const [usageFilter, setUsageFilter] = useState("");
   const [center, setCenter] = useState<LatLng | null>(null);
 
-  const search = useDebouncedValue(q.trim(), 350);
+  // Pasted «lat, lng» is the new comparable's spot, not a bank search (Omar 2026-11-17: «لما أحط
+  // الإحداثي ينضاف»). The form pins it, and the bank around it shows as the map moves there.
+  const typedPin = useMemo(() => parseCoordinatePair(q), [q]);
+  const search = useDebouncedValue(typedPin ? "" : q.trim(), 350);
   const searching = search.length > 0;
   const searchQuery = useQuery({
     queryKey: ["comparable-bank-search", search, propertyId ?? "", subjectPin?.lat, subjectPin?.lng],
@@ -142,7 +134,9 @@ export function ComparableEntryWithBank({
   }, [searchHits, shown]);
   const withoutPin = found.count - found.onMap;
   // Said only when there is something to say: a search's outcome, or a subject with no location.
-  const status = searching
+  const status = typedPin
+    ? "إحداثيات — وُضع دبوس المقارن الجديد عليها. راجع الموقع ثم اضغط «تثبيت الموقع»."
+    : searching
     ? searchQuery.isPending
       ? "جاري البحث في البنك…"
       : found.count === 0
@@ -160,7 +154,7 @@ export function ComparableEntryWithBank({
           <Input
             type="search"
             value={q}
-            placeholder="ابحث في البنك بالرقم المرجعي أو الحي"
+            placeholder="ابحث في البنك بالرقم المرجعي أو الحي، أو الصق الإحداثيات"
             aria-label="بحث في بنك المقارنات"
             className="min-w-0 flex-1 max-lg:text-[16px]"
             onChange={(e) => setQ(e.target.value)}
@@ -208,6 +202,7 @@ export function ComparableEntryWithBank({
     fitPinsKey: searchHits && found.onMap > 0 ? `search:${search}` : undefined,
     autoOpenId: searchHits?.length === 1 ? searchHits[0].id : null,
     onCenterChange: (lat, lng) => setCenter({ lat, lng }),
+    pinAt: typedPin,
     action: (comparable) => {
       const busy = pendingAdopt.has(comparable.id);
       if (!ownIds.has(comparable.id)) {

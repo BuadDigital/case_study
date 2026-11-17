@@ -293,9 +293,14 @@ export function buildAllTransactionsQueueRowMeta(
     if (!progress) continue;
     live.push({
       ...row,
-      // «جميع العقارات» is a page to look at (Omar 2026-11-15: two states are enough, «قيد الدراسة» and «مكتملة»): a live
-      // transaction reads «قيد الدراسة» whatever its step; the cards above say where it stands.
-      phaseLabel: progress.closed === true ? progress.stage : "قيد الدراسة",
+      // A live transaction reads where it is: the party it waits at, the same word as its card and as
+      // the status filter (Omar 2026-11-17, replacing «قيد الدراسة» for every live one). Two parties at
+      // once read both. One waiting at no card's party (a failure, an outside party) reads its stage.
+      // A closed one reads how it ended.
+      phaseLabel:
+        progress.closed === true
+          ? progress.stage
+          : allTxPartiesLabel(progress.parties) || progress.stage,
       waitingOn: progress.waitingOn || null,
       waitingParties: progress.parties,
       closed: progress.closed === true,
@@ -328,6 +333,30 @@ export function closedTransactionProgress(
   if (task.status === "cancelled") return { stage: "ملغاة", ...done };
   if (task.propertyHandedOverToEnfaz || task.status === "completed") return { stage: "مكتملة", ...done };
   return null;
+}
+
+/**
+ * «جميع العقارات»'s six parties, in the order of its cards. These are the card labels, the status
+ * filter's party options and the live rows' status (Omar 2026-11-17).
+ */
+export const ALL_TX_PARTIES: readonly { party: TransactionParty; label: string }[] = [
+  { party: "co", label: "التنسيق" },
+  { party: "fi", label: "المعاينة" },
+  { party: "es", label: "المكتب الهندسي" },
+  { party: "st", label: "الدراسة" },
+  { party: "ap", label: "التقييم" },
+  { party: "rv", label: "الرفع" },
+];
+
+/**
+ * What: the status a live row shows, which is where it waits.
+ * How it works: the labels of its parties in the cards' order, joined with « · ».
+ * Edge cases: "" for no party, so the caller falls back to the stage.
+ */
+export function allTxPartiesLabel(parties: readonly TransactionParty[]): string {
+  return ALL_TX_PARTIES.filter((p) => parties.includes(p.party))
+    .map((p) => p.label)
+    .join(" · ");
 }
 
 export function countAllTransactionsByParty(

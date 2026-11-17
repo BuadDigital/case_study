@@ -174,8 +174,7 @@ export function PoPropertyBourseForm({
             inputMode="decimal"
             value={property.area}
             error={fieldErrors.area}
-            hint={lockHint}
-            readOnly={distributionLocked}
+            // Not locked after distribution (Omar 2026-11-17): the specialist and the appraiser correct it.
             onChange={(v) => onPatch("area", v)}
             placeholder="مثال: 900"
           />

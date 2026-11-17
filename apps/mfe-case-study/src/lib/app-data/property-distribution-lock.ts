@@ -4,10 +4,12 @@ import { caseStudyTaskForProperty } from "./tasks-reads";
 
 /**
  * The distribution lock (Omar 2026-11-15, option 2): once the deed is distributed to the parties, the
- * initial-data fields they work from cannot change — the deed / registry number and date, the area,
- * the boundaries, the map link, and the type and classification. Contacts, the request number, the
+ * initial-data fields they work from cannot change — the deed / registry number and date, the
+ * boundaries, the map link, and the type and classification. Contacts, the request number, the
  * documents, the owner and the court stay editable. The server refuses the same keys
  * (PropertyDistributionLockRules); this side greys them out and drops their patches.
+ * Changed 2026-11-17 (Omar): the area left the lock. The case specialist and the assigned appraiser
+ * correct it after the distribution; the change log records it and the parties are not notified.
  */
 export const DISTRIBUTION_LOCKED_KEYS: ReadonlySet<keyof PoPropertyIntake> = new Set<keyof PoPropertyIntake>([
   "identifierType",
@@ -15,7 +17,6 @@ export const DISTRIBUTION_LOCKED_KEYS: ReadonlySet<keyof PoPropertyIntake> = new
   "deedDate",
   "realEstateRegNumber",
   "realEstateRegDate",
-  "area",
   "locationMapUrl",
   "propertyType",
   "classification",
@@ -52,12 +53,14 @@ export function isPropertyDistributed(
 /**
  * The property a whole-object replace may write: under the lock the locked keys keep the current
  * values (a prior-PO clone must not bring another deed's number, area or boundaries).
+ * Edge cases: the area is kept too, although it is no longer locked (2026-11-17). Typing it is a
+ * correction of this deed; a clone would carry another deed's.
  */
 export function keepDistributionLockedFields(
   current: PoPropertyIntake,
   next: PoPropertyIntake,
 ): PoPropertyIntake {
   const kept = { ...next } as Record<string, unknown>;
-  for (const key of DISTRIBUTION_LOCKED_KEYS) kept[key] = current[key];
+  for (const key of [...DISTRIBUTION_LOCKED_KEYS, "area" as const]) kept[key] = current[key];
   return kept as PoPropertyIntake;
 }

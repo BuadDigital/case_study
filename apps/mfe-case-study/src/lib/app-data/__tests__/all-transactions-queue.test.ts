@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  allTxPartiesLabel,
   buildAllTransactionsQueueRowMeta,
   closedTransactionProgress,
   countAllTransactionsByParty,
@@ -197,14 +198,25 @@ describe("buildAllTransactionsQueueRowMeta — «المعاملات النشطة
   const done = task({ id: "done", kind: "case-study-property", phase: "done", status: "completed", propertyId: "p-done" });
   const now = new Date("2026-11-05T09:00:00Z");
 
-  it("replaces the phase with «قيد الدراسة» and «بانتظار», and drops what it cannot place", () => {
+  it("replaces the phase with where it waits and «بانتظار», and drops what it cannot place", () => {
     const rows = buildAllTransactionsQueueRowMeta([live, done], new Map(), now, (t) =>
       t.id === "live" ? { stage: "استعلام البورصة", waitingOn: "التنسيق", parties: ["co"] } : null,
     );
     expect(rows.map((r) => [r.task.id, r.phaseLabel, r.waitingOn, r.waitingParties])).toEqual([
-      // A live transaction reads «قيد الدراسة» whatever its step (Omar 2026-11-15).
-      ["live", "قيد الدراسة", "التنسيق", ["co"]],
+      // A live transaction reads the party it waits at (Omar 2026-11-17).
+      ["live", "التنسيق", "التنسيق", ["co"]],
     ]);
+  });
+
+  it("reads two parties in the cards' order, and the stage when it waits at none (2026-11-17)", () => {
+    expect(allTxPartiesLabel(["es", "fi"])).toBe("المعاينة · المكتب الهندسي");
+    expect(allTxPartiesLabel([])).toBe("");
+    const rows = buildAllTransactionsQueueRowMeta([live], new Map(), now, () => ({
+      stage: "تعذّر",
+      waitingOn: "",
+      parties: [],
+    }));
+    expect(rows[0]?.phaseLabel).toBe("تعذّر");
   });
 
   // Omar 2026-11-15: «جميع العقارات» lists the uploaded and the cancelled too, as closed rows.
