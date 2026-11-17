@@ -156,6 +156,11 @@ export type WorkflowTaskListQuery = Omit<ListPageQuery, "sort"> & {
   assigneeRole?: string;
   poNumber?: string;
   assignmentType?: string;
+  /**
+   * `all-transactions`: the «جميع العقارات» page asks for every task. The server honours it only
+   * for a viewer holding that page, such as the appraiser since 2026-11-17.
+   */
+  scope?: "all-transactions";
 };
 
 /** Every filter of the list query except the page window. */
@@ -178,6 +183,7 @@ function workflowTaskListParams(query?: WorkflowTaskListQuery) {
     assigneeRole: query?.assigneeRole,
     poNumber: query?.poNumber,
     assignmentType: query?.assignmentType,
+    scope: query?.scope,
   };
 }
 

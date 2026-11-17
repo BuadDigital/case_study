@@ -140,6 +140,15 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
         CancellationToken cancellationToken) =>
         Ok(await lookup.ListWorkflowTasksByIdsAsync(ParseGuids(ids), cancellationToken));
 
+    /// <summary>Whether a user is the appraiser of the property's transaction (see ICaseStudyLookup).</summary>
+    [HttpGet("properties/{propertyId:guid}/assigned-appraiser")]
+    public async Task<ActionResult<bool>> IsAssignedAppraiser(
+        Guid propertyId,
+        [FromQuery] string? userId,
+        [FromQuery] string? assigneeId,
+        CancellationToken cancellationToken) =>
+        Ok(await lookup.IsAssignedAppraiserAsync(propertyId, userId, assigneeId, cancellationToken));
+
     [HttpGet("workflow-tasks-by-property")]
     public async Task<ActionResult<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>>> WorkflowTasksByProperty(
         [FromQuery] Guid propertyId,

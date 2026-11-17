@@ -19,17 +19,20 @@ public class WorkOrdersController : ControllerBase
     private readonly IPropertyTimelineService _timeline;
     private readonly IPermissionService _permissions;
     private readonly IFieldGapNotificationService _fieldGaps;
+    private readonly ICaseStudyLookup _caseStudy;
 
     public WorkOrdersController(
         IWorkOrderService workOrders,
         IPropertyTimelineService timeline,
         IPermissionService permissions,
-        IFieldGapNotificationService fieldGaps)
+        IFieldGapNotificationService fieldGaps,
+        ICaseStudyLookup caseStudy)
     {
         _workOrders = workOrders;
         _timeline = timeline;
         _permissions = permissions;
         _fieldGaps = fieldGaps;
+        _caseStudy = caseStudy;
     }
 
  /// <summary>
@@ -345,7 +348,8 @@ public class WorkOrdersController : ControllerBase
         CancellationToken cancellationToken,
         [FromQuery] bool draft = false)
     {
-        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditPropertyData, cancellationToken);
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditPropertyData, cancellationToken)
+            ?? await ForbidUnassignedAppraiserAsync(propertyId, cancellationToken);
         if (forbidden is not null) return forbidden;
 
         var (result, errors) = await _workOrders.UpdatePropertyAsync(
@@ -383,6 +387,8 @@ public class WorkOrdersController : ControllerBase
             || string.Equals(perms?.PrototypeRole, "report-preparer", StringComparison.OrdinalIgnoreCase);
         if (!canWrite)
             return Forbid();
+        var unassigned = await ForbidUnassignedAppraiserAsync(propertyId, cancellationToken);
+        if (unassigned is not null) return unassigned;
 
         var (result, errors) = await _workOrders.UpdateSpecialistReportExtrasAsync(
             poNumber,
@@ -492,6 +498,24 @@ public class WorkOrdersController : ControllerBase
         if (string.IsNullOrWhiteSpace(userId) || userId == "unknown")
             return null;
         return await _permissions.GetForUserIdAsync(userId, cancellationToken);
+    }
+
+    /// <summary>
+    /// What: refuses a property-data write by the appraiser on a property he is not assigned to.
+    /// How it works: only roles that edit their assigned properties only are asked
+    /// (<c>PoRoleMatrixRules.EditsOnlyAssignedProperties</c>, the appraiser). For them, the property's
+    /// transaction must hold his appraisal task.
+    /// Edge cases: added 2026-11-17, when the appraiser started opening every property from
+    /// «جميع العقارات». Before, the role alone let the write through.
+    /// </summary>
+    private async Task<ActionResult?> ForbidUnassignedAppraiserAsync(Guid propertyId, CancellationToken cancellationToken)
+    {
+        var perms = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), cancellationToken);
+        if (perms is null || !PoRoleMatrixRules.EditsOnlyAssignedProperties(perms.PrototypeRole)) return null;
+        return await _caseStudy.IsAssignedAppraiserAsync(
+                propertyId, perms.UserId, perms.DistributionAssigneeId, cancellationToken)
+            ? null
+            : this.ForbiddenProblem(PoRoleMatrixRules.AssignedAppraiserEditOnlyAr);
     }
 
     private async Task<ActionResult?> ForbidUnlessAsync(

@@ -154,6 +154,21 @@ describe("buildQueueServerQuery", () => {
     });
   });
 
+  it("asks «جميع العقارات»'s scope for the appraiser, with no role narrowing (2026-11-17)", () => {
+    const query = buildQueueServerQuery({
+      config: config({
+        pageId: "all-transactions",
+        includeAllStatuses: true,
+        serverQuery: { scope: "all-transactions" },
+      }),
+      role: "real-estate-appraiser",
+      showCompleted: false,
+      narrow: true,
+    });
+    expect(query.scope).toBe("all-transactions");
+    expect(query.assigneeRole).toBeUndefined();
+  });
+
   it("omits the status filter when the screen lists every status", () => {
     const query = buildQueueServerQuery({
       config: config({ includeAllStatuses: true }),

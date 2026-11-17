@@ -275,6 +275,18 @@ public partial class CaseStudyReportService : ICaseStudyReportService
                 ["_"] = "ليس لديك صلاحية تعديل تقرير دراسة الحالة",
             });
         }
+        // 2026-11-17: the appraiser saves the study only on a transaction assigned to him, meaning one of
+        // the study task's children is his appraisal task. He reads every property since «جميع العقارات».
+        else if (!party && actor is not null
+                 && PoRoleMatrixRules.EditsOnlyAssignedProperties(actor.PrototypeRole)
+                 && !(await _db.ListTaskAndChildAssigneeIdsAsync(taskId, cancellationToken))
+                     .Any(id => PoRoleMatrixRules.IsAssignedPartyUser(id, actor.UserId, actor.DistributionAssigneeId)))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = PoRoleMatrixRules.AssignedAppraiserEditOnlyAr,
+            });
+        }
 
         // Defensive: SaveAsync routes every non-party «issued» save into IssueAsync, so this is only
         // reachable by a race — never persist «issued» without the issue gates.

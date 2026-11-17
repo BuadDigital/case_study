@@ -51,6 +51,7 @@ import {
   useWorkflowTasksQuery,
 } from "../../query/case-study-queries";
 import { useTransactionCancellationQuery } from "../../query/use-transaction-cancellation-query";
+import { useViewerEditsProperty } from "../../query/use-viewer-edits-property";
 import { useTransactionStateQuery } from "../../query/use-transaction-state-query";
 import { useTransactionGeneralActions } from "./useTransactionGeneralActions";
 import { isAllowedPropertyTab } from "./po-property-detail-tabs-state";
@@ -97,11 +98,16 @@ export function PoPropertyDetailTopbarActions({
   const searchParams = useSearchParams();
   const { showProgressToast, dismissToast } = useToast();
   const { role, access } = useAppAccess();
-  const showEdit = canEditPropertyData(role);
   const showFailure = canRaisePropertyFailure(role);
   const canCreateOps = canManageOperationsTasks(access);
   const { data: record } = usePoRecordQuery(poNumber);
   const { data: tasks = [] } = useWorkflowTasksQuery();
+  // The appraiser edits only a property assigned to him (2026-11-17); he reads every one.
+  const editsThisProperty = useViewerEditsProperty(
+    propertyId,
+    record?.properties.find((p) => p.id === propertyId)?.transactionId,
+  );
+  const showEdit = canEditPropertyData(role) && editsThisProperty === true;
   const isHero = variant === "hero";
   const btn = shellBtn;
   const { itemsFor: generalItemsFor, dialogs: generalDialogs } =

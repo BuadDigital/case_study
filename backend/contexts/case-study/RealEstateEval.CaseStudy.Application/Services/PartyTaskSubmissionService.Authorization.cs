@@ -100,6 +100,26 @@ public partial class PartyTaskSubmissionService
     /// 2026-11-04 (A→Z run): the appraiser got a 404 on the sibling survey, so his report printed
     /// the inspector's boundaries instead of the office's and left «التقرير المساحي» empty.
     /// </summary>
+    /// <summary>
+    /// What: whether the actor is the appraiser beside this party task, meaning an appraisal sibling under
+    /// the same case-study parent and property is assigned to him.
+    /// How it works: the same sibling lookup that lets him read the inspector's package.
+    /// Edge cases: a task with no parent or property, or an actor with no id, is not his. Added
+    /// 2026-11-17: the appraiser corrects only the inspection of a transaction assigned to him.
+    /// </summary>
+    private async Task<bool> IsSiblingAppraiserAsync(
+        WorkflowTask task,
+        PartySubmissionActor actor,
+        CancellationToken cancellationToken)
+    {
+        if (task.PropertyId is not Guid propertyId || task.ParentTaskId is not Guid parentTaskId)
+            return false;
+        var actorIds = ActorIdsOf(actor);
+        if (actorIds.Count == 0) return false;
+        var siblings = await _repo.ListSiblingTasksAsync([parentTaskId], [propertyId], cancellationToken);
+        return siblings.Any(t => t.Kind == WorkflowTaskKind.PropertyAppraisal && IsAppraiserAssignedTo(t, actorIds));
+    }
+
     private async Task<bool> CanReadSiblingPackageAsync(
         PartyTaskFacts task,
         PartySubmissionActor actor,

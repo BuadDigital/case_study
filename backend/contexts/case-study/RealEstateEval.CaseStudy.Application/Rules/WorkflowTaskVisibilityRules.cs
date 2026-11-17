@@ -15,17 +15,30 @@ public static class WorkflowTaskVisibilityRules
     private static readonly Expression<Func<WorkflowTask, bool>> Nothing = _ => false;
     private static readonly Expression<Func<WorkflowTask, bool>> Everything = _ => true;
 
+    /// <summary>The list scope of the «جميع العقارات» page (<c>WorkflowTaskListQuery.Scope</c>).</summary>
+    public const string AllTransactionsScope = "all-transactions";
+
     /// <summary>
-    /// Staff who manage party submissions see every task. A party actor sees tasks whose
-    /// assignee role matches their role and whose assignee is them (by distribution assignee
-    /// id, user id, or display name). No actor, or an actor with no identity, sees nothing.
+    /// What: which tasks an actor sees.
+    /// How it works:
+    /// - Staff who manage party submissions see every task.
+    /// - An actor holding the «جميع العقارات» page sees every task when the list asks for that page's
+    ///   scope. Added 2026-11-17 for the appraiser, who reads every transaction there.
+    /// - A party actor otherwise sees only tasks whose assignee role matches theirs and whose assignee is
+    ///   them, matched by distribution assignee id, user id or display name.
+    /// Edge cases: no actor, or an actor with no identity, sees nothing. The scope never widens the
+    /// appraiser's other queues; they send no scope.
     /// </summary>
-    public static Expression<Func<WorkflowTask, bool>> VisibleTo(PermissionsDto? actor)
+    public static Expression<Func<WorkflowTask, bool>> VisibleTo(PermissionsDto? actor, string? scope = null)
     {
         if (actor is null)
             return Nothing;
 
         if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+            return Everything;
+
+        if (string.Equals(scope?.Trim(), AllTransactionsScope, StringComparison.OrdinalIgnoreCase)
+            && actor.Pages.Contains(AllTransactionsScope, StringComparer.OrdinalIgnoreCase))
             return Everything;
 
         var role = actor.PrototypeRole?.Trim().ToLower() ?? "";

@@ -23,7 +23,8 @@ public sealed class WorkOrderVisibilityFilter : IWorkOrderVisibilityFilter
         if (actor is null)
             return new HashSet<string>(StringComparer.Ordinal);
 
-        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)
+        // The appraiser reads every work order too, for «جميع العقارات» (2026-11-17).
+        if (PoRoleMatrixRules.CanReadEveryWorkOrder(actor.PrototypeRole)
             || actor.Capabilities.Contains("manage-work-orders", StringComparer.OrdinalIgnoreCase))
         {
             return null;

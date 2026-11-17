@@ -130,6 +130,9 @@ public sealed partial class PartyTaskSubmissionService
             return (null, Error("تعديل نوع العقار متاح لمهمة المعاينة فقط"));
         if (!PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(actor, task))
             return (null, Error("ليس لديك صلاحية تعديل نوع العقار"));
+        // The appraiser corrects only on a transaction assigned to him (2026-11-17).
+        if (PartyTaskSubmissionRules.IsAppraiser(actor) && !await IsSiblingAppraiserAsync(task, actor, cancellationToken))
+            return (null, Error(PoRoleMatrixRules.AssignedAppraiserEditOnlyAr));
         if (await IsTransactionCancelledAsync(task, cancellationToken))
             return (null, Error(TransactionCancelledAr));
         // Delivered to Enfaz: frozen until the specialist takes the transaction back — also for a

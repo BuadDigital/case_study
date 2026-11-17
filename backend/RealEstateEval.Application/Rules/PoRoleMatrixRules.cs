@@ -233,6 +233,28 @@ public static class PoRoleMatrixRules
             || role is StaffRoleIds.CaseSpecialist or StaffRoleIds.SectionSupervisor or StaffRoleIds.GeneralManager;
     }
 
+    /// <summary>
+    /// What: who reads every work order and its properties, not only the ones they work on.
+    /// How it works: the case staff (<see cref="CanManagePartySubmissions"/>) and the appraiser.
+    /// Edge cases: added 2026-11-17. Omar gave the appraiser «جميع العقارات», opening any property,
+    /// read only. Party submissions, forms and writes keep their own rules.
+    /// </summary>
+    public static bool CanReadEveryWorkOrder(string? prototypeRole) =>
+        CanManagePartySubmissions(prototypeRole)
+        || Normalize(prototypeRole) == StaffRoleIds.RealEstateAppraiser;
+
+    /// <summary>The refusal when the appraiser edits a property he is not assigned to.</summary>
+    public const string AssignedAppraiserEditOnlyAr = "تعديل بيانات العقار للمقيّم المُسنَد للعقار فقط";
+
+    /// <summary>
+    /// What: whether a role's property-data writes need the actor to be the property's appraiser.
+    /// How it works: true for the appraiser only. Every other role keeps its role-based rule.
+    /// Edge cases: added 2026-11-17. The appraiser reads every property since then, but he edits data and
+    /// documents only on the transactions assigned to him (<c>ICaseStudyLookup.IsAssignedAppraiserAsync</c>).
+    /// </summary>
+    public static bool EditsOnlyAssignedProperties(string? prototypeRole) =>
+        Normalize(prototypeRole) == StaffRoleIds.RealEstateAppraiser;
+
  /// <summary>
  /// Upload / classify governed documents from the property documents tab
  /// (matches frontend <c>canUploadPropertyDocuments</c>).

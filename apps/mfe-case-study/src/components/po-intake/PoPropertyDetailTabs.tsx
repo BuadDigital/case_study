@@ -40,6 +40,7 @@ import {
   type PropertyDetailTab,
 } from "./po-property-detail-tabs-state";
 import { useTransactionQuery } from "../../query/use-transaction-query";
+import { useViewerEditsProperty } from "../../query/use-viewer-edits-property";
 import { caseStudyReportDeeds } from "../../lib/app-data/case-study-report-document-model";
 import {
   PropertyDetailAppraisalTab,
@@ -143,6 +144,9 @@ export function PoPropertyDetailTabs({
   // A transaction with several deeds shows two tab levels — the
   // transaction's tabs, then this deed's behind the switcher in the hero. One deed: flat bar.
   const { data: transaction } = useTransactionQuery(property.id);
+  // The appraiser reviews the inspector's package only on a property assigned to him (2026-11-17).
+  const editsThisProperty = useViewerEditsProperty(property.id, property.transactionId);
+  const staffReview = !workspaceForced && canEditPropertyData(role) && editsThisProperty === true;
   const deedCount = transaction?.deedCount ?? property.transactionDeedCount ?? 1;
   // Phase 4: the study (and its report) lives on the holder deed's parent task.
   const holderTaskId = transaction?.studyHolderTaskId?.trim();
@@ -384,13 +388,9 @@ export function PoPropertyDetailTabs({
               }
               /* Case staff review the inspector's package like the case-study workspace: a
                  submitted (not yet accepted) inspection stays editable, only acceptance locks it. */
-              serviceProofFromTransactionPhotos={
-                !workspaceForced && canEditPropertyData(role)
-              }
+              serviceProofFromTransactionPhotos={staffReview}
               includeRetiredFeatureKeys={
-                !workspaceForced && canEditPropertyData(role)
-                  ? CASE_STUDY_SPECIALIST_FEATURE_KEYS
-                  : undefined
+                staffReview ? CASE_STUDY_SPECIALIST_FEATURE_KEYS : undefined
               }
               /* «أسئلة دراسة الحالة — المعاين» like the wizard's step 3 (the flat page showed none
                  until 2026-11-04); read-only for anyone but the inspector editing. */

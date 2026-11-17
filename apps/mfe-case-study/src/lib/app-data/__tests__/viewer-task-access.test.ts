@@ -66,6 +66,27 @@ describe("resolveQueueTasksForViewer", () => {
     });
     expect(listed.map((t) => t.id).sort()).toEqual(["task-1", "task-fi"]);
   });
+
+  it("shows every task to the appraiser on all-transactions only (2026-11-17)", () => {
+    const inspectionTask: WorkflowTask = {
+      ...enfathTask,
+      id: "task-fi",
+      kind: "field-inspection",
+      assigneeRole: "field-inspector",
+    };
+    const all = resolveQueueTasksForViewer({
+      role: "real-estate-appraiser",
+      tasks: [enfathTask, inspectionTask],
+      pageId: "all-transactions",
+    });
+    expect(all.map((t) => t.id).sort()).toEqual(["task-1", "task-fi"]);
+    const elsewhere = resolveQueueTasksForViewer({
+      role: "real-estate-appraiser",
+      tasks: [enfathTask, inspectionTask],
+      pageId: "property-appraisal",
+    });
+    expect(elsewhere).toEqual([]);
+  });
 });
 
 describe("canOpenCaseStudyWorkspace", () => {

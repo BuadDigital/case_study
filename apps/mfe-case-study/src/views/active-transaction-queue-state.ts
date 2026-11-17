@@ -118,6 +118,8 @@ export type ActiveTransactionQueueConfig = {
     phase?: readonly string[];
     status?: readonly string[];
     assignmentType?: string;
+    /** «جميع العقارات»: every task, for a viewer holding that page (the appraiser, 2026-11-17). */
+    scope?: "all-transactions";
   };
 };
 
@@ -232,6 +234,7 @@ export function buildQueueServerQuery(input: {
       ? { assignmentType: config.serverQuery.assignmentType }
       : {}),
     ...(assigneeRole ? { assigneeRole } : {}),
+    ...(config.serverQuery?.scope ? { scope: config.serverQuery.scope } : {}),
     ...(q ? { q } : {}),
     sort,
     dir,

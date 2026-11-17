@@ -30,6 +30,20 @@ public interface ICaseStudyLookup
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// What: whether the actor is the appraiser of the property's transaction.
+    /// How it works: the property and every deed in its transaction are checked for a non-cancelled
+    /// appraisal task assigned to the actor's user id or distribution assignee id. After a merge, the
+    /// deeds sit in the target transaction.
+    /// Edge cases: an actor with no id, or an unknown property, is not assigned. Added 2026-11-17: since
+    /// the appraiser opens every property, he edits property data only where this is true.
+    /// </summary>
+    Task<bool> IsAssignedAppraiserAsync(
+        Guid propertyId,
+        string? userId,
+        string? distributionAssigneeId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// One-call read of everything Valuation needs for a property: aggregate fields,
     /// inventory lines, latest inspection workspace + inspector payload, latest
     /// deed↔nature outcome, and client display names. Includes soft-removed properties.

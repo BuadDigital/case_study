@@ -44,6 +44,19 @@ public static class AttachmentAccessRules
             && actor.Capabilities.Contains(PlatformCapabilities.SubmitPartyWork, StringComparer.Ordinal);
     }
 
+    /// <summary>
+    /// What: the property id inside a property upload's scope key (<c>{po}:{propertyId}</c>).
+    /// How it works: the first segment, split on <c>:</c> or <c>/</c>, that reads as a GUID.
+    /// Edge cases: null when no segment is a GUID. Added 2026-11-17 for the appraiser's assignment check
+    /// on uploads.
+    /// </summary>
+    public static Guid? PropertyIdOfScopeKey(string? scopeKey)
+    {
+        foreach (var part in (scopeKey ?? "").Split([':', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (Guid.TryParse(part, out var id)) return id;
+        return null;
+    }
+
     /// <summary>A row the registry knows as one of the property's documents (not a party's photo).</summary>
     public static bool IsPropertyDocument(string? scope, string? scopeKey, string? documentTypeKey)
     {
