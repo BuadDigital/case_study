@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@platform/ui-kit";
+import { Select, cn } from "@platform/ui-kit";
+import type { AreaMethodChoice } from "@platform/api-client";
+import { fmt } from "@platform/app-shared/format/number";
+import type { AreaMethodCellProps } from "./lib/area-cash-rates";
 import { commitKeys, tdLabelClass } from "./AdjustmentsMatrixCells.styles";
 import type { TouchProps } from "./AdjustmentsMatrixCells";
 import { useMatrixCellDraft } from "./useMatrixCellDraft";
@@ -26,6 +29,9 @@ export function LabelCell({
   offNote,
   areaFactor,
   onAreaFactorChange,
+  areaMethod,
+  onAreaMethodChange,
+  onCashRateChange,
   deleteKey,
   confirmDelete,
   onConfirmDelete,
@@ -48,6 +54,10 @@ export function LabelCell({
   /** Present only on the area row — “adjustment % per multiple / ratio”. */
   areaFactor?: number;
   onAreaFactorChange?: (value: string) => Promise<boolean> | void;
+  /** Area rows only (2026-11-16): the method picker and, on cash, the rate per m². */
+  areaMethod?: AreaMethodCellProps;
+  onAreaMethodChange?: (method: AreaMethodChoice) => void;
+  onCashRateChange?: (value: string) => Promise<boolean> | void;
   /** Two-step delete: × → “Delete? ✓ ×”. */
   deleteKey?: string;
   confirmDelete?: string | null;
@@ -187,8 +197,35 @@ export function LabelCell({
           {offNote}
         </div>
       ) : null}
-      {areaFactor != null && onAreaFactorChange ? (
-        <AreaFactorInput
+      {areaMethod && onAreaMethodChange ? (
+        <AreaMethodSelect
+          method={areaMethod}
+          locked={locked}
+          touch={touch}
+          onChange={onAreaMethodChange}
+        />
+      ) : null}
+      {areaMethod?.isCash && onCashRateChange ? (
+        <>
+          <AreaNumberInput
+            label="سعر المتر (ر.س)"
+            value={areaMethod.cashRate}
+            locked={locked}
+            touch={touch}
+            onCommit={onCashRateChange}
+          />
+          <div
+            className={cn(
+              "mt-1 text-[10.5px] font-medium",
+              areaMethod.cashRate ? "text-text-3" : "text-danger-text",
+            )}
+          >
+            {cashRateNote(areaMethod)}
+          </div>
+        </>
+      ) : areaFactor != null && onAreaFactorChange ? (
+        <AreaNumberInput
+          label="نسبة التسوية لكل مثل أو مضاعف (٪)"
           value={areaFactor}
           locked={locked}
           touch={touch}
@@ -199,24 +236,85 @@ export function LabelCell({
   );
 }
 
-function AreaFactorInput({
+const AREA_METHOD_OPTIONS: { value: AreaMethodChoice; label: string; cashOnly?: boolean }[] = [
+  { value: "auto", label: "آلي" },
+  { value: "multiplier", label: "المضاعف" },
+  { value: "amthal", label: "الأمثال" },
+  { value: "cash", label: "مبلغ نقدي", cashOnly: true },
+];
+
+/**
+ * What: «طريقة القياس» under an area row — آلي / المضاعف / الأمثال, and «مبلغ نقدي» on a whole-value table.
+ * How it works: the appraiser's pick is saved at once on the market header; «آلي» clears it.
+ * Edge cases: a cash pick on a per-m² table shows «آلي», the method actually in force there.
+ */
+function AreaMethodSelect({
+  method,
+  locked,
+  touch,
+  onChange,
+}: {
+  method: AreaMethodCellProps;
+  locked: boolean;
+  touch?: boolean;
+  onChange: (method: AreaMethodChoice) => void;
+}) {
+  const value =
+    !method.choice || (method.choice === "cash" && !method.cashAllowed) ? "auto" : method.choice;
+  return (
+    <label className={cn("mt-1.5 flex items-center gap-[7px]", touch && "mt-2.5 justify-between gap-3")}>
+      <span className="text-[10.5px] font-medium text-gold-d">طريقة القياس</span>
+      <Select
+        disabled={locked}
+        value={value}
+        onChange={(e) => onChange(e.target.value as AreaMethodChoice)}
+        className={cn(
+          "!w-auto rounded-[7px] !leading-normal font-bold text-heading",
+          touch ? "min-h-11 px-2 text-[16px]" : "!h-auto px-[7px] py-[4px] text-[12px]",
+        )}
+      >
+        {AREA_METHOD_OPTIONS.filter((o) => !o.cashOnly || method.cashAllowed).map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
+    </label>
+  );
+}
+
+/** Under a cash row's rate: its source, or what is missing. */
+function cashRateNote(method: AreaMethodCellProps): string {
+  const src = method.rateSource;
+  if (!method.cashRate) {
+    return src
+      ? `أدخل سعر المتر — المتاح ${fmt(src.rate)} ر.س ${src.label}`
+      : "أدخل سعر المتر — التسوية صفر حتى يُدخل";
+  }
+  if (!src) return "سعر يدوي";
+  return src.rate === method.cashRate
+    ? src.label
+    : `${src.label}: ${fmt(src.rate)} ر.س — المُدخل يدوي`;
+}
+
+function AreaNumberInput({
+  label,
   value,
   locked,
   touch,
   onCommit,
 }: {
-  value: number;
+  label: string;
+  value: number | null;
   locked: boolean;
   touch?: boolean;
   onCommit: (raw: string) => Promise<boolean> | void;
 }) {
-  const { text, change, flush, onKeyDown } = useMatrixCellDraft(String(value), onCommit);
+  const { text, change, flush, onKeyDown } = useMatrixCellDraft(value == null ? "" : String(value), onCommit);
 
   return (
     <label className={cn("mt-1.5 flex items-center gap-[7px]", touch && "mt-2.5 justify-between gap-3")}>
-      <span className="text-[10.5px] font-medium text-gold-d">
-        نسبة التسوية لكل مثل أو مضاعف (٪)
-      </span>
+      <span className="text-[10.5px] font-medium text-gold-d">{label}</span>
       <input
         dir="ltr"
         inputMode="decimal"

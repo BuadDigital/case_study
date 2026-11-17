@@ -24,6 +24,7 @@ import {
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { EvaluatorReportChoices } from "./evaluator-window-data";
 import { formatAmountNumberDisplay } from "./arabic-amount-words";
+import { formatCashAdjustment } from "./area-cash-adjustment";
 import {
   costGroupOf,
   costItemLabel,
@@ -592,6 +593,12 @@ export function formatSheetPct(n: number | null | undefined): string {
   return `${Number(n).toFixed(2)}٪`;
 }
 
+/**
+ * What: one comparable's figure on a factor row of section 19.
+ * How it works: the included line's percent; an area line on the cash method (2026-11-16) prints its
+ * amount in riyals instead, in the same cell — the report gains no row.
+ * Edge cases: a left-out line prints nothing.
+ */
 function includedPct(
   item: ValuationComparableSelectionDto,
   factorKey: string,
@@ -599,7 +606,9 @@ function includedPct(
   const line = item.market?.adjustmentLines?.find(
     (l) => l.isIncluded && l.factorKey === factorKey,
   );
-  return line ? formatSheetPct(line.percent) : "";
+  if (!line) return "";
+  if (line.amountSar != null) return formatCashAdjustment(line.amountSar);
+  return formatSheetPct(line.percent);
 }
 
 /** The comparable's description for one adjustment factor (compSpec), e.g. «الفيحاء» or «1». */

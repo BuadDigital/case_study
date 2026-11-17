@@ -274,8 +274,40 @@ public static class ValuationComparableSelectionRequestRules
             errors["annualMarketRatePct"] = "معدل تغير السوق السنوي يجب أن يكون بين 0 و 50";
         if (request.ValueRoundDecimals is < 0 or > MarketApproachRules.MaxValueRoundDecimals)
             errors["valueRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6";
+        if (!IsAreaMethodChoice(request.AreaAdjustmentMethod))
+            errors["areaAdjustmentMethod"] = UnknownAreaMethodAr;
+        if (!IsAreaMethodChoice(request.LandAreaAdjustmentMethod))
+            errors["landAreaAdjustmentMethod"] = UnknownAreaMethodAr;
+        if (request.AreaCashRateSar is < 0m or > AreaAdjustmentRules.MaxCashRateSar)
+            errors["areaCashRateSar"] = "سعر متر المباني يجب أن يكون بين 0 و 10,000,000 ر.س";
+        if (request.LandAreaCashRateSar is < 0m or > AreaAdjustmentRules.MaxCashRateSar)
+            errors["landAreaCashRateSar"] = "سعر متر الأرض يجب أن يكون بين 0 و 10,000,000 ر.س";
         return errors.Count == 0 ? null : errors;
     }
+
+    private const string UnknownAreaMethodAr = "طريقة قياس تسوية المساحة غير معروفة";
+
+    /// <summary>Not sent, «auto», or one of the known methods.</summary>
+    private static bool IsAreaMethodChoice(string? value) =>
+        value is null
+        || value.Trim().Equals(AreaAdjustmentMethods.Auto, StringComparison.OrdinalIgnoreCase)
+        || AreaAdjustmentMethods.IsKnown(value);
+
+    /// <summary>
+    /// What: the stored method of one area line after a save.
+    /// How it works: null (not sent) keeps the stored one; «auto» clears it, so the table chooses again;
+    /// a known method is stored normalised.
+    /// </summary>
+    private static string? NextAreaMethod(string? stored, string? sent) =>
+        sent is null
+            ? stored
+            : sent.Trim().Equals(AreaAdjustmentMethods.Auto, StringComparison.OrdinalIgnoreCase)
+                ? null
+                : AreaAdjustmentMethods.Normalize(sent);
+
+    /// <summary>A cash rate after a save: null keeps the stored one, 0 clears it.</summary>
+    private static decimal? NextCashRate(decimal? stored, decimal? sent) =>
+        sent is null ? stored : sent > 0m ? sent : null;
 
     /// <summary>
     /// New market-approach header seeded from organization defaults, falling back to the
@@ -328,6 +360,10 @@ public static class ValuationComparableSelectionRequestRules
             header.SubjectLandAreaSqm = landArea > 0m ? landArea : null;
         if (request.LandAreaFactorPct is >= 0.1m and <= 50m)
             header.LandAreaFactorPct = request.LandAreaFactorPct.Value;
+        header.AreaAdjustmentMethod = NextAreaMethod(header.AreaAdjustmentMethod, request.AreaAdjustmentMethod);
+        header.LandAreaAdjustmentMethod = NextAreaMethod(header.LandAreaAdjustmentMethod, request.LandAreaAdjustmentMethod);
+        header.AreaCashRateSar = NextCashRate(header.AreaCashRateSar, request.AreaCashRateSar);
+        header.LandAreaCashRateSar = NextCashRate(header.LandAreaCashRateSar, request.LandAreaCashRateSar);
         if (request.AnnualMarketRatePct is >= 0m and <= 50m)
             header.AnnualMarketRatePct = request.AnnualMarketRatePct.Value;
         if (request.ValueRoundDecimals is >= 0 and <= 6)

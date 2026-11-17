@@ -291,12 +291,19 @@ public static class ValuationModel
             e.Property(x => x.TwoAreaAdjustments).HasDefaultValue(false);
             e.Property(x => x.SubjectLandAreaSqm).HasPrecision(18, 2);
             e.Property(x => x.LandAreaFactorPct).HasPrecision(9, 4).HasDefaultValue(5m);
+            // 2026-11-16: the appraiser's area method per line (null = automatic) and the cash rates.
+            e.Property(x => x.AreaAdjustmentMethod).HasMaxLength(32);
+            e.Property(x => x.LandAreaAdjustmentMethod).HasMaxLength(32);
+            e.Property(x => x.AreaCashRateSar).HasPrecision(18, 2);
+            e.Property(x => x.LandAreaCashRateSar).HasPrecision(18, 2);
             e.Property(x => x.AnnualMarketRatePct).HasPrecision(9, 4);
             e.Property(x => x.ValueRoundDecimals);
             e.Property(x => x.MarketValueUnrounded).HasDefaultValue(false);
             e.Property(x => x.AnalysisNotes).HasMaxLength(4000);
             e.Property(x => x.SubjectSpecJson).HasColumnType("jsonb");
-            e.HasNonNegative("ValuationMarketApproaches", "SubjectAreaSqm", "SubjectLandAreaSqm");
+            e.HasNonNegative(
+                "ValuationMarketApproaches",
+                "SubjectAreaSqm", "SubjectLandAreaSqm", "AreaCashRateSar", "LandAreaCashRateSar");
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()

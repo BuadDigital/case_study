@@ -27,6 +27,11 @@ export type ValuationComparableAdjustmentLineDto = {
   factorKey: string;
   labelAr: string;
   percent: number;
+  /**
+   * An area line on the cash method (2026-11-16): its amount in SAR; `percent` then holds the same
+   * amount as a share of the price after the sequential adjustments. Null on every other line.
+   */
+  amountSar?: number | null;
   rationale: string;
   /** compSpec: comparable description for this factor. */
   descriptionAr?: string | null;
@@ -55,14 +60,20 @@ export type ValuationComparableMarketDto = {
   weightPct?: number | null;
   /** 3 — required when weightIsManual. */
   weightOverrideRationale?: string | null;
- /** multiplier | amthal — table-wide auto choice. */
+ /** multiplier | amthal | cash — the method in force (the appraiser's pick, else the table's automatic choice). */
   areaAdjustmentMethod: string;
- /** Auto area adjustment % (amthal / multiplier). */
+ /** Area adjustment % (amthal / multiplier); on cash, the amount as a share of the price. */
   suggestedAreaAdjustmentPct: number;
   /** The land-area line's own method (a built subject, 2026-11-15); "" when the table has no such line. */
   landAreaAdjustmentMethod?: string;
-  /** Auto land-area adjustment %; 0 while an area is missing. */
+  /** Land-area adjustment %; 0 while an area is missing. */
   suggestedLandAreaAdjustmentPct?: number;
+  /** The area line's cash amount (SAR) when its method is cash; 0 otherwise. */
+  suggestedAreaAdjustmentSar?: number;
+  /** The land-area line's cash amount (SAR) when its method is cash; 0 otherwise. */
+  suggestedLandAreaAdjustmentSar?: number;
+  /** Σ cash amounts of the included area lines — already inside `pricePerSqmAfterDifference`. */
+  sumCashAdjustmentSar?: number;
 };
 
 export type ValuationComparableSelectionDto = {
@@ -126,6 +137,16 @@ export type ValuationComparableSelectionListDto = {
   subjectLandAreaIsManual?: boolean;
   /** Frozen factor % of the land-area line. */
   landAreaFactorPct?: number;
+  /** The appraiser's method of the area line: multiplier | amthal | cash, or "" when automatic (2026-11-16). */
+  areaAdjustmentMethodChoice?: string;
+  /** The appraiser's method of the land-area line, or "" when automatic. */
+  landAreaAdjustmentMethodChoice?: string;
+  /** True when a cash amount can apply (the whole-property basis with area lines). */
+  cashAreaAdjustmentAllowed?: boolean;
+  /** Rate per m² (SAR) of the area line's cash method; null when not entered. */
+  areaCashRateSar?: number | null;
+  /** Rate per m² (SAR) of the land-area line's cash method; null when not entered. */
+  landAreaCashRateSar?: number | null;
   /** Frozen annual market rate % for mkt suggestion. */
   annualMarketRatePct?: number;
   /** Frozen market-value rounding exponent (10^n). */
@@ -145,6 +166,9 @@ export type ValuationAdjustmentFactorRationaleDto = {
   rationaleAr: string;
 };
 
+/** An area line's method as a save sends it — «auto» goes back to the table's automatic choice. */
+export type AreaMethodChoice = "multiplier" | "amthal" | "cash" | "auto";
+
 export type SaveValuationMarketApproachRequest = {
   subjectAreaSqm?: number | null;
  /** price_per_sqm (default) | whole_property. */
@@ -153,6 +177,14 @@ export type SaveValuationMarketApproachRequest = {
   /** The subject's land area for the land line; not sent keeps the stored one, 0 goes back to the deed's. */
   subjectLandAreaSqm?: number | null;
   landAreaFactorPct?: number | null;
+  /** The area line's method: multiplier | amthal | cash | auto (back to automatic); not sent keeps it. */
+  areaAdjustmentMethod?: AreaMethodChoice | null;
+  /** The land-area line's method; not sent keeps it. */
+  landAreaAdjustmentMethod?: AreaMethodChoice | null;
+  /** Rate per m² (SAR) of the area line's cash method; not sent keeps it, 0 clears it. */
+  areaCashRateSar?: number | null;
+  /** Rate per m² (SAR) of the land-area line's cash method; not sent keeps it, 0 clears it. */
+  landAreaCashRateSar?: number | null;
   annualMarketRatePct?: number | null;
   valueRoundDecimals?: number | null;
   analysisNotes?: string | null;

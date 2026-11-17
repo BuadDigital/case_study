@@ -24,6 +24,11 @@ public class ValuationComparableAdjustmentLineDto
     public required string FactorKey { get; init; }
     public required string LabelAr { get; init; }
     public decimal Percent { get; init; }
+    /// <summary>
+    /// An area line on the cash method (2026-11-16): its amount in SAR, and <see cref="Percent"/> holds the
+    /// same amount as a percent of the price after the sequential adjustments. Null on every other line.
+    /// </summary>
+    public decimal? AmountSar { get; init; }
     public string Rationale { get; init; } = "";
  /// <summary>Comparable description for this factor (compSpec) — "comparable description…".</summary>
     public string? DescriptionAr { get; init; }
@@ -68,6 +73,16 @@ public class ValuationComparableMarketDto
     public string LandAreaAdjustmentMethod { get; init; } = "";
  /// <summary>Computed land-area adjustment — applied automatically to the land-area row; 0 when an area is missing.</summary>
     public decimal SuggestedLandAreaAdjustmentPct { get; init; }
+    /// <summary>
+    /// The area line's cash amount (SAR) when its method is cash (2026-11-16) — added after the percent
+    /// chain; <see cref="SuggestedAreaAdjustmentPct"/> then holds the same amount as a percent of the
+    /// price after the sequential adjustments. 0 on a percent line.
+    /// </summary>
+    public decimal SuggestedAreaAdjustmentSar { get; init; }
+    /// <summary>The land-area line's cash amount (SAR) when its method is cash; 0 otherwise.</summary>
+    public decimal SuggestedLandAreaAdjustmentSar { get; init; }
+    /// <summary>Σ cash amounts of the included area lines, already inside <c>PricePerSqmAfterDifference</c>.</summary>
+    public decimal SumCashAdjustmentSar { get; init; }
 }
 
 public class ValuationComparableSelectionDto
@@ -143,6 +158,19 @@ public class ValuationComparableSelectionListDto
     public bool SubjectLandAreaIsManual { get; init; }
     /// <summary>Frozen factor % of the land-area line.</summary>
     public decimal LandAreaFactorPct { get; init; } = 5m;
+    /// <summary>
+    /// The appraiser's method of the (building's) area line: multiplier | amthal | cash, or "" when the
+    /// table chooses automatically (2026-11-16). The method in force is on each item's market.
+    /// </summary>
+    public string AreaAdjustmentMethodChoice { get; init; } = "";
+    /// <summary>The appraiser's method of the land-area line, or "" when automatic.</summary>
+    public string LandAreaAdjustmentMethodChoice { get; init; } = "";
+    /// <summary>True when a cash amount can apply on this table (the whole-property basis with area lines).</summary>
+    public bool CashAreaAdjustmentAllowed { get; init; }
+    /// <summary>Rate per m² (SAR) of the area line's cash method; null when not entered.</summary>
+    public decimal? AreaCashRateSar { get; init; }
+    /// <summary>Rate per m² (SAR) of the land-area line's cash method; null when not entered.</summary>
+    public decimal? LandAreaCashRateSar { get; init; }
     /// <summary>Frozen annual market rate % for mkt suggestion.</summary>
     public decimal AnnualMarketRatePct { get; init; } = 4m;
     /// <summary>Frozen market-value rounding exponent (10^n).</summary>
@@ -193,6 +221,20 @@ public class SaveValuationMarketApproachRequest
 
     /// <summary>Optional override of the land-area line's factor; null keeps existing.</summary>
     public decimal? LandAreaFactorPct { get; init; }
+
+    /// <summary>The area line's method: multiplier | amthal | cash | auto (back to the automatic choice); null keeps it.</summary>
+    [MaxLength(32, ErrorMessage = "طريقة قياس تسوية المساحة غير معروفة")]
+    public string? AreaAdjustmentMethod { get; init; }
+
+    /// <summary>The land-area line's method: multiplier | amthal | cash | auto; null keeps it.</summary>
+    [MaxLength(32, ErrorMessage = "طريقة قياس تسوية المساحة غير معروفة")]
+    public string? LandAreaAdjustmentMethod { get; init; }
+
+    /// <summary>Rate per m² (SAR) of the area line's cash method; null keeps it, 0 clears it.</summary>
+    public decimal? AreaCashRateSar { get; init; }
+
+    /// <summary>Rate per m² (SAR) of the land-area line's cash method; null keeps it, 0 clears it.</summary>
+    public decimal? LandAreaCashRateSar { get; init; }
 
     public decimal? AnnualMarketRatePct { get; init; }
 

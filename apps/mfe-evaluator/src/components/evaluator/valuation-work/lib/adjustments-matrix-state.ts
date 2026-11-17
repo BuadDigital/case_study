@@ -27,6 +27,8 @@ import {
   SEQUENTIAL_SET,
   factorDescriptor,
 } from "./factor-registry";
+import type { AreaCashRateSource, AreaMethodCellProps } from "./area-cash-rates";
+import type { AreaLine } from "./matrix-actions";
 import { marketSubjectAreaLabel, type MarketSubjectKind } from "./market-subject";
 import { weightsSumTo100 } from "./weights";
 
@@ -67,11 +69,30 @@ export type MatrixBasisView = {
   subjectLandArea: number | null;
   /** Under the subject's land area: where the figure came from. */
   subjectLandAreaNote: string;
+  /** The appraiser's pick per area row — "" while the table chooses automatically (2026-11-16). */
+  areaMethodChoice: string;
+  landAreaMethodChoice: string;
+  /** The cash method can be offered: a whole-value table with area rows. */
+  cashAllowed: boolean;
+  /** The method in force is cash on that row. */
+  areaIsCash: boolean;
+  landAreaIsCash: boolean;
+  /** The rate per m² each cash row multiplies; null while not entered. */
+  areaCashRate: number | null;
+  landAreaCashRate: number | null;
 };
 
-/** «طريقة المضاعف — آلية» / «طريقة الأمثال — آلية», as the server chose it for one area row. */
-function areaMethodLabel(method: string | null | undefined): string {
-  return method === "multiplier" ? "طريقة المضاعف — آلية" : "طريقة الأمثال — آلية";
+/**
+ * What: the line under an area row's name — which method is in force and who chose it.
+ * How it works: «طريقة المضاعف — آلية» while the table chooses; «— اختيار المقيّم» once the appraiser
+ * picked it (2026-11-16); a cash row says what it multiplies.
+ * Edge cases: a cash pick on a per-m² table is not in force there — the table's automatic choice is,
+ * so the line says «آلية» (found in the browser run: it said «اختيار المقيّم» beside «آلي»).
+ */
+function areaMethodLabel(method: string | null | undefined, chosen: string | null | undefined): string {
+  if (method === "cash") return "مبلغ نقدي = فرق المساحة × سعر المتر";
+  const name = method === "multiplier" ? "طريقة المضاعف" : "طريقة الأمثال";
+  return `${name} — ${chosen && chosen === method ? "اختيار المقيّم" : "آلية"}`;
 }
 
 /** Comparison-basis readouts shown in the matrix header and output strip. */
@@ -127,12 +148,22 @@ export function matrixBasisView(
     areaMethod:
       !isUnit && !twoAreas
         ? "لا تسوية مساحة — المقارنة على قيمة العقار كاملة"
-        : areaMethodLabel(adopted[0]?.market?.areaAdjustmentMethod),
+        : areaMethodLabel(adopted[0]?.market?.areaAdjustmentMethod, selection.areaAdjustmentMethodChoice),
     areaFactor: selection.areaFactorPct ?? 5,
     twoAreas,
     areaRowLabel: !twoAreas ? "المساحة" : kind === "unit" ? "مساحة الشقة" : "مساحة المباني",
-    landAreaMethod: areaMethodLabel(adopted[0]?.market?.landAreaAdjustmentMethod),
+    landAreaMethod: areaMethodLabel(
+      adopted[0]?.market?.landAreaAdjustmentMethod,
+      selection.landAreaAdjustmentMethodChoice,
+    ),
     landAreaFactor: selection.landAreaFactorPct ?? 5,
+    areaMethodChoice: selection.areaAdjustmentMethodChoice ?? "",
+    landAreaMethodChoice: selection.landAreaAdjustmentMethodChoice ?? "",
+    cashAllowed: selection.cashAreaAdjustmentAllowed === true,
+    areaIsCash: adopted[0]?.market?.areaAdjustmentMethod === "cash",
+    landAreaIsCash: adopted[0]?.market?.landAreaAdjustmentMethod === "cash",
+    areaCashRate: selection.areaCashRateSar ?? null,
+    landAreaCashRate: selection.landAreaCashRateSar ?? null,
     subjectLandArea,
     subjectLandAreaNote:
       subjectLandArea == null
@@ -140,6 +171,34 @@ export function matrixBasisView(
         : selection.subjectLandAreaIsManual
           ? "مساحة الأرض — مُدخلة"
           : "مساحة الأرض — من الصك",
+  };
+}
+
+/** Where each area row's cash rate can come from — the land comparables, the cost approach. */
+export type AreaCashRateSources = { area: AreaCashRateSource | null; land: AreaCashRateSource | null };
+
+/** What one area row's method picker shows (2026-11-16) — shared by the table and the phone cards. */
+export function areaMethodCellProps(
+  view: Pick<
+    MatrixBasisView,
+    | "areaMethodChoice"
+    | "landAreaMethodChoice"
+    | "cashAllowed"
+    | "areaIsCash"
+    | "landAreaIsCash"
+    | "areaCashRate"
+    | "landAreaCashRate"
+  >,
+  line: AreaLine,
+  sources?: AreaCashRateSources,
+): AreaMethodCellProps {
+  const land = line === "land";
+  return {
+    choice: land ? view.landAreaMethodChoice : view.areaMethodChoice,
+    cashAllowed: view.cashAllowed,
+    isCash: land ? view.landAreaIsCash : view.areaIsCash,
+    cashRate: land ? view.landAreaCashRate : view.areaCashRate,
+    rateSource: sources?.[line] ?? null,
   };
 }
 
