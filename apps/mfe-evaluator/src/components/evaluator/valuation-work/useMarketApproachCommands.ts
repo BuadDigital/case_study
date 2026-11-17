@@ -44,15 +44,29 @@ export function useMarketApproachCommands(
     marketKind,
     selection,
     cost,
+    reload,
   } = data;
   const { writeContext } = saver;
-  const draft = { subjectArea, adjustmentBasis, analysisNotes };
+  const draft = {
+    subjectArea,
+    adjustmentBasis,
+    analysisNotes,
+    storedAreaSqm: selection?.subjectAreaSqm ?? null,
+  };
 
-  /** Save with the saving flag, toast the failure, adopt the returned selection. */
+  /**
+   * What: save the header with the saving flag, toast the failure, adopt the returned selection.
+   * How it works: `refreshDerived` also reloads the land table, the cost approach and the final
+   * opinion silently. The land table inside the cost approach reads its area factor and method
+   * from this header too.
+   * Edge cases: fixed 2026-11-17. Without that reload, a change made in the land table only
+   * refreshed the market table, and the land table kept showing the old method until the page
+   * reloaded.
+   */
   async function saveApproach(
     extra: Partial<SaveValuationMarketApproachRequest>,
     errorMessage: string,
-    opts?: { requireUnlocked?: boolean },
+    opts?: { requireUnlocked?: boolean; refreshDerived?: boolean },
   ): Promise<boolean> {
     const ctx = writeContext(opts);
     if (!ctx) return false;
@@ -69,6 +83,7 @@ export function useMarketApproachCommands(
     }
     setSelection(res.data);
     scheduleInvalidateEvaluatorReportOutput(queryClient);
+    if (opts?.refreshDerived) await reload({ silent: true, scope: "derived" });
     return true;
   }
 
@@ -123,7 +138,7 @@ export function useMarketApproachCommands(
     await saveApproach(
       line === "land" ? { landAreaFactorPct: pct } : { areaFactorPct: pct },
       line === "land" ? "تعذّر حفظ معامل مساحة الأرض" : "تعذّر حفظ معامل المساحة",
-      { requireUnlocked: true },
+      { requireUnlocked: true, refreshDerived: true },
     );
   }
 
@@ -146,7 +161,10 @@ export function useMarketApproachCommands(
         else extra.areaCashRateSar = seed.rate;
       }
     }
-    await saveApproach(extra, "تعذّر حفظ طريقة قياس المساحة", { requireUnlocked: true });
+    await saveApproach(extra, "تعذّر حفظ طريقة قياس المساحة", {
+      requireUnlocked: true,
+      refreshDerived: true,
+    });
   }
 
   /** An area row's rate per m² on the cash method — blank or zero clears it. */

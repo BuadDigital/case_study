@@ -33,24 +33,34 @@ import {
 export type FactorRow = { factorKey: string; labelAr: string };
 export type SavedLine = ReturnType<typeof lineForSave>;
 
-/** The three market-approach fields the shell keeps as drafts. */
+/** The three market-approach fields the shell keeps as drafts, and the area the server holds. */
 type MarketApproachDraft = {
   subjectArea: string;
   adjustmentBasis: string;
   analysisNotes: string;
+  storedAreaSqm?: number | null;
 };
 
-/** Market-approach save body — every settings command layers its own field on top of the drafts. */
+/**
+ * What: the market-approach save body. Every settings command layers its own field on top of the drafts.
+ * How it works: the subject area is the measured draft when positive, else the area already stored.
+ * Edge cases: with neither, the area goes as null (no area), never 0. Fixed 2026-11-17: a cost-only
+ * valuation of a building with no floor area has a blank draft. Its land table saves its area method
+ * and factor on this header, and the 0 the blank draft became was refused on the per-m² basis
+ * («مساحة العقار محل التقييم يجب أن تكون أكبر من صفر»), so the land table could not be changed.
+ */
 export function marketApproachBody(
   draft: MarketApproachDraft,
   extra?: Partial<SaveValuationMarketApproachRequest>,
 ): SaveValuationMarketApproachRequest {
   const area = parseDecimal(draft.subjectArea);
+  const stored = draft.storedAreaSqm;
   const notes = isSeedMarketAnalysisNotes(draft.analysisNotes)
     ? null
     : draft.analysisNotes.trim() || null;
   return {
-    subjectAreaSqm: Number.isFinite(area) ? area : null,
+    subjectAreaSqm:
+      Number.isFinite(area) && area > 0 ? area : stored != null && stored > 0 ? stored : null,
     adjustmentBasis: draft.adjustmentBasis,
     analysisNotes: notes,
     ...extra,
