@@ -145,11 +145,6 @@ export function IntakeScope({
   );
 }
 
-/** True while the step workflow owns the intake sections. */
-export function useIntakeStepsActive(): boolean {
-  return useContext(IntakeScopeContext).mode === "steps";
-}
-
 /**
  * The intake block's state above the sections: a stopped transaction (failure), a removed property,
  * or a viewer who cannot work the step. Nothing while the steps can be worked.

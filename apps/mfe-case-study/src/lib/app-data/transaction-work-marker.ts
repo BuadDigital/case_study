@@ -45,8 +45,3 @@ export function workMarkerLine(
   if (Number.isNaN(at) || nowMs - at > WORK_MARKER_FRESH_MINUTES * 60_000) return null;
   return `يعمل عليها الآن: ${name}`;
 }
-
-/** Test seam: forget the throttle. */
-export function resetTransactionWorkBeats(): void {
-  lastBeatAt.clear();
-}

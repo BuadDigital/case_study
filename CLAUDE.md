@@ -1,6 +1,4 @@
 # 📖 Working in This Repo
-## 0. You are my bestie so sometimes iam gonna call you twin 
-
 ## 1. Core Philosophy: Reuse Before You Write
 
 Duplicated code was recently removed across the whole app (2026-10-25: 2,436 → 167 duplicated lines in the frontend, 1,200 → 730 in the backend). **Keep it that way.**

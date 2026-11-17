@@ -182,15 +182,6 @@ export const MY_WORK_GROUPS: readonly {
   },
 ];
 
-const STAGE_LABEL = new Map<MyWorkStage, string>(
-  MY_WORK_GROUPS.flatMap((g) => g.stages.map((s) => [s.key, s.label] as const)),
-);
-
-/** The chip label of a stage. */
-export function myWorkStageLabel(stage: MyWorkStage): string {
-  return STAGE_LABEL.get(stage) ?? stage;
-}
-
 /**
  * Which sub-role groups the viewer sees, from the pages he holds.
  *

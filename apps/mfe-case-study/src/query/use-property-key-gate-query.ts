@@ -3,7 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   PropertyKeyGateSources,
-  PropertyKeyHandedValues,
   PropertyKeysStatuses,
   type PropertyKeyGateDto,
 } from "@platform/api-client";
@@ -50,13 +49,6 @@ export function keysStatusLabelAr(value: string): string {
   if (value === PropertyKeysStatuses.NotRequired) return "غير مطلوبة";
   if (value === PropertyKeysStatuses.Pending) return "بانتظار";
   if (value === PropertyKeysStatuses.Blocked) return "متعذّر";
-  return value?.trim() || "لم تُحدَّد بعد";
-}
-
-export function keyHandedLabelAr(value: string): string {
-  if (value === PropertyKeyHandedValues.Yes) return "تم التسليم";
-  if (value === PropertyKeyHandedValues.No) return "لم يُسلَّم";
-  if (value === PropertyKeysStatuses.NotRequired) return "غير مطلوب";
   return value?.trim() || "لم تُحدَّد بعد";
 }
 

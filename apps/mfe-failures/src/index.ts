@@ -4,7 +4,6 @@ export { FailuresView } from "./views/FailuresView";
 export { FailureTypesView } from "./views/FailureTypesView";
 export { FailureReportForm } from "./components/failures/FailureReportForm";
 export { FailureRaisePanel } from "./components/failures/FailureRaisePanel";
-export { FinalFailureDialog } from "./components/failures/FinalFailureDialog";
 export {
   FailureRaiseFields,
   failurePayloadFromProblemType,
@@ -28,7 +27,6 @@ export {
   groupSimilarFailureRecords,
   isPanelBlockingFailure,
 } from "./lib/failures-labels";
-export type { GroupedFailureRow } from "./lib/failures-labels";
 export * from "./lib/failure-types-data";
 export * from "./lib/failure-category-role-visibility";
 export * from "./lib/failure-property-match";

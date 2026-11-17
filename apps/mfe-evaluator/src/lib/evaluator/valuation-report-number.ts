@@ -9,6 +9,3 @@ import { localDateIso } from "@platform/app-shared/format/date";
 export function formatValuationReportIssueDateIso(issuedAt: Date = new Date()): string {
   return localDateIso(issuedAt);
 }
-
-/** What the screens show where the number will be, before the server fixed it. */
-export const REPORT_NUMBER_PENDING_AR = "يُثبَّت عند الاعتماد";

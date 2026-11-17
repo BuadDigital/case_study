@@ -1,7 +1,4 @@
-import {
-  type RowMoreMenuItem,
-  type StatusPillStyle,
-} from "@platform/ui-kit";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
 import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-sub-roles";
@@ -38,24 +35,6 @@ export function allTransactionsPhaseLabel(task: WorkflowTask): string {
   if (task.phase === "case-study") return "دراسة الحالة";
   if (task.phase === "obstruction") return "تعذّر";
   return taskKindLabel(task.kind);
-}
-
-export function allTransactionsPhaseStyle(task: WorkflowTask): StatusPillStyle {
-  const label = allTransactionsPhaseLabel(task);
-  if (label === "مكتمل") {
-    return { base: "var(--success)", fg: "var(--success-text)" };
-  }
-  if (label === "البورصة" || label === "تعذّر") {
-    return { base: "var(--amber)", fg: "var(--amber-text)" };
-  }
-  if (label === "البيانات الأولية") {
-    return { base: "#8a8d96", fg: "#696c75" };
-  }
-  if (label === "ملغاة") {
-    return { base: "var(--red)", fg: "var(--red-text)" };
-  }
-  // Case study / distribution / government review / party stages
-  return { base: "var(--gold)", fg: "var(--gold-d)" };
 }
 
 /** Deed cell: `Deed {n}` as in Case Study.html. */

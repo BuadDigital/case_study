@@ -1,5 +1,4 @@
 export { partyEngineeringSurveyExtensions } from "./extensions/party-engineering-survey-extensions";
-export { EngineeringSurveyWorkPanel } from "./components/EngineeringSurveyWorkPanel";
 export { reopenEngineeringSurveySubmission } from "./lib/engineering-survey-submission-commands";
 export { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 export {

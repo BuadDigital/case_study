@@ -3,12 +3,8 @@
 export { partyAppraisalExtensions } from "./extensions/party-appraisal-extensions";
 export { ensureEvaluatorRuntimeBridgeRegistered } from "./extensions/register-evaluator-runtime-bridge";
 
-export { EvaluatorWindow } from "./components/evaluator/EvaluatorWindow";
-export { EvaluatorValuationReportTab } from "./components/evaluator/EvaluatorValuationReportTab";
-export { AppraiserUploadTab } from "./components/evaluator/AppraiserUploadTab";
 
 export { buildAppraiserRecallMenuItems } from "./lib/evaluator/appraiser-recall-menu-items";
-export { buildAppraiserQueueRowMoreItems } from "./lib/evaluator/appraiser-queue-row-menu";
 
 export * from "./lib/evaluator/evaluator-window-data";
 export * from "./lib/evaluator/evaluator-submission-model";
