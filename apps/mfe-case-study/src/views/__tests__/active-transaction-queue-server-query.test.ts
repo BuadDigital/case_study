@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  allTxRowsForStatusFilter,
   buildQueueFilterOptions,
   buildQueuePageQuery,
   buildQueueServerQuery,
@@ -15,6 +16,10 @@ import {
   type ActiveTransactionQueueConfig,
 } from "../active-transaction-queue-state";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
+import {
+  ALL_TX_PARTIES,
+  type AllTransactionsQueueRowMeta,
+} from "../../lib/app-data/all-transactions-queue";
 
 function config(
   over: Partial<ActiveTransactionQueueConfig> = {},
@@ -167,6 +172,23 @@ describe("buildQueueServerQuery", () => {
     });
     expect(query.scope).toBe("all-transactions");
     expect(query.assigneeRole).toBeUndefined();
+  });
+
+  it("filters «جميع العقارات» by the party a row waits at, else by phase (2026-11-17)", () => {
+    const row = (id: string, waitingParties: AllTransactionsQueueRowMeta["waitingParties"], phaseLabel: string) =>
+      ({ task: { id }, waitingParties, phaseLabel }) as unknown as AllTransactionsQueueRowMeta;
+    const rows = [row("a", ["fi", "es"], "قيد الدراسة"), row("b", ["ap"], "قيد الدراسة"), row("c", [], "مكتملة")];
+
+    const byParty = allTxRowsForStatusFilter(rows, "المكتب الهندسي");
+    expect(byParty.rows.map((r) => r.task.id)).toEqual(["a"]);
+    expect(byParty.phaseFilter).toBe("");
+
+    const byPhase = allTxRowsForStatusFilter(rows, "مكتملة");
+    expect(byPhase.rows).toHaveLength(3);
+    expect(byPhase.phaseFilter).toBe("مكتملة");
+    expect(ALL_TX_PARTIES.map((p) => p.label)).toEqual([
+      "التنسيق", "المعاينة", "المكتب الهندسي", "الدراسة", "التقييم", "الرفع",
+    ]);
   });
 
   it("omits the status filter when the screen lists every status", () => {

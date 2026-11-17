@@ -323,6 +323,25 @@ export function ComparablePropertyEntryFields({
     return true;
   }
 
+  /*
+   * What: the host's `pinAt`, the coordinates pasted in the bank search, pins the new comparable there.
+   * How it works: once per pair, through the same path as typed coordinates (the pin moves, the map
+   * follows, the district is looked up). Then «تثبيت الموقع» confirms it as usual.
+   * Edge cases: a location already confirmed is not moved; the toast says how to change it. Added
+   * 2026-11-17.
+   */
+  const pinAtKey = bankBrowse?.pinAt ? `${bankBrowse.pinAt.lat},${bankBrowse.pinAt.lng}` : null;
+  useEffect(() => {
+    if (!pinAtKey || disabled) return;
+    if (mapPinned) {
+      showToast("موقع المقارن مثبت — اضغط «تعديل» لتغييره", "info");
+      return;
+    }
+    applyTypedCoords(pinAtKey, { reportInvalid: false });
+    // Once per pair: the pin and the lookup read the latest draft through draftRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinAtKey]);
+
   // Omar 2026-11-11: the entry fields appear only once the comparable's location is chosen and
   // pinned. A form without a map has no location step, so its fields show at once.
   const fieldsShown = mapPinned || showCoordinates === false;

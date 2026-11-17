@@ -7,8 +7,8 @@ namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// The distribution lock (Omar 2026-11-15): once a deed is distributed to the parties, the fields they
-/// work from — deed / registry number and date, area, boundaries, map link, type and classification —
-/// cannot change; administrative fields stay editable.
+/// work from — deed / registry number and date, boundaries, map link, type and classification — cannot
+/// change; administrative fields stay editable, and since 2026-11-17 the area too.
 /// </summary>
 public class PropertyDistributionLockTests
 {
@@ -30,7 +30,8 @@ public class PropertyDistributionLockTests
 
         var errors = PropertyDistributionLockRules.Errors(before, after);
 
-        Assert.Equal(["area", "northBoundary"], errors.Keys.Order().ToArray());
+        // The area left the lock (Omar 2026-11-17); the boundary is still locked.
+        Assert.Equal(["northBoundary"], errors.Keys.Order().ToArray());
         Assert.All(errors.Values, m => Assert.Equal(PropertyDistributionLockRules.LockedMessage, m));
     }
 
@@ -45,16 +46,28 @@ public class PropertyDistributionLockTests
     }
 
     [Fact]
-    public async Task A_distributed_deed_refuses_a_bourse_save_that_changes_the_area()
+    public async Task A_distributed_deed_still_saves_a_corrected_area()
     {
+        // Omar 2026-11-17: the area is corrected after the distribution too (change log, no notification).
         var (bundle, propertyId) = await SeedAsync(distributed: true);
         var service = TestWorkOrderServiceFactory.Create(bundle, failures: TestBoundedContexts.CreateFailureService(bundle));
 
         var (saved, errors) = await service.CompleteBourseDataAsync(Po, propertyId, Bourse(area: "750"), CancellationToken.None);
 
+        Assert.Null(errors);
+        Assert.Equal("750", saved!.Area);
+    }
+
+    [Fact]
+    public async Task A_distributed_deed_refuses_a_bourse_save_that_changes_the_type()
+    {
+        var (bundle, propertyId) = await SeedAsync(distributed: true);
+        var service = TestWorkOrderServiceFactory.Create(bundle, failures: TestBoundedContexts.CreateFailureService(bundle));
+        var (saved, errors) = await service.CompleteBourseDataAsync(
+            Po, propertyId, Bourse(area: "500", propertyType: "عمارة"), CancellationToken.None);
+
         Assert.Null(saved);
-        Assert.Equal(PropertyDistributionLockRules.LockedMessage, errors!["area"]);
-        Assert.Equal("500", bundle.CaseStudy.WorkOrderProperties.Single(p => p.Id == propertyId).Area);
+        Assert.Equal(PropertyDistributionLockRules.LockedMessage, errors!["propertyType"]);
     }
 
     [Fact]
@@ -113,13 +126,13 @@ public class PropertyDistributionLockTests
         return (bundle, propertyId);
     }
 
-    private static UpdatePropertyBourseRequest Bourse(string area) => new()
+    private static UpdatePropertyBourseRequest Bourse(string area, string propertyType = "فيلا") => new()
     {
         City = "الرياض",
         Region = "الرياض",
         District = "العليا",
         Classification = "سكني",
-        PropertyType = "فيلا",
+        PropertyType = propertyType,
         Area = area,
         DeedStatus = "فعال",
         BourseDeedImageFileName = "deed.pdf",

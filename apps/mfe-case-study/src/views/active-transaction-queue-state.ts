@@ -31,6 +31,28 @@ import { buildAllTransactionsQueueRowMeta } from "../lib/app-data/all-transactio
 import { appraiserQueueStatusGroup } from "../lib/evaluator-bridge";
 import { transactionNumberOf } from "../lib/app-data/transaction-number";
 import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-sub-roles";
+import {
+  ALL_TX_PARTIES,
+  type AllTransactionsQueueRowMeta,
+} from "../lib/app-data/all-transactions-queue";
+
+/**
+ * What: «جميع العقارات»'s rows for the status filter when it names a party.
+ * How it works: a party option keeps the rows waiting at that party (`waitingParties`, the same
+ * count the cards show), and the phase filter is cleared. Any other option is a phase label, so the
+ * rows pass unchanged and the phase filter carries it.
+ * Edge cases: a transaction waiting at two parties shows under both. No party label equals a phase
+ * label.
+ */
+export function allTxRowsForStatusFilter(
+  rows: AllTransactionsQueueRowMeta[],
+  statusFilter: string,
+): { rows: AllTransactionsQueueRowMeta[]; phaseFilter: string } {
+  const party = ALL_TX_PARTIES.find((p) => p.label === statusFilter)?.party;
+  return party
+    ? { rows: rows.filter((r) => r.waitingParties.includes(party)), phaseFilter: "" }
+    : { rows, phaseFilter: statusFilter };
+}
 
 export const APPRAISAL_STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "drafting", label: "قيد التقييم — بانتظار إصدار الدراسة" },
@@ -502,7 +524,8 @@ export function buildQueueFilterOptions({
   if (flags.isAllTransactionsTable) {
     for (const row of allTransactionsRowMeta) {
       types.push(row.assignmentType);
-      statuses.push(row.phaseLabel);
+      // A row waiting at a party shows that party, already an option; only the other states are added.
+      if (row.waitingParties.length === 0) statuses.push(row.phaseLabel);
     }
   } else if (flags.isDistributionTable) {
     for (const row of distributionRowMeta) types.push(row.assignmentType);
@@ -525,7 +548,10 @@ export function buildQueueFilterOptions({
       : uniqueSortedLabels(types),
     statusOptions: flags.isPropertyAppraisalTable
       ? APPRAISAL_STATUS_FILTERS.map((o) => o.label)
-      : uniqueSortedLabels(statuses),
+      : flags.isAllTransactionsTable
+        ? // The six parties first (2026-11-17), then the states of rows waiting at none.
+          [...ALL_TX_PARTIES.map((p) => p.label), ...uniqueSortedLabels(statuses)]
+        : uniqueSortedLabels(statuses),
   };
 }
 

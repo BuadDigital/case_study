@@ -29,6 +29,7 @@ import { ActiveTransactionPageLayout } from "../components/active-transactions/A
 import { SituationBar } from "../components/active-transactions/ActiveTransactionsSituationBar";
 import type { PageSituationCardDef } from "../lib/app-data/active-transaction-page-situation";
 import {
+  ALL_TX_PARTIES,
   countAllTransactionsByParty,
   type AllTransactionsQueueRowMeta,
 } from "../lib/app-data/all-transactions-queue";
@@ -78,14 +79,18 @@ type PanelRenderProps = {
  * «المعاملات النشطة»'s cards (Omar 2026-11-15): how many live transactions wait at each party, at the
  * top of the page as «أعمالي» shows its cards. Review and upload are one role, one card.
  */
-const PARTY_CARDS: (PageSituationCardDef & { key: TransactionParty })[] = [
-  { key: "co", label: "التنسيق", sub: "إدخال وتوزيع واستلام", tone: "blue", icon: "clipboard" },
-  { key: "fi", label: "المعاينة", sub: "بانتظار المعاين", tone: "blue", icon: "key" },
-  { key: "es", label: "المكتب الهندسي", sub: "بانتظار المكتب", tone: "blue", icon: "building" },
-  { key: "st", label: "الدراسة", sub: "عند دارس العقار", tone: "blue", icon: "clipboard" },
-  { key: "ap", label: "التقييم", sub: "عند المقيّم", tone: "blue", icon: "currency" },
-  { key: "rv", label: "الرفع", sub: "المراجعة والإيداع والرفع", tone: "blue", icon: "check" },
-];
+const PARTY_CARD_LOOK: Record<TransactionParty, Omit<PageSituationCardDef, "key" | "label">> = {
+  co: { sub: "إدخال وتوزيع واستلام", tone: "blue", icon: "clipboard" },
+  fi: { sub: "بانتظار المعاين", tone: "blue", icon: "key" },
+  es: { sub: "بانتظار المكتب", tone: "blue", icon: "building" },
+  st: { sub: "عند دارس العقار", tone: "blue", icon: "clipboard" },
+  ap: { sub: "عند المقيّم", tone: "blue", icon: "currency" },
+  rv: { sub: "المراجعة والإيداع والرفع", tone: "blue", icon: "check" },
+};
+// The labels are the status filter's party options too (ALL_TX_PARTIES, 2026-11-17).
+const PARTY_CARDS: (PageSituationCardDef & { key: TransactionParty })[] = ALL_TX_PARTIES.map(
+  ({ party, label }) => ({ key: party, label, ...PARTY_CARD_LOOK[party] }),
+);
 
 /**
  * The party cards over the staff's «المعاملات النشطة».

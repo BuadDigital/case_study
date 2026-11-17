@@ -53,6 +53,7 @@ import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-wor
 import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import { useQueuePartyProgress } from "./useQueuePartyProgress";
 import {
+  allTxRowsForStatusFilter,
   buildListedQueue,
   buildPoByNumber,
   buildQueueFilterOptions,
@@ -377,9 +378,11 @@ export function useActiveTransactionQueueData({
 
   const filteredListed = useMemo(() => {
     if (isAllTransactionsTable) {
-      return filterAllTransactionsQueueRows(allTransactionsRowMeta, {
+      // A party option keeps the rows waiting at that party; a phase option filters by phase.
+      const byStatus = allTxRowsForStatusFilter(allTransactionsRowMeta, statusFilter);
+      return filterAllTransactionsQueueRows(byStatus.rows, {
         search: deferredSearch,
-        statusFilter,
+        statusFilter: byStatus.phaseFilter,
         typeFilter,
       });
     }

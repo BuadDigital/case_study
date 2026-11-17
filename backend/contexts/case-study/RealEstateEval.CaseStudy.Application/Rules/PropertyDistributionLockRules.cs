@@ -4,9 +4,11 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// The initial-data fields the parties work from, locked once the deed's distribution is confirmed
-/// (Omar 2026-11-15, option 2): the deed / registry number and date, the area, the boundaries, the
-/// map link, and the type and classification. Administrative fields (contacts, request number,
-/// documents, owner, court …) stay editable.
+/// (Omar 2026-11-15, option 2): the deed / registry number and date, the boundaries, the map link, and
+/// the type and classification. Administrative fields (contacts, request number, documents, owner,
+/// court …) stay editable. Changed 2026-11-17 (Omar): the area left the lock. The case specialist and
+/// the assigned appraiser correct it after the distribution; the change log records it and no party is
+/// notified.
 /// </summary>
 /// <remarks>
 /// How it works: <see cref="Errors"/> diffs the property before and after a save with
@@ -28,7 +30,6 @@ public static class PropertyDistributionLockRules
         "deedDate",
         "realEstateRegNumber",
         "realEstateRegDate",
-        "area",
         "locationMapUrl",
         "propertyType",
         "classification",

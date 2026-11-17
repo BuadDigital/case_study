@@ -22,15 +22,16 @@ describe("distribution lock (Omar 2026-11-15)", () => {
   });
 
   it("locks the fields the parties work from, not the administrative ones", () => {
-    for (const key of ["deedNumber", "deedDate", "area", "locationMapUrl", "propertyType", "classification", "northBoundary"] as const) {
+    for (const key of ["deedNumber", "deedDate", "locationMapUrl", "propertyType", "classification", "northBoundary"] as const) {
       expect(DISTRIBUTION_LOCKED_KEYS.has(key)).toBe(true);
     }
-    for (const key of ["contacts", "requestNumber", "ownerName", "court", "assignmentDocFileNames"] as const) {
+    // The area left the lock (Omar 2026-11-17): the specialist and the appraiser correct it.
+    for (const key of ["area", "contacts", "requestNumber", "ownerName", "court", "assignmentDocFileNames"] as const) {
       expect(DISTRIBUTION_LOCKED_KEYS.has(key)).toBe(false);
     }
   });
 
-  it("a whole-object replace keeps the locked values and takes the rest", () => {
+  it("a whole-object replace keeps the locked values and the area, and takes the rest", () => {
     const current = { ...emptyProperty(), deedNumber: "111", area: "500", requestNumber: "R-1" };
     const incoming = { ...emptyProperty(), deedNumber: "999", area: "800", requestNumber: "R-2" };
     const kept = keepDistributionLockedFields(current, incoming);

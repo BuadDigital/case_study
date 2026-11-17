@@ -33,6 +33,12 @@ export type ComparableBankBrowse = {
   autoOpenId?: string | null;
   /** The map came to rest on a new centre. */
   onCenterChange: (lat: number, lng: number) => void;
+  /**
+   * A spot the host asks the form to pin, e.g. coordinates pasted in the search (Omar 2026-11-17: «لما
+   * أحط الإحداثي ينضاف»). The form places the new comparable's pin there, as a press on the map, once
+   * per value.
+   */
+  pinAt?: { lat: number; lng: number } | null;
   /** What can be done with the pressed comparable. */
   action: (comparable: ComparablePropertyDto) => { label: string; busy: boolean; run: () => void };
 };
