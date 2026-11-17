@@ -36,7 +36,13 @@ import {
   nextCustomFactorKey,
 } from "./lib/factor-registry";
 import type { MatrixDispatch } from "./lib/matrix-actions";
-import { afterWeightValue, fmtChainValue } from "./lib/adjustments-matrix-state";
+import {
+  afterWeightValue,
+  areaMethodCellProps,
+  fmtChainValue,
+  type AreaCashRateSources,
+} from "./lib/adjustments-matrix-state";
+import { formatCashAdjustment } from "../../../lib/evaluator/area-cash-adjustment";
 import {
   FactorPctInput,
   JustCell,
@@ -85,6 +91,8 @@ export type AdjustmentsMatrixPhoneProps = {
   canEditSubjectSpec?: boolean;
   dispatch: MatrixDispatch;
   model: MatrixModel;
+  /** Where each area row's cash rate can come from (2026-11-16). */
+  cashRateSources?: AreaCashRateSources;
   className?: string;
 };
 
@@ -160,6 +168,7 @@ export function AdjustmentsMatrixPhone({
   canEditSubjectSpec,
   dispatch,
   model,
+  cashRateSources,
   className,
 }: AdjustmentsMatrixPhoneProps) {
   const {
@@ -186,6 +195,8 @@ export function AdjustmentsMatrixPhone({
     landAreaFactor,
     subjectLandArea,
     subjectLandAreaNote,
+    areaIsCash,
+    landAreaIsCash,
   } = basisView;
   const first = adopted[0]!;
   // A built subject's two area rows each carry a ✓ — one of them may be left out, never both.
@@ -297,6 +308,11 @@ export function AdjustmentsMatrixPhone({
             onAreaFactorChange={(value) =>
               dispatch({ type: "area-factor-change", value })
             }
+            areaMethod={
+              isUnit || twoAreas ? areaMethodCellProps(basisView, "area", cashRateSources) : undefined
+            }
+            onAreaMethodChange={(method) => void dispatch({ type: "area-method-change", method })}
+            onCashRateChange={(value) => dispatch({ type: "area-cash-rate-change", value })}
             removable={twoAreas}
             included={twoAreas ? areaIncluded : undefined}
             onToggle={twoAreas ? () => toggle(AUTO_AREA_KEY) : undefined}
@@ -328,6 +344,13 @@ export function AdjustmentsMatrixPhone({
               areaFactor={landAreaFactor}
               onAreaFactorChange={(value) =>
                 dispatch({ type: "area-factor-change", value, line: "land" })
+              }
+              areaMethod={areaMethodCellProps(basisView, "land", cashRateSources)}
+              onAreaMethodChange={(method) =>
+                void dispatch({ type: "area-method-change", method, line: "land" })
+              }
+              onCashRateChange={(value) =>
+                dispatch({ type: "area-cash-rate-change", value, line: "land" })
               }
               removable
               included={landIncluded}
@@ -472,8 +495,12 @@ export function AdjustmentsMatrixPhone({
       {/* 3 · One card per adopted comparable */}
       <MobileRecordList>
         {adopted.map((item) => {
-          const areaAdj = item.market?.suggestedAreaAdjustmentPct ?? 0;
-          const landAdj = item.market?.suggestedLandAreaAdjustmentPct ?? 0;
+          const areaAdj = areaIsCash
+            ? (item.market?.suggestedAreaAdjustmentSar ?? 0)
+            : (item.market?.suggestedAreaAdjustmentPct ?? 0);
+          const landAdj = landAreaIsCash
+            ? (item.market?.suggestedLandAreaAdjustmentSar ?? 0)
+            : (item.market?.suggestedLandAreaAdjustmentPct ?? 0);
           const sum = item.market?.sumDifferencePct ?? 0;
           // The server's ±40٪ rule (MarketApproachRules.LargeAdjustmentThresholdPct).
           const over = item.market?.exceedsLargeAdjustmentThreshold === true;
@@ -551,7 +578,7 @@ export function AdjustmentsMatrixPhone({
 
                 <PhoneTotal
                   label={areaRowLabel}
-                  value={pct(areaAdj)}
+                  value={areaIsCash ? formatCashAdjustment(areaAdj) : pct(areaAdj)}
                   valueClassName={twoAreas && !areaIncluded ? "text-text-3" : pctClass(areaAdj)}
                   note={twoAreas && !areaIncluded ? LAND_AREA_ROW.offNote : areaMethod}
                 />
@@ -560,7 +587,7 @@ export function AdjustmentsMatrixPhone({
                   <>
                     <PhoneTotal
                       label={LAND_AREA_ROW.label}
-                      value={pct(landAdj)}
+                      value={landAreaIsCash ? formatCashAdjustment(landAdj) : pct(landAdj)}
                       valueClassName={landIncluded ? pctClass(landAdj) : "text-text-3"}
                       note={landIncluded ? landAreaMethod : LAND_AREA_ROW.offNote}
                     />
@@ -626,6 +653,14 @@ export function AdjustmentsMatrixPhone({
                     valueClassName={over ? "text-danger-text" : pctClass(sum)}
                     note={over ? "التبرير إلزامي" : "الصافي بإشاراته"}
                   />
+                  {areaIsCash || landAreaIsCash ? (
+                    <PhoneTotal
+                      label="التسويات النقدية"
+                      note="فرق المساحة × سعر المتر"
+                      value={formatCashAdjustment(item.market?.sumCashAdjustmentSar)}
+                      valueClassName={pctClass(item.market?.sumCashAdjustmentSar ?? 0)}
+                    />
+                  ) : null}
                   <PhoneTotal
                     label="القيمة بعد ضبط عوامل الاختلاف"
                     note={isUnit ? "ر.س/م²" : "ر.س — قيمة العقار"}

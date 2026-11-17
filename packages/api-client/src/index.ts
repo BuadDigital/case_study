@@ -720,6 +720,7 @@ export {
   type ValuationComparableSelectionListDto,
   type SaveValuationComparableMarketRequest,
   type SaveValuationMarketApproachRequest,
+  type AreaMethodChoice,
   type ValuationCostApproachDto,
   type ValuationCostLineDto,
   type SaveValuationCostApproachRequest,

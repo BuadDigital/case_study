@@ -444,20 +444,40 @@ public static class MarketApproachRules
     }
 }
 
-/// <summary>Area-adjustment measurement method.</summary>
+/// <summary>
+/// Area-adjustment measurement method.
+/// How it works: «المضاعف» and «الأمثال» give a percent; «مبلغ نقدي» (2026-11-16, curriculum 105
+/// examples 16–17) gives an amount in riyals — the area difference × a rate per m² — and is offered on
+/// the whole-property basis only. <see cref="Auto"/> is what a save sends to go back to the table's
+/// automatic choice; it is never stored.
+/// </summary>
 public static class AreaAdjustmentMethods
 {
     public const string Multiplier = "multiplier";
     public const string Amthal = "amthal";
+    public const string Cash = "cash";
+    public const string Auto = "auto";
 
     public static bool IsKnown(string? value) =>
-        (value ?? "").Trim().ToLowerInvariant() is Multiplier or Amthal;
+        (value ?? "").Trim().ToLowerInvariant() is Multiplier or Amthal or Cash;
 
     public static string Normalize(string? value) =>
-        (value ?? "").Trim().ToLowerInvariant() == Amthal ? Amthal : Multiplier;
+        (value ?? "").Trim().ToLowerInvariant() switch
+        {
+            Amthal => Amthal,
+            Cash => Cash,
+            _ => Multiplier,
+        };
+
+    public static bool IsCash(string? value) => (value ?? "").Trim().ToLowerInvariant() == Cash;
 
     public static string LabelAr(string? value) =>
-        Normalize(value) == Amthal ? "الأمثال" : "المضاعف";
+        Normalize(value) switch
+        {
+            Amthal => "الأمثال",
+            Cash => "مبلغ نقدي",
+            _ => "المضاعف",
+        };
 }
 
 /// <summary>
@@ -496,6 +516,57 @@ public static class AreaAdjustmentRules
             ? AreaAdjustmentMethods.Multiplier
             : AreaAdjustmentMethods.Amthal;
     }
+
+    /// <summary>Upper bound of a cash rate per m² (SAR) — keeps an amount inside numeric(18,2).</summary>
+    public const decimal MaxCashRateSar = 10_000_000m;
+
+    /// <summary>
+    /// The method one area line uses.
+    /// How it works: the appraiser's pick when there is one (Omar 2026-11-16, curriculum 105 p. 53: the
+    /// method follows the appraiser's research); «مبلغ نقدي» only where a cash amount can apply — the
+    /// whole-property basis. Otherwise the table's automatic choice (<see cref="ChooseMethod"/>).
+    /// Edge cases: a cash pick on a per-m² table (the basis was switched after the pick) falls back to the
+    /// automatic choice, so the pick comes back if the basis returns to the whole property.
+    /// </summary>
+    public static string ResolveMethod(
+        string? chosen,
+        bool cashAllowed,
+        decimal subjectAreaSqm,
+        IEnumerable<decimal> comparableAreas)
+    {
+        if (AreaAdjustmentMethods.IsKnown(chosen)
+            && (cashAllowed || !AreaAdjustmentMethods.IsCash(chosen)))
+            return AreaAdjustmentMethods.Normalize(chosen);
+        return ChooseMethod(subjectAreaSqm, comparableAreas);
+    }
+
+    /// <summary>
+    /// The cash area adjustment of one comparable on a whole value, in riyals.
+    /// How it works: (subject area − comparable area) × rate per m² — a comparable smaller than the
+    /// subject is raised, a larger one lowered (curriculum 105 example 16: (800 − 700) × 2,000 = +200,000).
+    /// Edge cases: a missing or zero area, or no rate, gives 0 — the line waits for its inputs.
+    /// </summary>
+    public static decimal CashAdjustmentSar(
+        decimal subjectAreaSqm,
+        decimal comparableAreaSqm,
+        decimal ratePerSqmSar)
+    {
+        if (subjectAreaSqm <= 0m || comparableAreaSqm <= 0m || ratePerSqmSar <= 0m)
+            return 0m;
+        return Math.Round(
+            (subjectAreaSqm - comparableAreaSqm) * ratePerSqmSar,
+            2,
+            MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// A cash amount as a percent of the price it is added to — how it counts in the gross adjustment,
+    /// the automatic weights and the ±40٪ rule. 0 when there is no price.
+    /// </summary>
+    public static decimal CashAsPct(decimal amountSar, decimal priceAfterSequential) =>
+        priceAfterSequential > 0m
+            ? Math.Round(amountSar / priceAfterSequential * 100m, 2, MidpointRounding.AwayFromZero)
+            : 0m;
 
     public static decimal AreaRatio(decimal subjectAreaSqm, decimal comparableAreaSqm)
     {

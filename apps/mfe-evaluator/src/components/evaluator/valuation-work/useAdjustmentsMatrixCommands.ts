@@ -358,6 +358,8 @@ export function useAdjustmentsMatrixCommands(
     changeAdjustmentBasis: approach.changeAdjustmentBasis,
     resetWeights,
     saveAreaFactorPct: approach.saveAreaFactorPct,
+    saveAreaMethod: approach.saveAreaMethod,
+    saveAreaCashRate: approach.saveAreaCashRate,
     saveComparableLandArea,
     saveSubjectLandArea: approach.saveSubjectLandArea,
     addDifferenceFactor,

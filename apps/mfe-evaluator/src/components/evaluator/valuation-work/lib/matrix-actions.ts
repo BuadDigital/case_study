@@ -1,4 +1,4 @@
-import type { ValuationComparableSelectionDto } from "@platform/api-client";
+import type { AreaMethodChoice, ValuationComparableSelectionDto } from "@platform/api-client";
 
 /**
  * Adjustments-matrix command — one interface instead of 15 callbacks (Command/ISP):
@@ -32,6 +32,8 @@ type MatrixAction =
   | { type: "change-basis"; basis: "price_per_sqm" | "whole_property" }
   | { type: "reset-weights" }
   | { type: "area-factor-change"; value: string; line?: AreaLine }
+  | { type: "area-method-change"; method: AreaMethodChoice; line?: AreaLine }
+  | { type: "area-cash-rate-change"; value: string; line?: AreaLine }
   | { type: "save-land-area"; item: ValuationComparableSelectionDto; raw: string }
   | { type: "save-subject-land-area"; raw: string }
   | { type: "add-factor"; factorKey: string; labelAr: string }
@@ -85,6 +87,10 @@ type MatrixOps<TContext> = {
   ): Promise<unknown> | void;
   resetWeights(context: TContext): Promise<boolean>;
   saveAreaFactorPct(value: string, line?: AreaLine): Promise<unknown> | void;
+  /** An area row's method — the appraiser's pick, or «auto» for the table's choice (2026-11-16). */
+  saveAreaMethod(method: AreaMethodChoice, line?: AreaLine): Promise<unknown> | void;
+  /** An area row's rate per m² on the cash method — blank clears it. */
+  saveAreaCashRate(value: string, line?: AreaLine): Promise<unknown> | void;
   /** A built comparable's land area for this valuation — blank goes back to the bank's. */
   saveComparableLandArea(item: ValuationComparableSelectionDto, raw: string): Promise<boolean>;
   /** The subject's land area for the land row — blank goes back to the deed's. */
@@ -155,6 +161,12 @@ export async function runMatrixAction<TContext>(
       return true;
     case "area-factor-change":
       await ops.saveAreaFactorPct(action.value, action.line);
+      return true;
+    case "area-method-change":
+      await ops.saveAreaMethod(action.method, action.line);
+      return true;
+    case "area-cash-rate-change":
+      await ops.saveAreaCashRate(action.value, action.line);
       return true;
     case "save-land-area":
       return ops.saveComparableLandArea(action.item, action.raw);

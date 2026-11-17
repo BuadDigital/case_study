@@ -30,7 +30,13 @@ import {
   nextCustomFactorKey,
 } from "./lib/factor-registry";
 import type { MatrixDispatch } from "./lib/matrix-actions";
-import { afterWeightValue, fmtChainValue } from "./lib/adjustments-matrix-state";
+import {
+  afterWeightValue,
+  areaMethodCellProps,
+  fmtChainValue,
+  type AreaCashRateSources,
+} from "./lib/adjustments-matrix-state";
+import { formatCashAdjustment } from "../../../lib/evaluator/area-cash-adjustment";
 import {
   CompReadonly,
   FactorPctInput,
@@ -84,6 +90,8 @@ type AdjustmentsMatrixProps = {
    * One stable ref so table memo survives shell re-renders.
    */
   dispatch: MatrixDispatch;
+  /** Where each area row's cash rate can come from (2026-11-16) — shown under the rate. */
+  cashRateSources?: AreaCashRateSources;
   /** Rendered between the output strip and the alerts so alerts stay last. */
   children?: ReactNode;
 };
@@ -102,6 +110,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   subjectSpecs,
   canEditSubjectSpec,
   dispatch,
+  cashRateSources,
   children,
 }: AdjustmentsMatrixProps) {
   const desktop = useViewportDesktop();
@@ -138,7 +147,10 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     landAreaFactor,
     subjectLandArea,
     subjectLandAreaNote,
+    areaIsCash,
+    landAreaIsCash,
   } = basisView;
+  const anyCash = areaIsCash || landAreaIsCash;
   // A built subject's two area rows each carry a ✓ — one of them may be left out, never both.
   const areaIncluded = lineIsIncluded(adopted[0] ? lineOf(adopted[0], AUTO_AREA_KEY) : null, AUTO_AREA_KEY);
   const landIncluded = lineIsIncluded(adopted[0] ? lineOf(adopted[0], LAND_AREA_KEY) : null, LAND_AREA_KEY);
@@ -210,6 +222,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
           canEditSubjectSpec={canEditSubjectSpec}
           dispatch={dispatch}
           model={model}
+          cashRateSources={cashRateSources}
         />
       ) : null}
 
@@ -413,6 +426,11 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 onAreaFactorChange={(value) =>
                   dispatch({ type: "area-factor-change", value })
                 }
+                areaMethod={
+                  isUnit || twoAreas ? areaMethodCellProps(basisView, "area", cashRateSources) : undefined
+                }
+                onAreaMethodChange={(method) => void dispatch({ type: "area-method-change", method })}
+                onCashRateChange={(value) => dispatch({ type: "area-cash-rate-change", value })}
                 removable={twoAreas}
                 included={twoAreas ? areaIncluded : undefined}
                 onToggle={twoAreas ? () => toggleAreaRow(AUTO_AREA_KEY) : undefined}
@@ -424,11 +442,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               />
               {adopted.map((item) => {
                 const adj = item.market?.suggestedAreaAdjustmentPct ?? 0;
+                const sar = item.market?.suggestedAreaAdjustmentSar ?? 0;
                 return (
                   <CompReadonly
                     key={item.id}
-                    value={pct(adj)}
-                    valueClassName={twoAreas && !areaIncluded ? "text-text-3" : pctClass(adj)}
+                    value={areaIsCash ? formatCashAdjustment(sar) : pct(adj)}
+                    valueClassName={twoAreas && !areaIncluded ? "text-text-3" : pctClass(areaIsCash ? sar : adj)}
                     note={`${fmt(effArea(item))} م²`}
                   />
                 );
@@ -453,6 +472,13 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   onAreaFactorChange={(value) =>
                     dispatch({ type: "area-factor-change", value, line: "land" })
                   }
+                  areaMethod={areaMethodCellProps(basisView, "land", cashRateSources)}
+                  onAreaMethodChange={(method) =>
+                    void dispatch({ type: "area-method-change", method, line: "land" })
+                  }
+                  onCashRateChange={(value) =>
+                    dispatch({ type: "area-cash-rate-change", value, line: "land" })
+                  }
                   removable
                   included={landIncluded}
                   onToggle={() => toggleAreaRow(LAND_AREA_KEY)}
@@ -469,16 +495,17 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 </td>
                 {adopted.map((item) => {
                   const adj = item.market?.suggestedLandAreaAdjustmentPct ?? 0;
+                  const sar = item.market?.suggestedLandAreaAdjustmentSar ?? 0;
                   return (
                     <td key={item.id} className={tdCellClass}>
                       <span
                         dir="ltr"
                         className={cn(
                           "font-[Tajawal,sans-serif] text-[14px] font-extrabold",
-                          landIncluded ? pctClass(adj) : "text-text-3",
+                          landIncluded ? pctClass(landAreaIsCash ? sar : adj) : "text-text-3",
                         )}
                       >
-                        {pct(adj)}
+                        {landAreaIsCash ? formatCashAdjustment(sar) : pct(adj)}
                       </span>
                       <div>
                         <LandAreaInput
@@ -664,12 +691,40 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               <JustCell />
             </tr>
 
+            {/* Cash area adjustments (2026-11-16) — added after the percent sum */}
+            {anyCash ? (
+              <tr className="bg-surface-2">
+                <LabelCell
+                  label="التسويات النقدية"
+                  hint="فرق المساحة × سعر المتر"
+                  tip="تُضاف بالريال بعد مجموع نسب التسويات (منهج الهيئة 105، مثال 16)."
+                  locked={locked}
+                />
+                <SubjCell value="—" />
+                {adopted.map((item) => {
+                  const sum = item.market?.sumCashAdjustmentSar ?? 0;
+                  return (
+                    <CompReadonly
+                      key={item.id}
+                      value={formatCashAdjustment(sum)}
+                      valueClassName={pctClass(sum)}
+                    />
+                  );
+                })}
+                <JustCell />
+              </tr>
+            ) : null}
+
             {/* After difference factors */}
             <tr>
               <LabelCell
                 label="القيمة بعد ضبط عوامل الاختلاف"
                 hint={isUnit ? "ر.س/م²" : "ر.س — قيمة العقار"}
-                tip="السعر التسلسلي × (1 + مجموع نسب التسويات)."
+                tip={
+                  anyCash
+                    ? "السعر التسلسلي × (1 + مجموع نسب التسويات) + التسويات النقدية."
+                    : "السعر التسلسلي × (1 + مجموع نسب التسويات)."
+                }
                 locked={locked}
               />
               <SubjCell value="—" />

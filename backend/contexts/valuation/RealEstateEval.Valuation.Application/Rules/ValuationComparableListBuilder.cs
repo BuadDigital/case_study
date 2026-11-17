@@ -39,13 +39,33 @@ public static class ValuationComparableListBuilder
     /// method the table chose for it, its factor, and whether the amount it adjusts is a whole
     /// value (a smaller comparable is then raised) or a price per m² of that same area (lowered).
     /// <c>Applies</c> false = the line gives 0 (a whole-property table that has no area lines).
+    /// A line on the cash method (2026-11-16) gives an amount instead: area difference × <c>CashRateSar</c>.
     /// </summary>
     public readonly record struct AreaLineInputs(
         bool Applies,
         decimal SubjectAreaSqm,
         string Method,
         decimal FactorPct,
-        bool OnWholeValue);
+        bool OnWholeValue,
+        decimal CashRateSar = 0m)
+    {
+        public bool IsCash => AreaAdjustmentMethods.IsCash(Method);
+    }
+
+    /// <summary>
+    /// What: one area line's adjustment on one comparable — a percent, or a cash amount in SAR.
+    /// How it works: a percent line measures by المضاعف / الأمثال (<see cref="AreaAdjustmentRules.SuggestPct"/>);
+    /// a cash line takes (subject area − comparable area) × rate (<see cref="AreaAdjustmentRules.CashAdjustmentSar"/>).
+    /// Edge cases: a line that does not apply gives 0 either way.
+    /// </summary>
+    private static (decimal Pct, decimal Sar) AreaAdjustmentOf(AreaLineInputs line, decimal comparableAreaSqm)
+    {
+        if (!line.Applies) return (0m, 0m);
+        return line.IsCash
+            ? (0m, AreaAdjustmentRules.CashAdjustmentSar(line.SubjectAreaSqm, comparableAreaSqm, line.CashRateSar))
+            : (AreaAdjustmentRules.SuggestPct(
+                line.Method, line.SubjectAreaSqm, comparableAreaSqm, line.FactorPct, line.OnWholeValue), 0m);
+    }
 
     /// <summary>A built comparable's land area for this valuation: the override, else the bank's; null when neither.</summary>
     public static decimal? EffectiveLandAreaSqm(ValuationComparableSelection row, ComparableProperty comp) =>
@@ -132,11 +152,6 @@ public static class ValuationComparableListBuilder
         var marketRate = header?.AnnualMarketRatePct >= 0
             ? header.AnnualMarketRatePct
             : MarketApproachRules.DefaultAnnualMarketRatePct;
-        var areaMethod = AreaAdjustmentRules.ChooseMethod(
-            subjectAreaForSuggestion,
-            adoptedRows
-                .Where(r => comps.ContainsKey(r.ComparablePropertyId))
-                .Select(r => EffectiveCompValues(r, comps[r.ComparablePropertyId]).Area));
         var basis = EffectiveBasis(
             header?.AdjustmentBasis ?? MarketAdjustmentBasisKeys.DefaultFor(request.PropertyType, null),
             comparesAsMarket ? ComparableSelectionContexts.Market : selectionContext);
@@ -148,12 +163,22 @@ public static class ValuationComparableListBuilder
         // table inside the cost approach compares lands and keeps its single line.
         var twoAreas = !isLandTable && subjectIsBuilt && header?.TwoAreaAdjustments == true;
         var onWholeValue = basis == MarketAdjustmentBasisKeys.WholeProperty;
+        // 2026-11-16: the appraiser picks each line's method; a cash amount only adds to a whole value.
+        var cashAllowed = onWholeValue && twoAreas;
+        var areaMethod = AreaAdjustmentRules.ResolveMethod(
+            header?.AreaAdjustmentMethod,
+            cashAllowed,
+            subjectAreaForSuggestion,
+            adoptedRows
+                .Where(r => comps.ContainsKey(r.ComparablePropertyId))
+                .Select(r => EffectiveCompValues(r, comps[r.ComparablePropertyId]).Area));
         var areaLine = new AreaLineInputs(
             Applies: twoAreas || !onWholeValue,
             SubjectAreaSqm: subjectAreaForSuggestion,
             Method: areaMethod,
             FactorPct: areaFactor,
-            OnWholeValue: onWholeValue);
+            OnWholeValue: onWholeValue,
+            CashRateSar: header?.AreaCashRateSar ?? 0m);
         var landAreaFactor = header?.LandAreaFactorPct > 0
             ? header.LandAreaFactorPct
             : AreaAdjustmentRules.DefaultAreaFactorPct;
@@ -165,13 +190,16 @@ public static class ValuationComparableListBuilder
             ? new AreaLineInputs(
                 Applies: true,
                 SubjectAreaSqm: subjectLandArea,
-                Method: AreaAdjustmentRules.ChooseMethod(
+                Method: AreaAdjustmentRules.ResolveMethod(
+                    header?.LandAreaAdjustmentMethod,
+                    cashAllowed,
                     subjectLandArea,
                     adoptedRows
                         .Where(r => comps.ContainsKey(r.ComparablePropertyId))
                         .Select(r => EffectiveLandAreaSqm(r, comps[r.ComparablePropertyId]) ?? 0m)),
                 FactorPct: landAreaFactor,
-                OnWholeValue: true)
+                OnWholeValue: true,
+                CashRateSar: header?.LandAreaCashRateSar ?? 0m)
             : null;
 
         // Automatic weights from the GROSS adjustment (sequential + difference, absolute),
@@ -303,6 +331,11 @@ public static class ValuationComparableListBuilder
             SubjectLandAreaSqm = twoAreas && subjectLandArea > 0m ? subjectLandArea : null,
             SubjectLandAreaIsManual = twoAreas && header?.SubjectLandAreaSqm is not null,
             LandAreaFactorPct = landAreaFactor,
+            AreaAdjustmentMethodChoice = MethodChoice(header?.AreaAdjustmentMethod),
+            LandAreaAdjustmentMethodChoice = MethodChoice(header?.LandAreaAdjustmentMethod),
+            CashAreaAdjustmentAllowed = cashAllowed,
+            AreaCashRateSar = header?.AreaCashRateSar,
+            LandAreaCashRateSar = header?.LandAreaCashRateSar,
             AnnualMarketRatePct = marketRate,
             ValueRoundDecimals = roundDecimals,
             AnalysisNotes = header?.AnalysisNotes,
@@ -319,6 +352,10 @@ public static class ValuationComparableListBuilder
             Items = items,
         };
     }
+
+    /// <summary>The appraiser's stored method of one area line as the screen reads it — "" when automatic.</summary>
+    private static string MethodChoice(string? stored) =>
+        AreaAdjustmentMethods.IsKnown(stored) ? AreaAdjustmentMethods.Normalize(stored) : "";
 
     /// <summary>
     /// What: the market approach's value as the reconciliation, the report and the screen read it —
@@ -444,22 +481,17 @@ public static class ValuationComparableListBuilder
         var eff = EffectiveCompValues(row, comp);
         // A table without area lines (a whole-property comparison of a subject that is not built, or
         // of a valuation begun before the two lines) compares the deal totals as they are.
-        var areaAdj = area.Applies
-            ? AreaAdjustmentRules.SuggestPct(
-                area.Method, area.SubjectAreaSqm, eff.Area, area.FactorPct, area.OnWholeValue)
-            : 0m;
+        var (areaAdj, areaSar) = AreaAdjustmentOf(area, eff.Area);
         // The land line: 0 until both land areas are known — the comparable's is entered in the bank
         // or on this valuation.
-        var landAdj = land is { } landLine
-            ? AreaAdjustmentRules.SuggestPct(
-                landLine.Method,
-                landLine.SubjectAreaSqm,
-                EffectiveLandAreaSqm(row, comp) ?? 0m,
-                landLine.FactorPct,
-                landLine.OnWholeValue)
-            : 0m;
-        decimal Computed(string factorKey) =>
-            factorKey == MarketAdjustmentFactorKeys.LandArea ? landAdj : areaAdj;
+        var (landAdj, landSar) = land is { } landLine
+            ? AreaAdjustmentOf(landLine, EffectiveLandAreaSqm(row, comp) ?? 0m)
+            : (0m, 0m);
+        bool IsCashLine(string factorKey) =>
+            MarketAdjustmentFactorKeys.IsComputedArea(factorKey)
+            && (factorKey == MarketAdjustmentFactorKeys.LandArea ? land?.IsCash == true : area.IsCash);
+        decimal CashOf(string factorKey) =>
+            factorKey == MarketAdjustmentFactorKeys.LandArea ? landSar : areaSar;
         var dealAgeMonths = MarketApproachRules.DealAgeMonths(comp.TransactionDate, valuationDate);
         var suggestedMarket = MarketApproachRules.SuggestMarketConditionsPct(
             dealAgeMonths, annualMarketRatePct);
@@ -476,22 +508,46 @@ public static class ValuationComparableListBuilder
                 suggestedMarket,
                 suggestedKind))
             .ToList();
-        var differencePct = ordered
-            .Where(l => l.IsIncluded && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey))
-            .Select(l =>
-                MarketAdjustmentFactorKeys.IsComputedArea(l.FactorKey) ? Computed(l.FactorKey) : l.Percent)
-            .ToList();
-
  // : the chain runs on the whole deal price or the unit rate per the basis (after compEdit overrides).
         var baseAmount = adjustmentBasis == MarketAdjustmentBasisKeys.WholeProperty
             ? eff.Total
             : eff.Unit;
-        var (afterSeq, diffSum, afterDiff) = MarketApproachRules.ApplyMarketUnitRate(
+        // A cash area line (2026-11-16) is measured against the price after the sequential adjustments:
+        // that is where its amount is added (curriculum 105 example 16), and how it counts as a percent.
+        var priceAfterSequential = MarketApproachRules.ApplySequential(baseAmount, sequentialPct);
+        decimal Computed(string factorKey) =>
+            IsCashLine(factorKey)
+                ? AreaAdjustmentRules.CashAsPct(CashOf(factorKey), priceAfterSequential)
+                : factorKey == MarketAdjustmentFactorKeys.LandArea ? landAdj : areaAdj;
+
+        var includedDifference = ordered
+            .Where(l => l.IsIncluded && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey))
+            .ToList();
+        // The percent chain leaves the cash lines out; their amounts are added after it.
+        var differencePct = includedDifference
+            .Where(l => !IsCashLine(l.FactorKey))
+            .Select(l =>
+                MarketAdjustmentFactorKeys.IsComputedArea(l.FactorKey) ? Computed(l.FactorKey) : l.Percent)
+            .ToList();
+        var cashSum = includedDifference
+            .Where(l => IsCashLine(l.FactorKey))
+            .Sum(l => CashOf(l.FactorKey));
+        // Every included line as a percent — the cash ones by their share of the price — for the gross
+        // adjustment, the automatic weights and the ±40٪ rule.
+        var grossDifferencePct = includedDifference
+            .Select(l =>
+                MarketAdjustmentFactorKeys.IsComputedArea(l.FactorKey) ? Computed(l.FactorKey) : l.Percent)
+            .ToList();
+
+        var (afterSeq, diffSum, afterPercentChain) = MarketApproachRules.ApplyMarketUnitRate(
             baseAmount,
             sequentialPct,
             differencePct);
+        var afterDiff = cashSum == 0m
+            ? afterPercentChain
+            : Math.Max(0m, Math.Round(afterPercentChain + cashSum, 2, MidpointRounding.AwayFromZero));
         var sumAll = MarketApproachRules.SumIncludedPercents(
-            sequentialPct.Concat(differencePct));
+            sequentialPct.Concat(grossDifferencePct));
         var suggested = suggestedWeightPct ?? 0m;
         var effective = row.WeightIsManual && row.WeightPct is not null
             ? row.WeightPct.Value
@@ -519,6 +575,7 @@ public static class ValuationComparableListBuilder
                         FactorKey = l.FactorKey,
                         LabelAr = l.LabelAr,
                         Percent = pct,
+                        AmountSar = IsCashLine(l.FactorKey) ? CashOf(l.FactorKey) : null,
                         Rationale = l.Rationale,
                         DescriptionAr = l.DescriptionAr,
                         IsIncluded = l.IsIncluded,
@@ -533,8 +590,8 @@ public static class ValuationComparableListBuilder
             SumIncludedPct = sumAll,
             // Net (kept) or gross (sequential + difference, absolute) above 40٪.
             ExceedsLargeAdjustmentThreshold = MarketApproachRules.ExceedsLargeAdjustmentThreshold(
-                diffSum,
-                MarketApproachRules.GrossAdjustmentPct(sequentialPct, differencePct)),
+                diffSum + AreaAdjustmentRules.CashAsPct(cashSum, priceAfterSequential),
+                MarketApproachRules.GrossAdjustmentPct(sequentialPct, grossDifferencePct)),
             DealAgeMonths = dealAgeMonths,
             SuggestedTransactionTypePct = suggestedKind,
             PricePerSqmAfterSequential = afterSeq,
@@ -545,9 +602,12 @@ public static class ValuationComparableListBuilder
             WeightPct = row.WeightPct,
             WeightOverrideRationale = row.WeightOverrideRationale,
             AreaAdjustmentMethod = AreaAdjustmentMethods.Normalize(area.Method),
-            SuggestedAreaAdjustmentPct = areaAdj,
+            SuggestedAreaAdjustmentPct = Computed(MarketAdjustmentFactorKeys.Area),
             LandAreaAdjustmentMethod = land is { } l2 ? AreaAdjustmentMethods.Normalize(l2.Method) : "",
-            SuggestedLandAreaAdjustmentPct = landAdj,
+            SuggestedLandAreaAdjustmentPct = land is null ? 0m : Computed(MarketAdjustmentFactorKeys.LandArea),
+            SuggestedAreaAdjustmentSar = area.IsCash ? areaSar : 0m,
+            SuggestedLandAreaAdjustmentSar = land?.IsCash == true ? landSar : 0m,
+            SumCashAdjustmentSar = cashSum,
         };
     }
 }

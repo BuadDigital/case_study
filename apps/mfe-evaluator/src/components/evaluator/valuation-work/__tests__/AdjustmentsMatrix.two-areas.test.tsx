@@ -207,6 +207,77 @@ describe("a table with one area line stays as it was", () => {
   });
 });
 
+/** A comparable whose two area rows are in cash: the amounts, and the percents they stand for. */
+const cashVilla = (n: number, areaSar: number, landSar: number) => {
+  const v = villa(n, 0, 0, 500) as unknown as {
+    market: ValuationComparableSelectionDto["market"] & Record<string, unknown>;
+  };
+  Object.assign(v.market!, {
+    areaAdjustmentMethod: "cash",
+    landAreaAdjustmentMethod: "cash",
+    suggestedAreaAdjustmentSar: areaSar,
+    suggestedLandAreaAdjustmentSar: landSar,
+    sumCashAdjustmentSar: areaSar + landSar,
+  });
+  return v as unknown as ValuationComparableSelectionDto;
+};
+
+describe("the appraiser picks each area row's method (2026-11-16)", () => {
+  it("offers آلي / المضاعف / الأمثال, and مبلغ نقدي on a whole-value table", () => {
+    const dispatch = renderMatrix({ list: selection({ cashAreaAdjustmentAllowed: true }) });
+    const picker = within(rowOf("مساحة الأرض")).getByRole("combobox") as HTMLSelectElement;
+    expect(picker.value).toBe("auto");
+    expect([...picker.options].map((o) => o.text)).toEqual(["آلي", "المضاعف", "الأمثال", "مبلغ نقدي"]);
+    fireEvent.change(picker, { target: { value: "amthal" } });
+    expect(dispatch).toHaveBeenCalledWith({ type: "area-method-change", method: "amthal", line: "land" });
+  });
+
+  it("leaves مبلغ نقدي out where a cash amount cannot apply", () => {
+    renderMatrix({ list: selection({ cashAreaAdjustmentAllowed: false }) });
+    const picker = within(rowOf("مساحة المباني")).getByRole("combobox") as HTMLSelectElement;
+    expect([...picker.options].map((o) => o.value)).toEqual(["auto", "multiplier", "amthal"]);
+  });
+
+  it("names the appraiser's pick under the row", () => {
+    renderMatrix({ list: selection({ areaAdjustmentMethodChoice: "amthal" }) });
+    expect(within(rowOf("مساحة المباني")).getByText("طريقة الأمثال — اختيار المقيّم")).toBeTruthy();
+  });
+
+  it("says «آلية» when a cash pick is not in force (per-m² basis)", () => {
+    renderMatrix({
+      list: selection({ adjustmentBasis: "price_per_sqm", areaAdjustmentMethodChoice: "cash", cashAreaAdjustmentAllowed: false }),
+    });
+    const building = rowOf("مساحة المباني");
+    expect(within(building).getByText("طريقة الأمثال — آلية")).toBeTruthy();
+    expect((within(building).getByRole("combobox") as HTMLSelectElement).value).toBe("auto");
+  });
+
+  it("prints cash rows in riyals, asks for the rate, and adds the cash total row", () => {
+    const dispatch = renderMatrix({
+      list: selection({
+        cashAreaAdjustmentAllowed: true,
+        areaAdjustmentMethodChoice: "cash",
+        landAreaAdjustmentMethodChoice: "cash",
+        areaCashRateSar: 750,
+        landAreaCashRateSar: null,
+      }),
+      adopted: [cashVilla(1, 37_500, 75_000), cashVilla(2, -22_500, -37_500)],
+    });
+    const building = rowOf("مساحة المباني");
+    expect(building.textContent).toContain("+37,500 ر.س");
+    expect(within(building).getByDisplayValue("750")).toBeTruthy();
+    const land = rowOf("مساحة الأرض");
+    expect(land.textContent).toContain("−37,500 ر.س");
+    expect(within(land).getByText("أدخل سعر المتر — التسوية صفر حتى يُدخل")).toBeTruthy();
+    expect(rowOf("التسويات النقدية").textContent).toContain("+112,500 ر.س");
+
+    const rate = within(building).getByDisplayValue("750");
+    fireEvent.change(rate, { target: { value: "800" } });
+    fireEvent.blur(rate);
+    expect(dispatch).toHaveBeenCalledWith({ type: "area-cash-rate-change", value: "800" });
+  });
+});
+
 describe("the phone layout of a built subject's matrix", () => {
   it("shows the land row with its factor, the subject's land area and each comparable's", () => {
     const dispatch = renderMatrix({ desktop: false });

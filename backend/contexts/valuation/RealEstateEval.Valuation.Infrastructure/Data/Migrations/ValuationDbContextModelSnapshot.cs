@@ -1026,9 +1026,25 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasPrecision(9, 4)
                         .HasColumnType("numeric(9,4)");
 
+                    b.Property<string>("AreaAdjustmentMethod")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal?>("AreaCashRateSar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("AreaFactorPct")
                         .HasPrecision(9, 4)
                         .HasColumnType("numeric(9,4)");
+
+                    b.Property<string>("LandAreaAdjustmentMethod")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal?>("LandAreaCashRateSar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("LandAreaFactorPct")
                         .ValueGeneratedOnAdd()
@@ -1073,6 +1089,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
 
                     b.ToTable("ValuationMarketApproaches", "valuation", t =>
                         {
+                            t.HasCheckConstraint("CK_ValuationMarketApproaches_AreaCashRateSar_NonNegative", "\"AreaCashRateSar\" IS NULL OR \"AreaCashRateSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationMarketApproaches_LandAreaCashRateSar_NonNegative", "\"LandAreaCashRateSar\" IS NULL OR \"LandAreaCashRateSar\" >= 0");
+
                             t.HasCheckConstraint("CK_ValuationMarketApproaches_SubjectAreaSqm_NonNegative", "\"SubjectAreaSqm\" IS NULL OR \"SubjectAreaSqm\" >= 0");
 
                             t.HasCheckConstraint("CK_ValuationMarketApproaches_SubjectLandAreaSqm_NonNegative", "\"SubjectLandAreaSqm\" IS NULL OR \"SubjectLandAreaSqm\" >= 0");

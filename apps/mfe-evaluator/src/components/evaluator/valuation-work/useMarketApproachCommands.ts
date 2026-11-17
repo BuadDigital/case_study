@@ -9,8 +9,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
   saveValuationMarketApproach,
+  type AreaMethodChoice,
   type SaveValuationMarketApproachRequest,
 } from "@platform/api-client";
+import { areaCashRateSource } from "./lib/area-cash-rates";
 import { scheduleInvalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
 import {
   marketApproachBody,
@@ -40,6 +42,8 @@ export function useMarketApproachCommands(
     setAnalysisNotes,
     subjectSpecs,
     marketKind,
+    selection,
+    cost,
   } = data;
   const { writeContext } = saver;
   const draft = { subjectArea, adjustmentBasis, analysisNotes };
@@ -124,6 +128,40 @@ export function useMarketApproachCommands(
   }
 
   /**
+   * What: an area row's method — المضاعف / الأمثال / مبلغ نقدي, or «auto» for the table's choice.
+   * How it works: saved on the market header for that row (the land row on its own). Opening the cash
+   * method on a row with no rate yet seeds the rate from its source (`areaCashRateSource`): the land
+   * comparables' adjusted rate, or the cost approach's building value per m².
+   * Edge cases: with no source the rate stays empty, the row gives 0 and asks for a rate.
+   */
+  async function saveAreaMethod(method: AreaMethodChoice, line: AreaLine = "area") {
+    if (!writeContext({ requireUnlocked: true })) return;
+    const extra: Partial<SaveValuationMarketApproachRequest> =
+      line === "land" ? { landAreaAdjustmentMethod: method } : { areaAdjustmentMethod: method };
+    if (method === "cash") {
+      const stored = line === "land" ? selection?.landAreaCashRateSar : selection?.areaCashRateSar;
+      const seed = areaCashRateSource(cost, line);
+      if (!(Number(stored) > 0) && seed) {
+        if (line === "land") extra.landAreaCashRateSar = seed.rate;
+        else extra.areaCashRateSar = seed.rate;
+      }
+    }
+    await saveApproach(extra, "تعذّر حفظ طريقة قياس المساحة", { requireUnlocked: true });
+  }
+
+  /** An area row's rate per m² on the cash method — blank or zero clears it. */
+  async function saveAreaCashRate(raw: string, line: AreaLine = "area") {
+    if (!writeContext({ requireUnlocked: true })) return;
+    const parsed = raw.trim() === "" ? 0 : parseDecimal(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+    await saveApproach(
+      line === "land" ? { landAreaCashRateSar: parsed } : { areaCashRateSar: parsed },
+      line === "land" ? "تعذّر حفظ سعر متر الأرض" : "تعذّر حفظ سعر متر المباني",
+      { requireUnlocked: true },
+    );
+  }
+
+  /**
    * The subject's land area for the land row of a built subject's table.
    * How it works: a positive figure is saved as the appraiser's; blank or zero sends 0, which
    * clears it on the server, so the row goes back to the deed's area.
@@ -143,6 +181,8 @@ export function useMarketApproachCommands(
     saveSubjectSpec,
     changeAdjustmentBasis,
     saveAreaFactorPct,
+    saveAreaMethod,
+    saveAreaCashRate,
     saveSubjectLandArea,
   };
 }

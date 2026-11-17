@@ -19,6 +19,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { InlineLoadingSkeleton, WorkSectionFieldsSkeleton, cn } from "@platform/ui-kit";
@@ -43,6 +44,7 @@ import {
 import { ComparablesBankTable } from "./ComparablesBankTable";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { fmtChainValue, roundStepLabel } from "./lib/adjustments-matrix-state";
+import { areaCashRateSource } from "./lib/area-cash-rates";
 import { fmt } from "./lib/shell-utils";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { marketSubjectAreaLabel } from "./lib/market-subject";
@@ -180,6 +182,12 @@ export function ValuationWorkShell({
   const isApartment = textLooksLikeApartment(approachSettings?.propertyType);
   // The land table's own area — the whole plot, never the apartment's floor area.
   const landPlotSqm = landSelection?.subjectAreaSqm ?? cost?.landAreaSqm ?? 0;
+  // Where a cash area row's rate can come from (2026-11-16): the land comparables, the cost approach.
+  // Memoised so the memoised matrix keeps its render while the shell re-renders.
+  const cashRateSources = useMemo(
+    () => ({ area: areaCashRateSource(cost, "area"), land: areaCashRateSource(cost, "land") }),
+    [cost],
+  );
 
   const {
     onAdoptMarket,
@@ -387,6 +395,7 @@ export function ValuationWorkShell({
               subjectSpecs={subjectSpecs}
               canEditSubjectSpec
               dispatch={dispatchMarketMatrix}
+              cashRateSources={cashRateSources}
             />
           </Suspense>
         ) : null}

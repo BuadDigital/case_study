@@ -48,6 +48,18 @@ public class ValuationMarketApproach
     public decimal? SubjectLandAreaSqm { get; set; }
     /// <summary>Frozen methodology coeff — the land-area line's own factor (%).</summary>
     public decimal LandAreaFactorPct { get; set; } = AreaAdjustmentRules.DefaultAreaFactorPct;
+    /// <summary>
+    /// The appraiser's method for the (building's) area line — <see cref="AreaAdjustmentMethods"/>
+    /// multiplier | amthal | cash (2026-11-16). Null = the table's automatic choice, so a header saved
+    /// before keeps its figures.
+    /// </summary>
+    public string? AreaAdjustmentMethod { get; set; }
+    /// <summary>The appraiser's method for a built subject's land-area line; null = automatic.</summary>
+    public string? LandAreaAdjustmentMethod { get; set; }
+    /// <summary>Rate per m² (SAR) of the area line when its method is cash — the building's rate on a built subject.</summary>
+    public decimal? AreaCashRateSar { get; set; }
+    /// <summary>Rate per m² (SAR) of the land-area line when its method is cash — the land comparables' rate.</summary>
+    public decimal? LandAreaCashRateSar { get; set; }
     /// <summary>Frozen methodology coeff — annual market rate (%) for market-conditions suggestion.</summary>
     public decimal AnnualMarketRatePct { get; set; } = MarketApproachRules.DefaultAnnualMarketRatePct;
     /// <summary>Frozen — market-value rounding exponent (10^n). Default 4 → nearest 10,000.</summary>
