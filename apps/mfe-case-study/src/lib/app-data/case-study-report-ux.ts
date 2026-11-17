@@ -6,8 +6,6 @@ export function caseStudyQuestionTargetId(answerKey: string): string {
 }
 
 export const CASE_STUDY_DEED_REMARKS_ID = "cs-deed-remarks";
-export const CASE_STUDY_DEED_NATURE_MATCH_ID = "cs-deed-nature-match";
-export const CASE_STUDY_DEED_NATURE_NOTES_ID = "deed-nature-match-notes";
 
 export function scheduleScrollToCaseStudyQuestion(
   answerKey: string,

@@ -47,22 +47,16 @@ export function savePartyCaseStudyReportDraft(draft: CaseStudyReportDraft) {
   return getEvaluatorCaseStudyBridge().savePartyCaseStudyReportDraft(draft);
 }
 
-export function collectFieldInspectionDocumentsFromSubmission(
-  submission: InspectorWorkspaceDraft,
-) {
+export function collectFieldInspectionDocumentsFromSubmission( submission: InspectorWorkspaceDraft ) {
   return getEvaluatorCaseStudyBridge().collectFieldInspectionDocumentsFromSubmission(
     submission,
   );
 }
 
-export function openPropertyDetailDocumentPreview(
-  entry: PropertyDetailDocumentEntry,
-) {
+export function openPropertyDetailDocumentPreview( entry: PropertyDetailDocumentEntry ) {
   return getEvaluatorCaseStudyBridge().openPropertyDetailDocumentPreview(entry);
 }
 
-export function downloadPropertyDetailDocument(
-  entry: PropertyDetailDocumentEntry,
-) {
+export function downloadPropertyDetailDocument( entry: PropertyDetailDocumentEntry ) {
   return getEvaluatorCaseStudyBridge().downloadPropertyDetailDocument(entry);
 }

@@ -3,14 +3,6 @@ import type { ValuationWorkScreenId } from "./valuation-work/lib/shell-state";
 
 export type EvaluatorWindowTab = ValuationWorkScreenId | "output";
 
-export const WORK_SCREENS: ValuationWorkScreenId[] = [
-  "basic",
-  "market",
-  "cost",
-  "final",
-  "review",
-];
-
 const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string; hint: string }[] = [
   {
     id: "basic",

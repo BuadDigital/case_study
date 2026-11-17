@@ -481,30 +481,6 @@ export function storedFileNameOf(name: string): string {
 
 const STORED_FILE_NAME_MAX = 200;
 
-/**
- * Deletes every per-field document row of a property. Used for the client-side id a new
- * property was uploaded under once its files were copied onto the server id, so nothing
- * lingers under a key no screen will ever list.
- */
-export async function discardPropertyDocuments(
-  poNumber: string,
-  propertyId: string,
-): Promise<void> {
-  if (!poNumber.trim() || !propertyId) return;
-  const config = prototypeModulesApiConfig();
-  if (!config) return;
-  await Promise.all(
-    PROPERTY_DOC_PREFETCH_KINDS.map((kind) =>
-      replaceScopeAttachments(API_SCOPE[kind], scopeKey(poNumber, propertyId)),
-    ),
-  );
-  for (const kind of PROPERTY_DOC_PREFETCH_KINDS) {
-    docCache.delete(cacheKey(kind, poNumber, propertyId));
-  }
-  forgetPropertyDocMetas(poNumber, propertyId);
-  notifyCacheListeners();
-}
-
 async function hydrateOneMeta(
   kind: PropertyDocKind,
   poNumber: string,
