@@ -144,6 +144,22 @@ public sealed class HttpCaseStudyLookup(
             taskIds,
             cancellationToken);
 
+    /// <inheritdoc />
+    public async Task<bool> IsAssignedAppraiserAsync(
+        Guid propertyId,
+        string? userId,
+        string? distributionAssigneeId,
+        CancellationToken cancellationToken = default) =>
+        await UpstreamJson.GetOrDefaultAsync<bool>(
+            http,
+            httpContext,
+            options.Value.CaseStudyBaseUrl,
+            $"/api/case-study-dispatch/properties/{propertyId:D}/assigned-appraiser"
+            + $"?userId={Uri.EscapeDataString(userId?.Trim() ?? "")}"
+            + $"&assigneeId={Uri.EscapeDataString(distributionAssigneeId?.Trim() ?? "")}",
+            Setting,
+            cancellationToken);
+
     public Task<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>> ListWorkflowTasksByPropertyAsync(
         Guid propertyId,
         IReadOnlyList<WorkflowTaskKind>? kinds = null,

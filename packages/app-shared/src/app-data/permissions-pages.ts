@@ -14,6 +14,8 @@ const ACTIVE_TRANSACTIONS_PAGE_ROLES = new Set([
   "general-manager",
   "section-supervisor",
   "case-specialist",
+  // Omar 2026-11-17: «جميع العقارات» for the appraiser too — every transaction, read only.
+  "real-estate-appraiser",
 ]);
 
 /**

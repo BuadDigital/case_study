@@ -56,6 +56,7 @@ public class WorkflowTasksController : ControllerBase
         [FromQuery] string? assigneeRole,
         [FromQuery] string? poNumber,
         [FromQuery] string? assignmentType,
+        [FromQuery] string? scope,
         CancellationToken cancellationToken)
     {
         var actor = await _permissions.GetForUserIdAsync(ActorId(), cancellationToken);
@@ -73,6 +74,7 @@ public class WorkflowTasksController : ControllerBase
             AssigneeRole = assigneeRole,
             PoNumber = poNumber,
             AssignmentType = assignmentType,
+            Scope = scope,
         };
 
         if (query.IsPaged)

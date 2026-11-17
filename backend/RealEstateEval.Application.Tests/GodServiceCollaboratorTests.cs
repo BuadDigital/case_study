@@ -279,6 +279,60 @@ public class GodServiceCollaboratorTests
         Assert.Equal("me", visible[0].AssigneeId);
     }
 
+    [Fact]
+    public void Workflow_visibility_all_transactions_scope_needs_the_page()
+    {
+        // Omar 2026-11-17: the appraiser's «جميع العقارات» lists every task; his other queues stay his own.
+        var tasks = new[]
+        {
+            FieldInspectionTask(Guid.NewGuid(), "mine", WorkflowTaskStatus.Open, assigneeId: "me"),
+            FieldInspectionTask(Guid.NewGuid(), "theirs", WorkflowTaskStatus.Open, assigneeId: "them"),
+        }.AsQueryable();
+        PermissionsDto Actor(params string[] pages) => new()
+        {
+            UserId = "u1",
+            PrototypeRole = "real-estate-appraiser",
+            DistributionAssigneeId = "me",
+            Pages = pages,
+        };
+        int Count(PermissionsDto actor, string? scope) =>
+            tasks.Where(RealEstateEval.CaseStudy.Application.Rules.WorkflowTaskVisibilityRules.VisibleTo(actor, scope)).Count();
+
+        Assert.Equal(2, Count(Actor("all-transactions"), "all-transactions"));
+        Assert.Equal(0, Count(Actor("all-transactions"), null)); // assignee role differs: only scope widens
+        Assert.Equal(0, Count(Actor("my-work"), "all-transactions")); // no page, no widening
+    }
+
+    [Theory]
+    [InlineData("real-estate-appraiser", true)]
+    [InlineData("case-specialist", true)]
+    [InlineData("field-inspector", false)]
+    [InlineData("engineering-office", false)]
+    [InlineData("government-reviewer", false)]
+    public void Every_work_order_is_read_by_case_staff_and_the_appraiser(string role, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.CanReadEveryWorkOrder(role));
+    }
+
+    [Theory]
+    [InlineData("real-estate-appraiser", true)]
+    [InlineData("case-specialist", false)]
+    [InlineData("cdo", false)]
+    public void Only_the_appraiser_edits_assigned_properties_only(string role, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.EditsOnlyAssignedProperties(role));
+    }
+
+    [Fact]
+    public void Property_id_is_read_from_an_upload_scope_key()
+    {
+        var id = Guid.NewGuid();
+        Assert.Equal(id, AttachmentAccessRules.PropertyIdOfScopeKey($"PO-068322:{id}"));
+        Assert.Equal(id, AttachmentAccessRules.PropertyIdOfScopeKey($"{id}/deed"));
+        Assert.Null(AttachmentAccessRules.PropertyIdOfScopeKey("PO-1:slot-2"));
+        Assert.Null(AttachmentAccessRules.PropertyIdOfScopeKey(null));
+    }
+
     private static WorkflowTask FieldInspectionTask(
         Guid id,
         string title,

@@ -563,6 +563,37 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         return rows.Select(ToTaskSnapshot).ToList();
     }
 
+    /// <inheritdoc />
+    public async Task<bool> IsAssignedAppraiserAsync(
+        Guid propertyId,
+        string? userId,
+        string? distributionAssigneeId,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = new[] { userId?.Trim(), distributionAssigneeId?.Trim() }
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Select(id => id!)
+            .ToList();
+        if (ids.Count == 0 || propertyId == Guid.Empty) return false;
+
+        var transactionId = await caseStudy.WorkOrderProperties.AsNoTracking()
+            .Where(p => p.Id == propertyId)
+            .Select(p => (Guid?)p.TransactionId)
+            .FirstOrDefaultAsync(cancellationToken);
+        var deedIds = caseStudy.WorkOrderProperties.AsNoTracking()
+            .Where(p => p.Id == propertyId
+                || (transactionId != null && transactionId != Guid.Empty && p.TransactionId == transactionId))
+            .Select(p => (Guid?)p.Id);
+
+        return await caseStudy.WorkflowTasks.AsNoTracking().AnyAsync(
+            t => t.Kind == WorkflowTaskKind.PropertyAppraisal
+                && t.Status != WorkflowTaskStatus.Cancelled
+                && deedIds.Contains(t.PropertyId)
+                && t.AssigneeId != null
+                && ids.Contains(t.AssigneeId),
+            cancellationToken);
+    }
+
     public async Task<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>> ListWorkflowTasksByPropertyAsync(
         Guid propertyId,
         IReadOnlyList<WorkflowTaskKind>? kinds = null,

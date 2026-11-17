@@ -205,6 +205,16 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         {
             return (null, Error("يمكن تعديل هذه المهمة بعد إرسالها فقط"));
         }
+        // ...and only on a transaction assigned to him (2026-11-17). He reads every property since
+        // «جميع العقارات», and the role alone let him correct any inspection.
+        if (PartyTaskSubmissionRules.IsAppraiser(actor)
+            && actor is not null
+            && !PoRoleMatrixRules.CanWritePartyTask(
+                actor.PrototypeRole, task.AssigneeId, actor.UserId, actor.DistributionAssigneeId)
+            && !await IsSiblingAppraiserAsync(task, actor, cancellationToken))
+        {
+            return (null, Error(PoRoleMatrixRules.AssignedAppraiserEditOnlyAr));
+        }
 
         var now = _time.UtcNow();
         if (entity is null)

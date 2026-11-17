@@ -154,7 +154,6 @@ public class PlatformPermissionCatalogTests
 
     [Theory]
     [InlineData("government-reviewer")]
-    [InlineData("real-estate-appraiser")]
     [InlineData("field-inspector")]
     [InlineData("engineering-office")]
     [InlineData("financial-officer")]
@@ -197,6 +196,8 @@ public class PlatformPermissionCatalogTests
         PlatformPermissionCatalog.ApplyPrototypeRole("real-estate-appraiser", pages, capabilities);
         Assert.Contains("my-work", pages);
         Assert.Contains("property-appraisal", pages);
+        // Omar 2026-11-17: «جميع العقارات» too — every transaction, read only.
+        Assert.Contains("all-transactions", pages);
     }
 
     [Fact]

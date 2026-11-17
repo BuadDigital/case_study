@@ -102,7 +102,7 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
     {
         IQueryable<WorkflowTask> rows = _caseStudy.WorkflowTasks
             .AsNoTracking()
-            .Where(WorkflowTaskVisibilityRules.VisibleTo(actor));
+            .Where(WorkflowTaskVisibilityRules.VisibleTo(actor, query.Scope));
 
         var kinds = WorkflowTaskListQueryRules.ResolveKinds(query.Kind).ToList();
         if (kinds.Count > 0)

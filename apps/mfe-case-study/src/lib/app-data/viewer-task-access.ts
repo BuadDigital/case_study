@@ -31,6 +31,8 @@ export function seesAllCaseStudyWorkflowTasks(
   // All-transactions lists one row per property at its latest stage, which
   // needs sibling party tasks — not only the specialist's own assigneeRole.
   if (isCaseStudySpecialist(role) && pageId === "all-transactions") return true;
+  // The appraiser reads every transaction there too, read only (Omar 2026-11-17).
+  if (role === "real-estate-appraiser" && pageId === "all-transactions") return true;
   if (!isCaseStudyWorkflowOverseer(role)) return false;
   if (!pageId) return true;
   return CASE_STUDY_WORKFLOW_QUEUE_PAGES.has(pageId);

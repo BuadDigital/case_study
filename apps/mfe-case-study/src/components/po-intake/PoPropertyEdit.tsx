@@ -31,6 +31,7 @@ import {
   PropertyIntakeEnfathCard,
   usePropertyIntakeEditor,
 } from "./PropertyIntakeEditorCards";
+import { useViewerEditsProperty } from "../../query/use-viewer-edits-property";
 
 function EditChrome({
   title,
@@ -101,8 +102,12 @@ export function PoPropertyEdit({
   const [saving, setSaving] = useState(false);
   const showDeleteProperty =
     canDeleteProperty(role) && Boolean(property && !property.isRemoved);
+  // The appraiser edits only a property assigned to him (2026-11-17). On another one the page says so
+  // instead of showing the form; null means his task list is still loading.
+  const editsThisProperty = useViewerEditsProperty(propertyId, property?.transactionId);
+  const mayEdit = canEditPropertyData(role) && editsThisProperty === true;
 
-  if (loading) {
+  if (loading || editsThisProperty === null) {
     return (
       <EditChrome title="تعديل العقار" onBack={onBackAction}>
         <InlineLoadingSkeleton />
@@ -114,6 +119,17 @@ export function PoPropertyEdit({
     return (
       <EditChrome title="تعديل العقار" onBack={onBackAction}>
         <Note tone="warn">لم يُعثر على العقار.</Note>
+      </EditChrome>
+    );
+  }
+
+  // Another appraiser's property, reached by link (2026-11-17): he reads it, he does not edit it.
+  if (editsThisProperty === false) {
+    return (
+      <EditChrome title="تعديل العقار" onBack={onBackAction}>
+        <Note tone="warn" role="alert">
+          تعديل بيانات العقار للمقيّم المُسنَد للعقار فقط.
+        </Note>
       </EditChrome>
     );
   }
@@ -194,13 +210,13 @@ export function PoPropertyEdit({
         <PoPropertyPartyDataCards
           poNumber={poNumber}
           propertyId={propertyId}
-          canEdit={canEditPropertyData(role)}
+          canEdit={mayEdit}
         />
 
         <PoPropertySpecialistExtrasCard
           poNumber={poNumber}
           propertyId={propertyId}
-          canEdit={canEditPropertyData(role)}
+          canEdit={mayEdit}
         />
 
         <Card>
@@ -217,7 +233,7 @@ export function PoPropertyEdit({
             <SpecialistComponentsSection
               poNumber={poNumber}
               propertyId={propertyId}
-              disabled={!canEditPropertyData(role)}
+              disabled={!mayEdit}
             />
           </CardBody>
         </Card>

@@ -38,6 +38,7 @@ import {
   governedPropertyDocumentsQueryKey,
   useGovernedPropertyDocumentsQuery,
 } from "../../query/governed-property-documents-query";
+import { useViewerEditsProperty } from "../../query/use-viewer-edits-property";
 
 export function usePropertyDocumentsWorkflow({
   sections,
@@ -57,6 +58,8 @@ export function usePropertyDocumentsWorkflow({
     propertyId: property.id,
   });
   const [busy, setBusy] = useState(false);
+  // The appraiser uploads and retypes documents only on a property assigned to him (2026-11-17).
+  const editsThisProperty = useViewerEditsProperty(property.id, property.transactionId) === true;
 
   // After field inspection the inspector-confirmed type wins operationally.
   const propertyType =
@@ -82,9 +85,9 @@ export function usePropertyDocumentsWorkflow({
   const uploadOptions = useMemo(
     () =>
       propertyDocumentUploadOptions(attachmentsList, {
-        includeValued: canUploadValuedDocuments(role),
+        includeValued: canUploadValuedDocuments(role) && editsThisProperty,
       }),
-    [attachmentsList, role],
+    [attachmentsList, role, editsThisProperty],
   );
 
   async function run(
@@ -112,7 +115,7 @@ export function usePropertyDocumentsWorkflow({
     checklist,
     uploadOptions,
     propertyType,
-    canUpload: canUploadPropertyDocuments(role),
+    canUpload: canUploadPropertyDocuments(role) && editsThisProperty,
     canReviewValued: canReviewValuedDocuments(access),
     busy,
     loadFailed: governed.isError,

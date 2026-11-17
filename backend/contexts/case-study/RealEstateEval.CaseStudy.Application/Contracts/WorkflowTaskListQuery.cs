@@ -40,6 +40,12 @@ public sealed record WorkflowTaskListQuery
  /// <summary>Exact assignment-type label carried on the task row.</summary>
     public string? AssignmentType { get; init; }
 
+ /// <summary>
+ /// <c>all-transactions</c>: the «جميع العقارات» page asks for every task. It is honoured only for
+ /// an actor who holds that page (see <c>WorkflowTaskVisibilityRules.VisibleTo</c>).
+ /// </summary>
+    public string? Scope { get; init; }
+
     public static WorkflowTaskListQuery Empty { get; } = new();
 
     public bool IsPaged => Page.HasValue || PageSize.HasValue;

@@ -119,6 +119,8 @@ export const ROLES: Record<RoleId, RoleDef> = {
       // Omar 2026-11-10: the appraiser enters his transactions from «أعمالي» like the specialists.
       "my-work",
       "po",
+      // Omar 2026-11-17: «جميع العقارات» — every transaction, read only, as the specialist sees it.
+      "all-transactions",
       "property-map",
       "favorites",
       "operations-tasks",

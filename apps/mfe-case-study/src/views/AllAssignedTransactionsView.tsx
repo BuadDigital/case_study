@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { isPartyWorkflowRole } from "@platform/app-shared/app-data/party-task-pages";
+import { roleSeesAllTransactionsPage } from "@platform/app-shared/app-data/permissions-pages";
 import {
   PanelSkeleton,
   preloadableLazy,
@@ -105,6 +106,9 @@ export function AllAssignedTransactionsView() {
     useTransactionGeneralActions();
 
   const isPartyRole = isPartyWorkflowRole(role);
+  // A party role lists only its own transactions here, except a party holding the page itself: the
+  // appraiser reads every transaction, as the staff do (Omar 2026-11-17). His row menu stays a party's.
+  const listsOwn = isPartyRole && !roleSeesAllTransactionsPage(role);
 
   const mayReopenReport = canReopenCaseStudyReport(access);
   const mayReassignParties = canRedistributeParties(access);
@@ -141,14 +145,16 @@ export function AllAssignedTransactionsView() {
       hidePageTitle: true,
       tableLayout: "all-transactions",
       emptyLine: "لا توجد عقارات.",
-      emptyHint: isPartyRole
+      emptyHint: listsOwn
         ? "تظهر هنا المعاملات المسندة إليك — صف واحد لكل صك مع آخر مرحلة وصل إليها."
         : "تظهر هنا كل العقارات — صف واحد لكل صك: أين وصل ومن ينتظر، والمرفوعة على إنفاذ والملغاة بمرحلتها.",
       panelId: "all-assigned-transactions-panel",
       // No hint line under the table (Omar 2026-11-15).
       tableHint: null,
-      partyAssignee: isPartyRole,
-      assigneeRole: isPartyRole ? role : undefined,
+      partyAssignee: listsOwn,
+      assigneeRole: listsOwn ? role : undefined,
+      // Asks the server for every task; it honours this only for a viewer holding this page.
+      serverQuery: { scope: "all-transactions" },
       getBasePath: allTransactionsPath,
       getTaskPath: allTransactionsTaskPath,
       queueSort: "distributed-newest-first",
@@ -215,8 +221,8 @@ export function AllAssignedTransactionsView() {
         return { label, className };
       },
       // Party roles open their workspace; the staff open the property's page.
-      resolveFullPageTaskPath: isPartyRole ? partyTaskWorkspacePath : propertyPageOf,
-      refreshOnWindowEvents: isPartyRole
+      resolveFullPageTaskPath: listsOwn ? partyTaskWorkspacePath : propertyPageOf,
+      refreshOnWindowEvents: listsOwn
         ? PARTY_QUEUE_REFRESH_EVENTS
         : undefined,
       filterListed: (mine, poByNumber) =>
@@ -229,6 +235,7 @@ export function AllAssignedTransactionsView() {
     };
   }, [
     isPartyRole,
+    listsOwn,
     role,
     viewerDisplayName,
     generalItemsFor,

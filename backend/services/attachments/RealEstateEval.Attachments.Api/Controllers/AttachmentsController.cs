@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Shared.Web;
@@ -23,16 +24,40 @@ public class AttachmentsController : ControllerBase
     private readonly IAttachmentLookup _lookup;
     private readonly IPermissionService _permissions;
     private readonly ILogger<AttachmentsController> _logger;
+    private readonly ICaseStudyLookup _caseStudy;
     public AttachmentsController(
         IAttachmentService attachments,
         IAttachmentLookup lookup,
         IPermissionService permissions,
-        ILogger<AttachmentsController> logger)
+        ILogger<AttachmentsController> logger,
+        ICaseStudyLookup caseStudy)
     {
         _attachments = attachments;
         _lookup = lookup;
         _permissions = permissions;
         _logger = logger;
+        _caseStudy = caseStudy;
+    }
+
+    /// <summary>
+    /// What: refuses a property-document write by the appraiser on a property he is not assigned to.
+    /// How it works: only roles that edit their assigned properties only are asked (the appraiser). The
+    /// property comes from the upload's scope key (<c>{po}:{propertyId}</c>) and must be in a transaction
+    /// holding his appraisal task (Case Study answers).
+    /// Edge cases: a scope key with no property id is refused for him. Added 2026-11-17, when the
+    /// appraiser started opening every property from «جميع العقارات».
+    /// </summary>
+    private async Task<ActionResult?> ForbidUnassignedAppraiserAsync(
+        PermissionsDto? actor,
+        string? scopeKey,
+        CancellationToken ct)
+    {
+        if (actor is null || !PoRoleMatrixRules.EditsOnlyAssignedProperties(actor.PrototypeRole)) return null;
+        var propertyId = AttachmentAccessRules.PropertyIdOfScopeKey(scopeKey);
+        return propertyId is { } id
+               && await _caseStudy.IsAssignedAppraiserAsync(id, actor.UserId, actor.DistributionAssigneeId, ct)
+            ? null
+            : this.ForbiddenProblem(PoRoleMatrixRules.AssignedAppraiserEditOnlyAr);
     }
 
     [HttpGet]
@@ -98,12 +123,16 @@ public class AttachmentsController : ControllerBase
             var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
             if (!PoRoleMatrixRules.CanUploadValuedDocuments(actor?.PrototypeRole))
                 return this.ForbiddenProblem("لا تملك صلاحية رفع مستند ذي قيمة");
+            var unassigned = await ForbidUnassignedAppraiserAsync(actor, request.ScopeKey, ct);
+            if (unassigned is not null) return unassigned;
         }
         else if (string.Equals(request.Scope?.Trim(), PropertyDocumentTypes.GovernedScope, StringComparison.Ordinal))
         {
             var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
             if (!PoRoleMatrixRules.CanUploadPropertyDocuments(actor?.PrototypeRole))
                 return this.ForbiddenProblem("رفع مستندات العقار متاح للأخصائي ومشرف القسم");
+            var unassigned = await ForbidUnassignedAppraiserAsync(actor, request.ScopeKey, ct);
+            if (unassigned is not null) return unassigned;
         }
 
         var (meta, error) = await _attachments.UploadAsync(request, userId, ct);
@@ -130,6 +159,13 @@ public class AttachmentsController : ControllerBase
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
         if (!PoRoleMatrixRules.CanUploadPropertyDocuments(actor?.PrototypeRole))
             return this.ForbiddenProblem("تصنيف مستندات العقار متاح للأخصائي ومشرف القسم");
+        if (PoRoleMatrixRules.EditsOnlyAssignedProperties(actor?.PrototypeRole))
+        {
+            var current = await _attachments.GetMetaAsync(id, actor, ct);
+            if (current is null) return NotFound();
+            var unassigned = await ForbidUnassignedAppraiserAsync(actor, current.ScopeKey, ct);
+            if (unassigned is not null) return unassigned;
+        }
 
         var (meta, error) = await _attachments.SetDocumentTypeAsync(id, request, actor, ct);
         if (error is not null) return this.BadRequestProblem(error);

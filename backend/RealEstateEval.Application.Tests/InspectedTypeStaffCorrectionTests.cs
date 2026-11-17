@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Services;
@@ -221,7 +222,7 @@ public class InspectedTypeStaffCorrectionTests
         };
         var bundle = CreateDb();
         var db = bundle.CaseStudy;
-        Seed(db, accepted: true);
+        Seed(db, accepted: true, appraiserId: "appraiser-1");
         var service = CreateService(bundle);
 
         var (result, errors) = await service.CorrectInspectedTypeAsync(
@@ -240,6 +241,31 @@ public class InspectedTypeStaffCorrectionTests
             WorkflowTaskKind.EngineeringSurvey, "PO-701", DateTime.UtcNow, title: "رفع مساحي", propertyId: PropertyId);
         Assert.False(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(appraiser, survey));
         Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(Specialist, survey));
+    }
+
+    [Fact]
+    public async Task Another_appraiser_cannot_correct_the_inspection()
+    {
+        // 2026-11-17: the appraiser reads every property but corrects only his own transaction.
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        Seed(db, accepted: true, appraiserId: "appraiser-2");
+        var service = CreateService(bundle);
+
+        var (result, errors) = await service.CorrectInspectedTypeAsync(
+            TaskId,
+            new CorrectInspectedTypeRequest { PropertyType = "عمارة" },
+            new PartySubmissionActor
+            {
+                UserId = "appraiser-1",
+                DisplayName = "المقيّم",
+                PrototypeRole = "real-estate-appraiser",
+            });
+
+        Assert.Null(result);
+        Assert.Equal(PoRoleMatrixRules.AssignedAppraiserEditOnlyAr, errors!["_"]);
+        var property = await db.WorkOrderProperties.AsNoTracking().SingleAsync(p => p.Id == PropertyId);
+        Assert.Equal("فيلا", property.InspectedPropertyType);
     }
 
     [Fact]
@@ -370,8 +396,25 @@ public class InspectedTypeStaffCorrectionTests
         return doc.RootElement.Clone();
     }
 
-    private static void Seed(CaseStudyDbContext db, bool accepted = false, bool reviewApproved = false)
+    private static void Seed(
+        CaseStudyDbContext db,
+        bool accepted = false,
+        bool reviewApproved = false,
+        string? appraiserId = null)
     {
+        // The appraiser beside the inspection (2026-11-17): he corrects only on his own transaction.
+        Guid? parentId = appraiserId is null ? null : Guid.NewGuid();
+        if (appraiserId is not null)
+        {
+            db.WorkflowTasks.Add(WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-701",
+                DateTime.UtcNow,
+                assigneeRole: StaffRoleIds.RealEstateAppraiser,
+                propertyId: PropertyId,
+                assigneeId: appraiserId,
+                parentTaskId: parentId));
+        }
         var now = DateTime.UtcNow;
         db.Transactions.Add(new Transaction
         {
@@ -401,7 +444,8 @@ public class InspectedTypeStaffCorrectionTests
             phase: WorkflowTaskPhase.Done,
             status: WorkflowTaskStatus.Completed,
             id: TaskId,
-            propertyId: PropertyId));
+            propertyId: PropertyId,
+            parentTaskId: parentId));
         db.PartyTaskSubmissions.Add(new PartyTaskSubmission
         {
             Id = Guid.NewGuid(),

@@ -26,7 +26,9 @@ public static class AttachmentsDependencyInjection
         services.AddAttachmentsPersistence(configuration, connectionString);
         services.AddOwnerCommandIdempotencyPersistence<AttachmentsDbContext>(configuration);
         services.AddRemotePlatformCatalogs(configuration);
-        services.AddRemotePropertyTimelineRecorder(configuration);
+        // Case Study lookups (2026-11-17): the appraiser's assignment check on property uploads. This also
+        // registers the property-timeline recorder this host already used.
+        services.AddRemoteCaseStudy(configuration);
         services.Configure<BlobStorageOptions>(configuration.GetSection("BlobStorage"));
         services.AddSingleton<IBlobStorage, LocalFileBlobStorage>();
         services.AddScoped<IAttachmentLookup, AttachmentLookup>();
