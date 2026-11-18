@@ -82,16 +82,16 @@ describe("building inventory path + interceptor classification", () => {
     expect(parseBuildingInventoryPath("/api/work-orders/REQ-7/properties/p/inspection-limits")).toBeNull();
   });
 
-  it("classifies only the PUT as the offline-queueable building-inventory write", async () => {
+  it("classifies only the PUT as the offline-queueable building-inventory write", () => {
     const url = `http://localhost:5000/api/work-orders/${PO}/properties/${PROPERTY}/building-inventory`;
     const body = JSON.stringify({ lines: [line("الدور الأرضي")] });
-    expect(await classifyWrite({ input: url, init: { method: "PUT", body }, method: "PUT" })).toEqual({
+    expect(classifyWrite({ input: url, init: { method: "PUT", body }, method: "PUT" })).toEqual({
       type: "building-inventory-save",
       poNumber: PO,
       propertyId: PROPERTY,
       body: { lines: [line("الدور الأرضي")] },
     });
-    expect(await classifyWrite({ input: url, init: { method: "PATCH" }, method: "PATCH" })).toBeNull();
+    expect(classifyWrite({ input: url, init: { method: "PATCH" }, method: "PATCH" })).toBeNull();
   });
 
   it("enqueues a classified write into the coalescing queue (second PUT replaces the first)", async () => {

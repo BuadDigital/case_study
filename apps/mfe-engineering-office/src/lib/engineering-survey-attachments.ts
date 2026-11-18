@@ -372,7 +372,7 @@ export async function clearEngineeringSurveyFile(
   if (extras.length > 0 && primaryId) {
     // Appended PDFs stay; only the primary row goes.
     await deleteTaskScopedAttachment(primaryId);
-    await clearTaskScopedAttachmentPreview(meta.scope, taskId);
+    clearTaskScopedAttachmentPreview(meta.scope, taskId);
   } else {
     await clearTaskScopedAttachments(meta.scope, taskId);
   }

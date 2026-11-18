@@ -37,13 +37,18 @@ import {
  * Classifies a failed replay. A 401/403 never wipes the queue: an expired token is
  * renewed and retried, and only a disabled account (refresh code `account-disabled`)
  * wipes the device (spec).
+ *
+ * How it works: a plain call to `replayFailure`; the replay steps `return` it from their
+ * own async bodies, so it needs no promise of its own.
+ * Edge cases: it was `async` with no await, which wrapped the result in an extra promise
+ * for nothing; it is now synchronous.
  */
-async function fail(
+function fail(
   _userId: string,
   kind: string | undefined,
   error: string,
   validationTerminal = false,
-): Promise<ReplayFailure> {
+): ReplayFailure {
   return replayFailure(kind, error, { validationTerminal });
 }
 

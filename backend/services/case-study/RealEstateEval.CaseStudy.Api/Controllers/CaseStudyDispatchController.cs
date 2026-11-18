@@ -21,9 +21,8 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : ControllerBase
 {
     [HttpGet("completed-case-study-property-ids")]
-    public async Task<ActionResult<IReadOnlyList<Guid>>> CompletedCaseStudyPropertyIds(
-        CancellationToken cancellationToken) =>
-        Ok(await lookup.ListCompletedCaseStudyPropertyIdsAsync(cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<Guid>>> CompletedCaseStudyPropertyIds( CancellationToken cancellationToken) => 
+    Ok(await lookup.ListCompletedCaseStudyPropertyIdsAsync(cancellationToken));
 
     [HttpGet("workflow-task-kinds")]
     public async Task<ActionResult<IReadOnlyList<CaseStudyWorkflowTaskKindDto>>> WorkflowTaskKinds(

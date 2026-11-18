@@ -14,6 +14,13 @@ public enum BuildingInventoryWriteAccess
 
     /// <summary>The assigned field inspector, before his inspection is submitted: the table only.</summary>
     Inspector = 2,
+
+    /// <summary>
+    /// The appraiser of the property's transaction: the table only (Omar 2026-11-18: the inspector sends
+    /// the table, the study specialist edits and adds, the appraiser edits and adds; each line keeps
+    /// who wrote it). «مكونات العقار» text stays the specialist's.
+    /// </summary>
+    Appraiser = 3,
 }
 
 /// <summary>
@@ -26,7 +33,9 @@ public sealed record FieldInspectionWriteFacts(string? AssigneeId, string? Submi
 /// Who may write a property's building inventory. Case staff (the same set that manages party
 /// submissions) always may; the field inspector may only on a property whose inspection task is
 /// assigned to him and only until he submits it (a draft, or a package returned for correction,
-/// is open). Everyone else — another inspector, the engineering office, appraisers — is denied.
+/// is open). The appraiser of the property's transaction may write the table (2026-11-18; decided in
+/// <c>BuildingInventoryService.ResolveWriteAccessAsync</c>, which asks Case Study who is assigned).
+/// Everyone else — another inspector, the engineering office, another appraiser — is denied.
 /// </summary>
 public static class BuildingInventoryWriteRules
 {

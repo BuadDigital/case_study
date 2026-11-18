@@ -29,10 +29,7 @@ public sealed class NotificationsController : ControllerBase
     private readonly NotificationRealtimeHub _realtime;
     private readonly DatabaseOptions _dbOptions;
 
-    public NotificationsController(
-        INotificationService notifications,
-        NotificationRealtimeHub realtime,
-        IOptions<DatabaseOptions>? dbOptions = null)
+    public NotificationsController( INotificationService notifications, NotificationRealtimeHub realtime, IOptions<DatabaseOptions>? dbOptions = null)
     {
         _notifications = notifications;
         _realtime = realtime;

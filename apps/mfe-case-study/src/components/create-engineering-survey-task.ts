@@ -13,12 +13,9 @@ export const SURVEY_DEED_NOT_FOUND_AR = "الصك غير موجود في أمر 
 export const SURVEY_NO_STUDY_TASK_AR = "لا توجد معاملة دراسة حالة لهذا الصك";
 // The office is added while the transaction is in the study phase only — each refusal says which
 // side of it the transaction is on (one sentence for all of them read as a riddle, Omar 2026-11-11).
-export const SURVEY_BEFORE_DISTRIBUTION_AR =
-  "المعاملة لم تُوزَّع بعد — يُختار المكتب الهندسي عند التوزيع، أو يُضاف من هنا بعد تأكيده";
-export const SURVEY_OBSTRUCTED_AR =
-  "المعاملة متعذّرة بانتظار المشرف — يُضاف المكتب الهندسي بعد رفع التعذّر";
-export const SURVEY_AFTER_REPORT_AR =
-  "صدر تقرير دراسة الحالة لهذه المعاملة — أعد فتح التقرير أولاً ثم أضف المكتب الهندسي";
+export const SURVEY_BEFORE_DISTRIBUTION_AR = "المعاملة لم تُوزَّع بعد — يُختار المكتب الهندسي عند التوزيع، أو يُضاف من هنا بعد تأكيده";
+export const SURVEY_OBSTRUCTED_AR = "المعاملة متعذّرة بانتظار المشرف — يُضاف المكتب الهندسي بعد رفع التعذّر";
+export const SURVEY_AFTER_REPORT_AR = "صدر تقرير دراسة الحالة لهذه المعاملة — أعد فتح التقرير أولاً ثم أضف المكتب الهندسي";
 
 function phaseRefusal(phase: WorkflowTask["phase"]): string {
   if (phase === "obstruction") return SURVEY_OBSTRUCTED_AR;

@@ -31,12 +31,18 @@ export function SpecialistComponentsSection({
   poNumber,
   propertyId,
   disabled,
+  textReadOnly = false,
   inspectorReference,
   onSaved,
 }: {
   poNumber: string;
   propertyId: string;
   disabled?: boolean;
+  /**
+   * The table is editable but «مكونات العقار» text is read only: the appraiser edits and adds lines,
+   * and the text stays the specialist's (Omar 2026-11-18). The server ignores any text he sends.
+   */
+  textReadOnly?: boolean;
   /** What the inspector sent (text / photo), shown read-only above the specialist's text. */
   inspectorReference?: ReactNode;
   onSaved?: () => void;
@@ -84,7 +90,7 @@ export function SpecialistComponentsSection({
         </GentleBusy>
       ) : (
         <>
-          {disabled ? (
+          {disabled || textReadOnly ? (
             <InsReadField label="مكونات العقار (تُطبع في التقرير)" value={text} multiline />
           ) : (
             <FormGroup>

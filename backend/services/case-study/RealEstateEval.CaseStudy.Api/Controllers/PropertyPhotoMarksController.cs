@@ -16,10 +16,7 @@ public class PropertyPhotoMarksController : ControllerBase
     private readonly IPropertyPhotoMarksService _marks;
     private readonly IPermissionService _permissions;
 
-    public PropertyPhotoMarksController(
-        IPropertyPhotoMarksService marks,
-        IPermissionService permissions)
-    {
+    public PropertyPhotoMarksController( IPropertyPhotoMarksService marks, IPermissionService permissions) {
         _marks = marks;
         _permissions = permissions;
     }

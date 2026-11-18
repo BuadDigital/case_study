@@ -158,6 +158,63 @@ public class BuildingInventoryServiceTests
         Assert.True(await service.CanReadAsync(Po, PropertyId, Specialist(), default));
     }
 
+    // ---- the appraiser (Omar 2026-11-18: he edits and adds lines; the text stays the specialist's) ----
+
+    private static PartySubmissionActor Appraiser(string userId = "appr-1") =>
+        new() { UserId = userId, DisplayName = "المقيّم", PrototypeRole = "real-estate-appraiser" };
+
+    /// <summary>Answers «assigned» for appr-1 only, as Case Study would for the transaction's appraiser.</summary>
+    public class AssignedTo : System.Reflection.DispatchProxy
+    {
+        public static RealEstateEval.Application.Abstractions.ICaseStudyLookup Create(string userId)
+        {
+            var proxy = Create<RealEstateEval.Application.Abstractions.ICaseStudyLookup, AssignedTo>();
+            ((AssignedTo)(object)proxy).Assigned = userId;
+            return proxy;
+        }
+
+        private string Assigned { get; set; } = "";
+
+        protected override object? Invoke(System.Reflection.MethodInfo? method, object?[]? args) =>
+            method?.Name == nameof(RealEstateEval.Application.Abstractions.ICaseStudyLookup.IsAssignedAppraiserAsync)
+                ? Task.FromResult(Equals(args?[1], Assigned))
+                : throw new NotSupportedException(method?.Name);
+    }
+
+    [Fact]
+    public async Task The_transactions_appraiser_writes_the_table_another_appraiser_does_not()
+    {
+        await using var db = CreateDb();
+        Seed(db);
+        var service = new BuildingInventoryService(
+            new BuildingInventoryRepository(db), caseStudy: AssignedTo.Create("appr-1"));
+
+        Assert.Equal(BuildingInventoryWriteAccess.Appraiser,
+            await service.ResolveWriteAccessAsync(Po, PropertyId, Appraiser(), default));
+        Assert.Equal(BuildingInventoryWriteAccess.Denied,
+            await service.ResolveWriteAccessAsync(Po, PropertyId, Appraiser("appr-2"), default));
+        // Without Case Study (tools) the appraiser stays read only.
+        Assert.Equal(BuildingInventoryWriteAccess.Denied,
+            await CreateService(db).ResolveWriteAccessAsync(Po, PropertyId, Appraiser(), default));
+    }
+
+    [Fact]
+    public async Task The_appraisers_lines_are_his_and_the_specialists_text_is_kept()
+    {
+        await using var db = CreateDb();
+        Seed(db, specialistText: "نص الأخصائي");
+
+        var (result, errors) = await CreateService(db).SaveAsync(
+            Po, PropertyId, Request("نص من المقيّم يُتجاهل", Line("ملحق علوي")),
+            BuildingInventoryWriteAccess.Appraiser, default, Appraiser());
+
+        Assert.Null(errors);
+        Assert.Equal("نص الأخصائي", result!.ComponentsText);
+        var line = Assert.Single(result.Lines);
+        Assert.Equal("real-estate-appraiser", line.Provenance!.WrittenByRole);
+        Assert.Equal("appr-1", line.Provenance.WrittenByUserId);
+    }
+
     // ---- save ----
 
     [Fact]
