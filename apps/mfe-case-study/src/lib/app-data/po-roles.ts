@@ -263,3 +263,12 @@ export function canRedistributeParties(access: StaffAccess): boolean {
     holdsSubRole(access, "coordination")
   );
 }
+
+/**
+ * Hand a case-study party to someone else from «جميع العقارات» («تعديل الأطراف»): everyone in
+ * `canRedistributeParties`, and the appraiser (Omar 2026-11-18). Mirrors
+ * `WorkflowTaskLifecycleRules.CanReassignParties`; adding the survey stays with the narrower rule.
+ */
+export function canReassignParties(access: StaffAccess): boolean {
+  return canRedistributeParties(access) || access.role === "real-estate-appraiser";
+}

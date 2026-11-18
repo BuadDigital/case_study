@@ -82,10 +82,13 @@ export function RedistributePartiesModal({
   onConfirm,
   mayReassign = true,
   onSkipOffice,
+  partyTasks,
 }: {
   open: boolean;
   task: WorkflowTask | null;
   onClose: () => void;
+  /** Where the transaction's parties are read from; absent: the viewer's task list. */
+  partyTasks?: readonly WorkflowTask[];
   /** false: the viewer may only drop the office (the study sub-role) — the person pickers are read-only. */
   mayReassign?: boolean;
   /**
@@ -102,7 +105,10 @@ export function RedistributePartiesModal({
   ) => void | Promise<void>;
 }) {
   const { data: staffResult } = useDistributionAssigneesQuery();
-  const { data: workflowTasks = [] } = useWorkflowTasksQuery();
+  const { data: viewerTasks = [] } = useWorkflowTasksQuery();
+  // The transaction's parties: the caller's list when it has one (the appraiser's own list holds
+  // only his tasks — «جميع العقارات» hands its own), else the viewer's.
+  const workflowTasks = partyTasks ?? viewerTasks;
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   const loadByAssignee = useMemo(
     () => buildAssigneeOpenLoadMap(workflowTasks),

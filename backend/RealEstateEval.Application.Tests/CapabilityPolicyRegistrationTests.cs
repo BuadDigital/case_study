@@ -39,6 +39,7 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.ImportValuationReports,
                      CapabilityPolicyNames.ListDistributionAssignees,
                      CapabilityPolicyNames.ManageOperationsTasks,
+                     CapabilityPolicyNames.ReassignParties,
                      CapabilityPolicyNames.ManagePartyFeePricing,
                      CapabilityPolicyNames.ReadCaseStudyWorkspace,
                      CapabilityPolicyNames.ReadAttachments,
@@ -139,6 +140,25 @@ public class CapabilityPolicyRegistrationTests
             PrincipalWith(PlatformCapabilities.SubmitPartyWork),
             resource: null,
             CapabilityPolicyNames.ManageOperationsTasks)).Succeeded);
+    }
+
+    [Fact]
+    public async Task The_appraiser_reaches_party_reassignment_but_a_field_party_does_not()
+    {
+        var authorization = BuildAuthorizationService();
+
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageWorkOrders),
+            resource: null,
+            CapabilityPolicyNames.ReassignParties)).Succeeded);
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitValuationReport, PlatformCapabilities.SubmitPartyWork),
+            resource: null,
+            CapabilityPolicyNames.ReassignParties)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitPartyWork),
+            resource: null,
+            CapabilityPolicyNames.ReassignParties)).Succeeded);
     }
 
     [Fact]

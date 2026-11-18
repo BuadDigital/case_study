@@ -338,6 +338,11 @@ export type ActiveQueueRowMoreContext = {
   poByNumber: Map<string, PoIntakeRecord>;
   viewerRole: RoleId;
   viewerAccess: StaffAccess;
+  /**
+   * The tasks this queue loaded (its own scope): a row's case-study parent and its parties. The
+   * viewer's general task list holds only the appraiser's own tasks, «جميع العقارات» holds them all.
+   */
+  queueTasks: readonly WorkflowTask[];
 };
 
 export type ActiveQueueApi = {

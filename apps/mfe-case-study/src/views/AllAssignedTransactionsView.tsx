@@ -36,7 +36,7 @@ import {
   canReopenCompletedTransaction,
 } from "../lib/app-data/all-transactions-queue";
 import {
-  canRedistributeParties,
+  canReassignParties,
   canReopenCaseStudyReport,
   canSkipEngineeringSurvey,
 } from "../lib/app-data/po-roles";
@@ -99,8 +99,12 @@ export function AllAssignedTransactionsView() {
   const { showToast } = useToast();
   const [reopenTask, setReopenTask] = useState<WorkflowTask | null>(null);
   const [reopenDeedLabel, setReopenDeedLabel] = useState("");
-  // «تعديل الأطراف» (Omar 2026-11-15): the deed's case-study task whose parties are being edited.
-  const [partiesTask, setPartiesTask] = useState<WorkflowTask | null>(null);
+  // «تعديل الأطراف» (Omar 2026-11-15): the deed's case-study task whose parties are being edited,
+  // with the page's own task list to read its parties from.
+  const [parties, setParties] = useState<{
+    task: WorkflowTask;
+    tasks: readonly WorkflowTask[];
+  } | null>(null);
   // «المعاملات النشطة» rows offer the general actions too (reopen, failure, cancellation).
   const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
     useTransactionGeneralActions();
@@ -111,7 +115,8 @@ export function AllAssignedTransactionsView() {
   const listsOwn = isPartyRole && !roleSeesAllTransactionsPage(role);
 
   const mayReopenReport = canReopenCaseStudyReport(access);
-  const mayReassignParties = canRedistributeParties(access);
+  // The appraiser too (Omar 2026-11-18): he hands a party to someone else on any transaction here.
+  const mayReassignParties = canReassignParties(access);
   const mayDropOffice = canSkipEngineeringSurvey(access);
   const mayReopenCompleted = canReopenCompletedTransaction(role);
   useEffect(() => {
@@ -181,13 +186,14 @@ export function AllAssignedTransactionsView() {
         });
         // «تعديل الأطراف» (Omar 2026-11-15): the parties working on the deed — hand one that has not
         // delivered to someone else, or drop an office the transaction does not need. Offered on the
-        // deed's case-study task once distributed (the server's rule), to whoever may do either.
+        // deed's case-study task once distributed (the server's rule), to whoever may do either —
+        // the appraiser included (2026-11-18). The parent is read from this page's list: the
+        // appraiser's general task list holds only his own tasks.
         const parent =
           ctx.task.kind === "case-study-property"
             ? ctx.task
-            : tasks?.find((t) => t.id === ctx.task.parentTaskId);
+            : ctx.queueTasks.find((t) => t.id === ctx.task.parentTaskId);
         if (
-          !isPartyRole &&
           parent?.kind === "case-study-property" &&
           parent.phase === "case-study" &&
           parent.status !== "cancelled" &&
@@ -197,7 +203,7 @@ export function AllAssignedTransactionsView() {
           stageItems.push({
             id: "edit-parties",
             label: "تعديل الأطراف",
-            onClick: () => setPartiesTask(parent),
+            onClick: () => setParties({ task: parent, tasks: ctx.queueTasks }),
           });
         }
         // Party roles keep their own menu; the staff get the general actions after it.
@@ -239,7 +245,6 @@ export function AllAssignedTransactionsView() {
     role,
     viewerDisplayName,
     generalItemsFor,
-    tasks,
     mayReassignParties,
     mayDropOffice,
   ]);
@@ -253,8 +258,9 @@ export function AllAssignedTransactionsView() {
       <ActiveTransactionQueueView config={config} />
       {generalDialogs}
       <RedistributePartiesHost
-        task={partiesTask}
-        onClose={() => setPartiesTask(null)}
+        task={parties?.task ?? null}
+        partyTasks={parties?.tasks}
+        onClose={() => setParties(null)}
         mayReassign={mayReassignParties}
         allowDropOffice={mayDropOffice}
       />
