@@ -134,6 +134,18 @@ services:
       retries: 5
       start_period: 20s
 
+  # The properties map's land layers (MOMRAH plans, parcel outlines, parcel numbers) as vector
+  # tiles. The .pmtiles files are copied to /app/tiles by hand (~660 MB, not in git); nginx
+  # serves them under /tiles/. Read only, no secrets, nothing else depends on it.
+  tiles:
+    image: protomaps/go-pmtiles:v1.31.2
+    container_name: ree-prod-tiles
+    restart: always
+    logging: *default-logging
+    command: ["serve", "/data"]
+    volumes:
+      - /app/tiles:/data:ro
+
   # Deploy-time schema migration (never run MigrateAsync inside Production apps).
   migrate:
     image: ghcr.io/${IMAGE_OWNER}/case_study/db-migrate:${TAG:-latest}

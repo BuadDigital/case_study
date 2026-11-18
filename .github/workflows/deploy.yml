@@ -192,9 +192,11 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_OWNER }}/case_study/${{ matrix.image }}:latest
             ghcr.io/${{ env.IMAGE_OWNER }}/case_study/${{ matrix.image }}:${{ github.sha }}
-          # Only the frontend Dockerfile declares this ARG; other images ignore it.
+          # Only the frontend Dockerfile declares these ARGs; other images ignore them.
+          # The land-layer tiles are served by the same host under /tiles/ (nginx → tiles).
           build-args: |
             NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+            NEXT_PUBLIC_PARCEL_TILES_URL=/tiles
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
@@ -471,7 +473,7 @@ jobs:
             docker compose -f docker-compose.prod.yml run --rm migrate retire-demo-data
             # Stateful services keep running; they are recreated only when their own
             # definition (image version, settings) changed.
-            if ! $COMPOSE up -d --no-deps --remove-orphans postgres rabbitmq redis gotenberg; then
+            if ! $COMPOSE up -d --no-deps --remove-orphans postgres rabbitmq redis gotenberg tiles; then
               echo "::error::stateful services failed to start"
               $COMPOSE ps -a || true
               exit 1
