@@ -14,6 +14,7 @@ import {
   canRaisePropertyFailure,
   canReceivePo,
   canReopenTransaction,
+  canReassignParties,
   canRedistributeParties,
   canSkipEngineeringSurvey,
   canRevertTaskPhase,
@@ -116,6 +117,13 @@ describe("po-roles", () => {
   it("party roles cannot redistribute parties", () => {
     expect(canRedistributeParties(staffAccessOf("field-inspector"))).toBe(false);
     expect(canRedistributeParties(staffAccessOf("real-estate-appraiser"))).toBe(false);
+  });
+
+  it("the appraiser reassigns parties as the staff do; the other parties do not", () => {
+    expect(canReassignParties(staffAccessOf("real-estate-appraiser"))).toBe(true);
+    expect(canReassignParties(staffAccessOf("section-supervisor"))).toBe(true);
+    expect(canReassignParties(staffAccessOf("field-inspector"))).toBe(false);
+    expect(canReassignParties(staffAccessOf("engineering-office"))).toBe(false);
   });
 
   // Ruling 2026-11-02 — mirrors CaseSpecialistSubRolesTests on the server.

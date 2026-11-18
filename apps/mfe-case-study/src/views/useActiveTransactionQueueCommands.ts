@@ -331,6 +331,7 @@ export function useActiveTransactionQueueCommands({
         poByNumber,
         viewerRole: role,
         viewerAccess: access,
+        queueTasks: tasks ?? [],
       };
       const stageItems = config.buildRowMoreItems
         ? config.buildRowMoreItems(ctx)
@@ -376,6 +377,7 @@ export function useActiveTransactionQueueCommands({
       confirm,
       openFailureRaise,
       generalItemsFor,
+      tasks,
     ],
   );
 

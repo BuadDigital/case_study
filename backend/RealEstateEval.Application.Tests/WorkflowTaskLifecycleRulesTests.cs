@@ -57,6 +57,20 @@ public class WorkflowTaskLifecycleRulesTests
         Assert.Equal(expected, WorkflowTaskLifecycleRules.CanRedistributeParties(TestStaff.Of(role)));
     }
 
+    [Theory]
+    [InlineData("cdo", true)]
+    [InlineData("section-supervisor", true)]
+    [InlineData(" Case-Specialist ", true)]
+    [InlineData("real-estate-appraiser", true)]
+    [InlineData(" Real-Estate-Appraiser ", true)]
+    [InlineData("field-inspector", false)]
+    [InlineData("engineering-office", false)]
+    [InlineData(null, false)]
+    public void Reassigning_parties_adds_the_appraiser_to_those_who_redistribute(string? role, bool expected)
+    {
+        Assert.Equal(expected, WorkflowTaskLifecycleRules.CanReassignParties(TestStaff.Of(role)));
+    }
+
     [Fact]
     public void Reason_must_be_present_and_at_most_500_characters()
     {

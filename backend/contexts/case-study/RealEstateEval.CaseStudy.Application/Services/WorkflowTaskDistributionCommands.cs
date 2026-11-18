@@ -186,8 +186,8 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
-        if (!WorkflowTaskLifecycleRules.CanRedistributeParties(actor))
-            return (null, Error("إعادة إسناد الأطراف صلاحية أخصائي دراسة الحالة أو مشرف القسم أو مسؤول التحول الرقمي"));
+        if (!WorkflowTaskLifecycleRules.CanReassignParties(actor))
+            return (null, Error("إعادة إسناد الأطراف صلاحية أخصائي دراسة الحالة أو مشرف القسم أو مسؤول التحول الرقمي أو المقيّم"));
 
         var parent = await _caseStudy.GetTaskForUpdateAsync(id, cancellationToken);
         if (parent is null) return (null, null);

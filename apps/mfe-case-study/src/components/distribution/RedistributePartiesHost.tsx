@@ -31,9 +31,12 @@ export function RedistributePartiesHost({
   onClose,
   mayReassign = true,
   allowDropOffice = false,
+  partyTasks,
 }: {
   task: WorkflowTask | null;
   onClose: () => void;
+  /** Where the transaction's parties are read from; absent: the viewer's task list. */
+  partyTasks?: readonly WorkflowTask[];
   /** The viewer may hand a party to someone else (`canRedistributeParties`). */
   mayReassign?: boolean;
   /** The viewer may drop the office (`canSkipEngineeringSurvey`). */
@@ -47,6 +50,7 @@ export function RedistributePartiesHost({
       task={task}
       onClose={onClose}
       mayReassign={mayReassign}
+      partyTasks={partyTasks}
       onSkipOffice={
         allowDropOffice
           ? async (reason) => {
