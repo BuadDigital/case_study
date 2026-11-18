@@ -82,6 +82,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* is inlined at `next build` time — must be present here, not only at runtime.
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+# Where the properties map reads its land layers (plans, parcels); empty hides «الأراضي».
+ARG NEXT_PUBLIC_PARCEL_TILES_URL=
+ENV NEXT_PUBLIC_PARCEL_TILES_URL=$NEXT_PUBLIC_PARCEL_TILES_URL
 
 RUN npm run build -w @platform/shell
 
