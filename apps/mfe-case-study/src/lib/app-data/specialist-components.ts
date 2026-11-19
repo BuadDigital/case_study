@@ -21,6 +21,7 @@ import {
   effectiveStructureKind,
   structureKindForCostItem,
 } from "@platform/app-shared/domain/cost-items";
+import { CostGroups } from "@platform/app-shared/domain/cost-items";
 
 export const SPECIALIST_COMPONENTS_TEXT_REQUIRED =
   "اكتب «مكونات العقار» للتقرير قبل قبول المعاينة";
@@ -151,7 +152,7 @@ export function nonNegativeDecimalInput(raw: string): string {
  * cell in the inventory while the cost table could treat it as a floor.
  */
 export function componentLineAcceptsBuildRatio(line: BuildingInventoryLineDto): boolean {
-  return Boolean(line.itemKey) && costGroupOf(line) === "area" && (line.unit || "sqm") === "sqm";
+  return Boolean(line.itemKey) && costGroupOf(line) === CostGroups.Area && (line.unit || "sqm") === "sqm";
 }
 
 /** Row-level problems the save button reports before calling the server. */

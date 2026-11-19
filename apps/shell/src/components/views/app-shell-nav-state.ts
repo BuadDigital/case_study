@@ -7,6 +7,7 @@
  */
 import type { NavItem, PageId, RoleId } from "@platform/types";
 import { NAV } from "@platform/app-shared/app-data/constants";
+import { Roles, Pages } from "@platform/types";
 
 export type NavRun = { label: string | null; items: NavItem[] };
 
@@ -42,7 +43,7 @@ const ALL_NAV_RUNS: NavRun[] = buildNavRuns(NAV);
 
 /** Transaction parties — fees first, then failures immediately below. */
 export function sortPartyFeesBeforeFailures(items: NavItem[]): NavItem[] {
-  const order: PageId[] = ["party-fees", "failures"];
+  const order: PageId[] = [Pages.PartyFees, Pages.Failures];
   return [...items].sort((a, b) => {
     const ai = order.indexOf(a.id);
     const bi = order.indexOf(b.id);
@@ -61,7 +62,7 @@ export function navRunsForRole(
   return runs
     .map((run) => {
       let items = run.items.filter((item) => rolePages.includes(item.id));
-      if (role === "engineering-office" || role === "field-inspector") {
+      if (role === Roles.EngineeringOffice || role === Roles.FieldInspector) {
         items = sortPartyFeesBeforeFailures(items);
       }
       return { ...run, items };
@@ -75,7 +76,7 @@ export function isNavRowActive(
   currentPage: PageId,
   inPoSection: boolean,
 ): boolean {
-  return currentPage === itemId || (itemId === "po" && inPoSection);
+  return currentPage === itemId || (itemId === Pages.Po && inPoSection);
 }
 
 type ActiveTxInsertion = {
@@ -92,15 +93,15 @@ export function resolveActiveTxInsertion(
   role: RoleId,
   navRuns: NavRun[],
 ): ActiveTxInsertion {
-  const anchor: PageId | null = rolePages.includes("all-transactions")
-    ? "all-transactions"
-    : rolePages.includes("po")
-      ? "po"
+  const anchor: PageId | null = rolePages.includes(Pages.AllTransactions)
+    ? Pages.AllTransactions
+    : rolePages.includes(Pages.Po)
+      ? Pages.Po
       : null;
   const atNavStart =
-    (role === "engineering-office" ||
-      role === "field-inspector" ||
-      role === "government-reviewer") &&
+    (role === Roles.EngineeringOffice ||
+      role === Roles.FieldInspector ||
+      role === Roles.GovernmentReviewer) &&
     !anchor;
   const anchorId = anchor
     ? anchor
@@ -150,7 +151,7 @@ export function planSidebarNav(
   let generalInserted = false;
   let financeInserted = false;
   const financeRunIndex = navRuns.findIndex((run) =>
-    run.items.some((item) => item.id === "suspended-transactions"),
+    run.items.some((item) => item.id === Pages.SuspendedTransactions),
   );
 
   const runs = navRuns.map((run, ri) => ({
@@ -217,7 +218,7 @@ export type ShellRoute = {
 
 export function resolveShellRoute(pathname: string | null | undefined): ShellRoute {
   const pathParts = pathname?.split("/").filter(Boolean) ?? [];
-  const currentPage = (pathParts[0] ?? "dashboard") as PageId;
+  const currentPage = (pathParts[0] ?? Pages.Dashboard) as PageId;
   const onCaseStudyWorkspace = pathname?.startsWith("/case-study/") ?? false;
   const onActiveSurveyRoute =
     pathParts[0] === "active-survey" && pathParts.length >= 2;

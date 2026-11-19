@@ -1,6 +1,7 @@
 import type { UserListItem } from "@platform/types";
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 type AuthApiConfig = {
   baseUrl?: string;
@@ -76,19 +77,19 @@ export async function refreshAuthSession(
       const problem = (await res.json().catch(() => null)) as { code?: string } | null;
       return {
         ok: false,
-        kind: "auth",
+        kind: ApiErrorKinds.Auth,
         accountDisabled: problem?.code === ACCOUNT_DISABLED_CODE,
       };
     }
-    if (res.status === 400) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 400) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const session = normalizeAuthSessionPayload(
       (await res.json()) as Record<string, unknown>,
     );
-    if (!session.token) return { ok: false, kind: "server" };
+    if (!session.token) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, session };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -123,11 +124,11 @@ export async function fetchMyProfile(
         Authorization: `Bearer ${config.token}`,
       },
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const user = (await res.json()) as UserListItem;
     return { ok: true, user };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

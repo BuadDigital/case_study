@@ -28,6 +28,7 @@ import {
   type InspectorPhotoAttachment,
   type InspectorWorkspaceDraft,
   PROPERTY_DESCRIPTION_PHOTO_KEY,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
 
@@ -415,7 +416,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
         sizeBytes: photo.sizeBytes,
       };
       // A photo the case staff added is never shown as the inspector's (Omar 2026-11-12).
-      const byStaff = inspectorFreePhotoUploader(photo) === "specialist";
+      const byStaff = inspectorFreePhotoUploader(photo) === WorkspaceActors.Specialist;
       pushEntry(docs, {
         id: `inspection-free-${photo.id}`,
         documentTypeKey: "inspection-photo",

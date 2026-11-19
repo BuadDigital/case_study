@@ -4,11 +4,12 @@
 // the page itself is a server component that only passes taskId (server-side).
 import { PartyActiveTaskWorkPage } from "@case-study/mfe/views/PartyActiveTaskWorkPage";
 import { partyAppraisalExtensions } from "@evaluator/mfe/extensions/party-appraisal-extensions";
+import { Pages } from "@platform/types";
 
 export function PropertyAppraisalWorkPageClient({ taskId }: { taskId: string }) {
   return (
     <PartyActiveTaskWorkPage
-      pageId="property-appraisal"
+      pageId={Pages.PropertyAppraisal}
       taskId={taskId}
       appraisalExtensions={partyAppraisalExtensions}
     />

@@ -7,6 +7,7 @@ import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import { fetchListPage, type PagedResultDto } from "./pagination";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type FailuresApiConfig = WorkOrdersApiConfig;
 
@@ -115,11 +116,11 @@ export async function listFailures(
     const res = await fetch(`${base}/api/failures`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as FailureRecordDto[] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -137,13 +138,13 @@ export async function getPropertyFailure(
     const res = await fetch(`${base}/api/failures/property?${params}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = (await res.json()) as FailureRecordDto | null;
     return { ok: true, data: data?.id ? data : null };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -174,18 +175,18 @@ async function postFailureAction<T = FailureRecordDto>(
       headers: authHeaders(config.token, { idempotencyKey }),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
+      return { ok: false, kind: ApiErrorKinds.Validation, errors };
     }
     if (res.status === 403) {
-      return { ok: false, kind: "forbidden", message: await readProblemMessage(res) };
+      return { ok: false, kind: ApiErrorKinds.Forbidden, message: await readProblemMessage(res) };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as T };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -315,11 +316,11 @@ export async function deleteFailuresForPo(
         headers: authHeaders(config.token),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: undefined };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -376,21 +377,21 @@ export async function liftSurveyFreeze(
       headers: authHeaders(config.token),
       body: JSON.stringify(request),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 403 || res.status === 400 || res.status === 409) {
       const errors = await parseFieldErrorsFromResponse(res);
       return {
         ok: false,
-        kind: res.status === 403 ? "forbidden" : "validation",
+        kind: res.status === 403 ? ApiErrorKinds.Forbidden : ApiErrorKinds.Validation,
         errors,
         message: errors._,
       };
     }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const body = (await res.json()) as { lifted?: number };
     return { ok: true, data: { lifted: Number(body.lifted ?? 0) } };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

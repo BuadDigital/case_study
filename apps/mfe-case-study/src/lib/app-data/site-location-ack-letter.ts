@@ -5,6 +5,7 @@ import {
   formatGregorianAsHijri,
   HIJRI_LETTER_FORMAT,
 } from "@platform/app-shared/format/hijri";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 /** Fields for the contact-officer site-accuracy acknowledgment letter. */
 export type SiteLocationAckLetter = {
@@ -50,7 +51,7 @@ type SiteLocationAckPrintGate = {
 export function canPrintSiteLocationAck(input: SiteLocationAckPrintGate | boolean): boolean {
   if (typeof input === "boolean") return input;
   if (input.mapPinned) return true;
-  if (input.status === "draft" || input.status == null) return false;
+  if (input.status === SubmissionStatuses.Draft || input.status == null) return false;
   return (
     parsePlacedMapPin(input.mapLatitude, input.mapLongitude) != null
   );

@@ -15,6 +15,8 @@ import type { CaseSpecialistGroup } from "./my-work-model";
 import { isValuationDepositedForTask } from "@platform/app-shared/workflow/task-done";
 import type { WorkflowTask } from "./tasks";
 
+import { WorkflowTaskStatuses, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
+import { ValuationReportDraftStatuses } from "@platform/api-client";
 export type WorkSectionId =
   | CoordinationSectionId
   | "inspection"
@@ -73,7 +75,7 @@ export function reviewLockOf(
   studyTask: Pick<WorkflowTask, "reviewState"> | null | undefined,
   draft: ReportDraftState | undefined,
 ): ReviewLock {
-  if (draft && (draft.status === "approved" || draft.reportStage !== "draft")) return "report-approved";
+  if (draft && (draft.status === ValuationReportDraftStatuses.Approved || draft.reportStage !== "draft")) return "report-approved";
   return studyTask?.reviewState === "approved" ? "study-approved" : null;
 }
 
@@ -102,16 +104,16 @@ export function workPageStep(
   draftState: (propertyId: string) => ReportDraftState | undefined,
 ): number {
   if (!task) return 0;
-  if (task.status === "cancelled" || task.propertyHandedOverToEnfaz)
+  if (task.status === WorkflowTaskStatuses.Cancelled || task.propertyHandedOverToEnfaz)
     return FINISHED_STEP;
   const byPhase =
     PHASE_STEP[
-      task.phase === "obstruction"
-        ? (task.obstructionPriorPhase ?? "enfath")
+      task.phase === CaseStudyTaskPhases.Obstruction
+        ? (task.obstructionPriorPhase ?? CaseStudyTaskPhases.Enfath)
         : task.phase
     ];
   if (byPhase !== undefined) return byPhase;
-  if (task.phase === "case-study" && task.transactionReceived !== true)
+  if (task.phase === CaseStudyTaskPhases.CaseStudy && task.transactionReceived !== true)
     return 3;
   if (!task.studyReportIssued) return 4;
   return isValuationDepositedForTask(task, allTasks) ? 6 : 5;

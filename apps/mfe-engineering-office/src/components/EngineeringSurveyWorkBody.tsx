@@ -22,6 +22,8 @@ import {
   NATURE_BOUNDARY_ROWS,
 } from "./EngineeringSurveyWorkParts";
 import type { EngineeringSurveyWorkflow } from "./useEngineeringSurveyCommands";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 /**
  * The survey tab itself — coordinates and map, deed/nature boundaries, the
@@ -63,7 +65,7 @@ export function EngineeringSurveyWorkBody({
 
   return (
     <>
-      {draft.status === "reopened" && draft.returnNote ? (
+      {draft.status === SubmissionStatuses.Reopened && draft.returnNote ? (
         <EngInfo variant="amber">
           <strong>⚠ تم إعادة الرفع المساحي — يرجى المراجعة والتصحيح.</strong>
           <br />
@@ -213,7 +215,7 @@ export function EngineeringSurveyWorkBody({
                     });
 
                     // When «no»: copy nature fields from deed form values already entered
-                    if (next === "no" && localFields) {
+                    if (next === ChecklistAnswers.No && localFields) {
                       const fromDeed = natureFieldsFromDeedForm(localFields);
                       const { patch: naturePatch, appliedCount: natureN } =
                         applyNatureBoundaryPatch(fromDeed, localFields, true);
@@ -258,7 +260,7 @@ export function EngineeringSurveyWorkBody({
         )}
       </div>
 
-      {draft.deedMatchesNature === "no" ? (
+      {draft.deedMatchesNature === ChecklistAnswers.No ? (
         <>
           <EngSection>الحدود والأطوال (حسب الطبيعة)</EngSection>
           <EngBoundaryFields

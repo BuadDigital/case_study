@@ -22,6 +22,7 @@ import {
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 const workspaceCache = new Map<string, InspectorWorkspaceDraft>();
 
@@ -279,17 +280,17 @@ export function payloadToDraft(
     draft,
   );
   const status = (dto.status === "submitted"
-    ? "submitted"
+    ? SubmissionStatuses.Submitted
     : dto.status === "reopened"
-      ? "reopened"
-      : "draft") as InspectorWorkspaceStatus;
+      ? SubmissionStatuses.Reopened
+      : SubmissionStatuses.Draft) as InspectorWorkspaceStatus;
   const explicitPinned = readBool(payload.mapPinned);
   // Only a package older than the field counts as pinned by its GPS. A saved «false» stands: the
   // specialist's «إلغاء التثبيت» on a submitted package used to come straight back pinned, so the
   // coordinates box never opened (2026-11-01).
   const legacyPinned =
     payload.mapPinned == null &&
-    status !== "draft" &&
+    status !== SubmissionStatuses.Draft &&
     parsePlacedMapPin(mapCoords.mapLatitude, mapCoords.mapLongitude) != null;
   const mapped: InspectorWorkspaceDraft = {
     ...draft,
@@ -628,11 +629,11 @@ export function mergeInspectorWorkspacePatch(
     // Keep package workflow status: specialist may correct a submitted inspection
     // without reopening it; inspector edits only happen on draft/reopened.
     status:
-      current.status === "submitted"
-        ? "submitted"
-        : current.status === "reopened"
-          ? "reopened"
-          : "draft",
+      current.status === SubmissionStatuses.Submitted
+        ? SubmissionStatuses.Submitted
+        : current.status === SubmissionStatuses.Reopened
+          ? SubmissionStatuses.Reopened
+          : SubmissionStatuses.Draft,
     updatedAtUtc: new Date().toISOString(),
   };
   return merged;

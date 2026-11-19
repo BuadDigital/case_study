@@ -6,7 +6,6 @@ import {
   deleteTasksForPo,
   deleteTasksForProperty,
   linkNewPropertyToTaskSlot,
-  syncTaskSlotsForPo,
 } from "./tasks";
 import { loadWorkflowTasksForPo } from "./tasks-reads";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
@@ -97,10 +96,8 @@ export async function savePoRecord(
   }
 
   const saved = dtoToRecord(result.data);
-  const slots = await syncTaskSlotsForPo(saved.poNumber);
-  if (!slots.ok) {
-    return { ok: false, error: slots.error };
-  }
+  // The server made the work order's task slots with the save.
+  notifyTasksChanged();
   notifyWorkOrdersChanged();
   return { ok: true, data: saved };
 }
@@ -354,10 +351,8 @@ export async function updatePoRecord(
   }
 
   const saved = dtoToRecord(result.data);
-  const slots = await syncTaskSlotsForPo(record.poNumber);
-  if (!slots.ok) {
-    return { ok: false, error: slots.error };
-  }
+  // The server aligned the task slots with the new expected count in the save.
+  notifyTasksChanged();
   notifyWorkOrdersChanged();
   return { ok: true, data: saved };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, useEffectEvent } from "react";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   Button,
@@ -27,6 +27,9 @@ import {
   type ComparableEntryFieldErrors,
   type ComparableKind,
   type ComparableSubjectPin,
+  ComparableKinds,
+  ComparableTransactionKinds,
+  ComparablePriceDescriptions,
 } from "@platform/app-shared/app-data/comparable-entry";
 import type { ComparableBankBrowse } from "@platform/app-shared/evaluator/comparable-entry-fields-slot";
 import {
@@ -266,9 +269,9 @@ export function ComparablePropertyEntryFields({
       ...draft,
       kind,
       comparablePropertyType:
-        kind === "land"
+        kind === ComparableKinds.Land
           ? LAND_COMPARABLE_TYPE
-          : draft.kind === "land"
+          : draft.kind === ComparableKinds.Land
             ? ""
             : draft.comparablePropertyType,
     });
@@ -331,15 +334,18 @@ export function ComparablePropertyEntryFields({
    * 2026-11-17.
    */
   const pinAtKey = bankBrowse?.pinAt ? `${bankBrowse.pinAt.lat},${bankBrowse.pinAt.lng}` : null;
-  useEffect(() => {
-    if (!pinAtKey || disabled) return;
+  // An event, not a dependency: the pair moves the pin once; a later change of the lock or of the
+  // draft does not move it again.
+  const pinAtPair = useEffectEvent((pair: string) => {
+    if (disabled) return;
     if (mapPinned) {
       showToast("موقع المقارن مثبت — اضغط «تعديل» لتغييره", "info");
       return;
     }
-    applyTypedCoords(pinAtKey, { reportInvalid: false });
-    // Once per pair: the pin and the lookup read the latest draft through draftRef.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    applyTypedCoords(pair, { reportInvalid: false });
+  });
+  useEffect(() => {
+    if (pinAtKey) pinAtPair(pinAtKey);
   }, [pinAtKey]);
 
   // Omar 2026-11-11: the entry fields appear only once the comparable's location is chosen and
@@ -349,16 +355,16 @@ export function ComparablePropertyEntryFields({
   // «نوع المقارن» when the location is pinned, otherwise two of these fields do.
   // The land a built comparable stands on (2026-11-15) — asked where the host wants it (the
   // appraiser's «إضافة مقارن»); the inspector's capture form stays as it is.
-  const landAreaShown = landAreaField && draft.kind === "building";
+  const landAreaShown = landAreaField && draft.kind === ComparableKinds.Building;
   const fieldCount =
     10 +
-    (draft.kind === "building" ? 1 : 0) +
+    (draft.kind === ComparableKinds.Building ? 1 : 0) +
     (landAreaShown ? 1 : 0) +
-    (draft.transactionKind === "offer" ? 1 : 0);
+    (draft.transactionKind === ComparableTransactionKinds.Offer ? 1 : 0);
   const descriptionSpan = descriptionSpanClass((fieldCount + (mapPinned ? 0 : 2)) % 4);
   const areaLabel = `${comparableAreaLabel(draft.kind)} (م²)`;
   const priceLabel =
-    draft.kind === "land" ? "سعر الأرض (ر.س.)" : "السعر (ر.س.)";
+    draft.kind === ComparableKinds.Land ? "سعر الأرض (ر.س.)" : "السعر (ر.س.)";
 
   /*
     Omar 2026-11-11: the form was too tall — four fields a row where the window is wide enough (the
@@ -594,15 +600,15 @@ export function ComparablePropertyEntryFields({
         >
           <KindChip
             label="أرض"
-            on={draft.kind === "land"}
+            on={draft.kind === ComparableKinds.Land}
             disabled={fieldsLocked}
-            onClick={() => setKind("land")}
+            onClick={() => setKind(ComparableKinds.Land)}
           />
           <KindChip
             label="مبنى"
-            on={draft.kind === "building"}
+            on={draft.kind === ComparableKinds.Building}
             disabled={fieldsLocked}
-            onClick={() => setKind("building")}
+            onClick={() => setKind(ComparableKinds.Building)}
           />
         </div>
         {fieldErrors?.kind ? (
@@ -613,12 +619,12 @@ export function ComparablePropertyEntryFields({
           <p className="mb-0 mt-1 text-[11px] leading-snug text-text-3">
             ثبّت موقع المقارن أولاً لتعبئة البيانات.
           </p>
-        ) : draft.kind === "building" ? (
+        ) : draft.kind === ComparableKinds.Building ? (
           <p className="mb-0 mt-1 text-[11px] leading-snug text-text-3">
             السعر يشمل الأرض ضمن المبنى — لا تُفصل قيمة الأرض. للمقارنة مبنى
             بمبنى (أسلوب السوق).
           </p>
-        ) : draft.kind === "land" ? (
+        ) : draft.kind === ComparableKinds.Land ? (
           <p className="mb-0 mt-1 text-[11px] leading-snug text-text-3">
             لتقييم الأرض بأسلوب السوق أو لمكوّن الأرض في أسلوب التكلفة، حتى إذا
             كان موضوع التقييم فيلا.
@@ -686,7 +692,7 @@ export function ComparablePropertyEntryFields({
           className="bg-surface-2"
         />
       </Field>
-      {draft.kind === "building" ? (
+      {draft.kind === ComparableKinds.Building ? (
         <Field label="نوع المبنى (فيلا، شقة، …)">
           <Input
             value={draft.comparablePropertyType}
@@ -700,14 +706,14 @@ export function ComparablePropertyEntryFields({
           value={draft.transactionKind}
           disabled={fieldsLocked}
           onChange={(e) =>
-            patch("transactionKind", e.target.value === "executed" ? "executed" : "offer")
+            patch("transactionKind", e.target.value === ComparableTransactionKinds.Executed ? ComparableTransactionKinds.Executed : ComparableTransactionKinds.Offer)
           }
         >
-          <option value="offer">عرض</option>
-          <option value="executed">صفقة منفّذة</option>
+          <option value={ComparableTransactionKinds.Offer}>عرض</option>
+          <option value={ComparableTransactionKinds.Executed}>صفقة منفّذة</option>
         </Select>
       </Field>
-      {draft.transactionKind === "offer" ? (
+      {draft.transactionKind === ComparableTransactionKinds.Offer ? (
         <Field
           label="وصف السعر"
           required
@@ -719,11 +725,11 @@ export function ComparablePropertyEntryFields({
             disabled={fieldsLocked}
             hasError={Boolean(fieldErrors?.priceDescription)}
             onChange={(e) =>
-              patch("priceDescription", e.target.value === "som" ? "som" : "asking")
+              patch("priceDescription", e.target.value === ComparablePriceDescriptions.Som ? ComparablePriceDescriptions.Som : ComparablePriceDescriptions.Asking)
             }
           >
-            <option value="asking">حد</option>
-            <option value="som">سوم</option>
+            <option value={ComparablePriceDescriptions.Asking}>حد</option>
+            <option value={ComparablePriceDescriptions.Som}>سوم</option>
           </Select>
         </Field>
       ) : null}
@@ -744,7 +750,7 @@ export function ComparablePropertyEntryFields({
       </Field>
       <Field
         label={
-          draft.transactionKind === "executed"
+          draft.transactionKind === ComparableTransactionKinds.Executed
             ? "رقم المعلومة / الصفقة"
             : "رقم الإعلان / المعلومة"
         }

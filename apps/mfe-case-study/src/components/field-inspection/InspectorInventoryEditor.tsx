@@ -19,6 +19,7 @@ import { SpecialistComponentsTable } from "../po-intake/SpecialistComponentsTabl
 import { useBuildingInventoryEditor } from "../po-intake/useBuildingInventoryEditor";
 import { InspectorInventoryLineCards } from "./InspectorInventoryLineCards";
 import { registerInspectorInventoryFlusher } from "./inspector-inventory-flush";
+import { WorkspaceActors } from "@platform/app-shared/app-data/inspector-workspace-data";
 
 export function InspectorInventoryEditor({
   draft,
@@ -37,7 +38,7 @@ export function InspectorInventoryEditor({
   workLocked: boolean;
 }) {
   const editor = useBuildingInventoryEditor({
-    actor: "inspector",
+    actor: WorkspaceActors.Inspector,
     poNumber,
     propertyId,
     taskId,

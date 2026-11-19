@@ -45,6 +45,8 @@ import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import { useCaseStudyReportBatchQuery } from "../query/case-study-queries";
 import { useTransactionQuery } from "../query/use-transaction-query";
+import { WorkflowTaskStatuses, SubmissionStatuses, WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
 
 /** «تفاصيل العقار (المرجع)» — the page-level button beside «تقرير التقييم», as on the work page. */
 export function AppraiserPageActions({
@@ -255,7 +257,7 @@ export function AppraiserStudySummary({
         </p>
       </SummaryGroup>
 
-      {inspectionTaskId && inspector?.status === "submitted" ? (
+      {inspectionTaskId && inspector?.status === SubmissionStatuses.Submitted ? (
         <AppraiserInspectorEditor property={property} task={task} inspectionTaskId={inspectionTaskId} />
       ) : null}
     </div>
@@ -295,9 +297,9 @@ function AppraiserInspectorEditor({
 }) {
   const { access, role } = useAppAccess();
   const mayEdit =
-    (role === "real-estate-appraiser" || canAcceptPartyWork(access)) && task.status !== "completed";
+    (role === Roles.RealEstateAppraiser || canAcceptPartyWork(access)) && task.status !== WorkflowTaskStatuses.Completed;
   const inspectionTask = useMemo(
-    (): WorkflowTask => ({ ...task, id: inspectionTaskId, kind: "field-inspection" }),
+    (): WorkflowTask => ({ ...task, id: inspectionTaskId, kind: WorkflowTaskKinds.FieldInspection }),
     [task, inspectionTaskId],
   );
   if (!mayEdit) return null;

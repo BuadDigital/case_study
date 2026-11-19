@@ -49,6 +49,7 @@ import {
   type LocalTextFields,
   type WorkTab,
 } from "./EngineeringSurveyWorkParts";
+import { WorkflowTaskStatuses, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 const EMPTY_FAILURES: FailureRecord[] = [];
 const EMPTY_WORKFLOW_TASKS: WorkflowTask[] = [];
@@ -201,7 +202,7 @@ export function useEngineeringSurveyData({
     if (!propertyId) return;
     const readOnly = forceReadOnly || viewOnly;
     const current = draftRef.current;
-    if (!current || current.status === "submitted") return;
+    if (!current || current.status === SubmissionStatuses.Submitted) return;
     const needsSeed =
       !current.inspectorReferenceLatitude?.trim() ||
       !current.inspectorReferenceLongitude?.trim() ||
@@ -213,7 +214,7 @@ export function useEngineeringSurveyData({
       async (pin) => {
         if (cancelled || !pin) return;
         const baseline = draftRef.current;
-        if (!baseline || baseline.status === "submitted") return;
+        if (!baseline || baseline.status === SubmissionStatuses.Submitted) return;
         const seeded = withInspectorPinSeed(baseline, pin);
         if (
           seeded.latitude === baseline.latitude &&
@@ -324,7 +325,7 @@ export function useEngineeringSurveyData({
   const locked =
     (draft ? isEngineeringSurveyFormLocked(draft.status) : false) ||
     forceReadOnly ||
-    task.status === "completed";
+    task.status === WorkflowTaskStatuses.Completed;
   const formDisabled = locked || viewOnly || !documentaryGate.ready;
 
   const transactionActive = useMemo(

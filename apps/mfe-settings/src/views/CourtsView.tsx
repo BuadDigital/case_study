@@ -16,6 +16,7 @@ import {
   type CourtCircuitDraftDto,
   type CourtDraftDto,
   type CourtsAdminResult,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   Badge,
@@ -76,10 +77,10 @@ type CircuitModalState = {
 function resultMessage(result: CourtsAdminResult<unknown>): string {
   if (result.ok) return "";
   if (result.message) return result.message;
-  if (result.kind === "auth") return "يلزم تسجيل الدخول";
-  if (result.kind === "forbidden") return "لا تملك صلاحية إدارة المحاكم";
-  if (result.kind === "network") return "تعذّر الاتصال بالخادم";
-  if (result.kind === "not_found") return "السجل غير موجود";
+  if (result.kind === ApiErrorKinds.Auth) return "يلزم تسجيل الدخول";
+  if (result.kind === ApiErrorKinds.Forbidden) return "لا تملك صلاحية إدارة المحاكم";
+  if (result.kind === ApiErrorKinds.Network) return "تعذّر الاتصال بالخادم";
+  if (result.kind === ApiErrorKinds.NotFound) return "السجل غير موجود";
   return "تعذّر تنفيذ العملية — حاول مرة أخرى";
 }
 

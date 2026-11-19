@@ -47,6 +47,7 @@ export function caseStudyReportAssetUrl(
 
 import { escapeHtml as escapeCaseStudyReportHtml } from "@platform/app-shared/lib/html-escape";
 import { versionedReportNo } from "@platform/app-shared/domain/report-number";
+import { CaseStudyQuestionSections } from "@platform/app-shared/domain/case-study/question-catalog";
 export { escapeCaseStudyReportHtml };
 
 function renderCb(checked: boolean): string {
@@ -121,24 +122,24 @@ function renderDeedsTable(model: CaseStudyReportModel): string {
 
 function renderSection(section: CaseStudyReportSection): string {
   const esc = escapeCaseStudyReportHtml;
-  const pageBreak = section.id === "comp" ? " csrd-section--break" : "";
+  const pageBreak = section.id === CaseStudyQuestionSections.Comp ? " csrd-section--break" : "";
   const notesLabel =
-    section.id === "deed" || section.id === "survey"
+    section.id === CaseStudyQuestionSections.Deed || section.id === CaseStudyQuestionSections.Survey
       ? CASE_STUDY_SECTION_REMARKS_HINT
       : "الملاحظات";
-  const occExtra = section.id === "occ" ? section.extras?.[0] : undefined;
-  const compExtras = section.id === "comp" ? (section.extras ?? []) : [];
+  const occExtra = section.id === CaseStudyQuestionSections.Occ ? section.extras?.[0] : undefined;
+  const compExtras = section.id === CaseStudyQuestionSections.Comp ? (section.extras ?? []) : [];
 
   const bodyRows = section.rows
     .map((row, i) => {
       const occSuffix =
-        section.id === "occ" &&
+        section.id === CaseStudyQuestionSections.Occ &&
         i === section.rows.length - 1 &&
         occExtra
           ? `<span class="csrd-muted"> — ${esc(occExtra)}</span>`
           : "";
       const noteText = row.note?.trim();
-      const hasSub = section.id === "extra" || Boolean(noteText);
+      const hasSub = section.id === CaseStudyQuestionSections.Extra || Boolean(noteText);
       const main = `<tr${hasSub ? ' class="csrd-q-row--noted"' : ""}>
         <td>${esc(row.question)}${occSuffix}</td>
         <td class="csrd-yn">${renderCb(row.markA)}</td>
@@ -158,7 +159,7 @@ function renderSection(section: CaseStudyReportSection): string {
     .join("");
 
   const notes =
-    section.id !== "extra"
+    section.id !== CaseStudyQuestionSections.Extra
       ? `<tr class="csrd-notes-row"><td colspan="3">
           <span class="csrd-notes-label">${esc(notesLabel)}</span>
           ${section.remarks?.trim() ? esc(section.remarks) : "—"}

@@ -18,6 +18,7 @@ import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-su
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { ActiveTransactionQueueTableLayouts } from "@case-study/mfe/views/active-transaction-queue-state";
 
 /** Footer from Case Study.html `renderEngOrders` — prerequisites to start the survey. */
 const ENG_SURVEY_TABLE_HINT =
@@ -31,7 +32,7 @@ export const partyEngineeringSurveyExtensions: PartyEngineeringSurveyExtensions 
       return {
         ...base,
         hidePageTitle: true,
-        tableLayout: "engineering-survey",
+        tableLayout: ActiveTransactionQueueTableLayouts.EngineeringSurvey,
         emptyHint:
           "تظهر هنا بعد تأكيد التوزيع عند تفعيل المكتب الهندسي — اضغط الصف لفتح مهمة الرفع.",
         tableHint: ENG_SURVEY_TABLE_HINT,

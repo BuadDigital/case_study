@@ -14,6 +14,7 @@ import {
   type UnlockStaffUserResult,
   type UpdateStaffUserRequest,
   type UpdateStaffUserResult,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { userListItemToStaff } from "@platform/app-shared/users/user-mappers";
@@ -53,7 +54,7 @@ export async function fetchStaffUsers(
       : { ok: true as const, users: [] };
   if (!result.ok) {
     const message =
-      result.kind === "network"
+      result.kind === ApiErrorKinds.Network
         ? "تعذّر تحميل قائمة المستخدمين. تحقق من أن الخادم يعمل."
         : "تعذّر تحميل قائمة المستخدمين.";
     return { users: [], loadError: message };
@@ -72,7 +73,7 @@ export async function fetchDistributionAssignees(): Promise<FetchStaffUsersResul
   const result = await listDistributionAssignees(config);
   if (!result.ok) {
     const message =
-      result.kind === "network"
+      result.kind === ApiErrorKinds.Network
         ? "تعذّر تحميل قائمة المسؤولين. تحقق من أن الخادم يعمل."
         : "تعذّر تحميل قائمة المسؤولين.";
     return { users: [], loadError: message };
@@ -88,7 +89,7 @@ export async function submitCreateStaffUser(
   body: CreateStaffUserRequest,
 ): Promise<CreateStaffUserResult> {
   const config = apiConfig();
-  if (!config) return { ok: false, kind: "network" };
+  if (!config) return { ok: false, kind: ApiErrorKinds.Network };
   return createStaffUser(config, body);
 }
 
@@ -97,7 +98,7 @@ export async function submitUpdateStaffUser(
   body: UpdateStaffUserRequest,
 ): Promise<UpdateStaffUserResult> {
   const config = apiConfig();
-  if (!config) return { ok: false, kind: "network" };
+  if (!config) return { ok: false, kind: ApiErrorKinds.Network };
   return updateStaffUser(config, userId, body);
 }
 
@@ -105,7 +106,7 @@ export async function submitUnlockStaffUser(
   userId: string,
 ): Promise<UnlockStaffUserResult> {
   const config = apiConfig();
-  if (!config) return { ok: false, kind: "network" };
+  if (!config) return { ok: false, kind: ApiErrorKinds.Network };
   return unlockStaffUser(config, userId);
 }
 
@@ -113,7 +114,7 @@ export async function submitDeleteStaffUser(
   userId: string,
 ): Promise<DeleteStaffUserResult> {
   const config = apiConfig();
-  if (!config) return { ok: false, kind: "network" };
+  if (!config) return { ok: false, kind: ApiErrorKinds.Network };
   return deleteStaffUser(config, userId);
 }
 

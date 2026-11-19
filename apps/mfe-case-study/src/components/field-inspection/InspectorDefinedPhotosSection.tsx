@@ -35,6 +35,7 @@ import {
   setDefinedPhotoSlot,
   slotPhotoRef,
 } from "./inspector-wizard-state";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 export { freePhotoRef } from "./inspector-wizard-state";
 
@@ -43,7 +44,7 @@ export function InspectorDefinedPhotosSection({
   draft,
   disabled,
   onPatch,
-  layout = "desktop",
+  layout = InspectorStepLayouts.Desktop,
   transactionPhotos,
   invalidSlotId,
 }: {
@@ -184,7 +185,7 @@ export function InspectorDefinedPhotosSection({
         {disabled ? null : (
           <p
             className={
-              layout === "desktop"
+              layout === InspectorStepLayouts.Desktop
                 ? "mb-3 text-[11px] leading-relaxed text-text-3"
                 : "mb-2.5 text-[11px] leading-relaxed text-text-3"
             }

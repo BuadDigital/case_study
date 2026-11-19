@@ -28,6 +28,7 @@ import {
   firstMissingQuestionLocation,
 } from "./case-study-report-state";
 import type { CaseStudyReportData } from "./useCaseStudyReportData";
+import { CaseStudyReportStatuses } from "@platform/app-shared/app-data/case-study-report-model";
 
 export function useCaseStudyReportIssue(
   data: CaseStudyReportData,
@@ -92,7 +93,7 @@ export function useCaseStudyReportIssue(
     );
     try {
       setMissingAnswerKeys(new Set());
-      const result = await issueCaseStudyReportDraft({ ...draft, status: "draft" });
+      const result = await issueCaseStudyReportDraft({ ...draft, status: CaseStudyReportStatuses.Draft });
       if (result.ok) {
         setDraft(result.draft);
         showToast("أُرسلت الدراسة للمراجع والمقيّم", "success");

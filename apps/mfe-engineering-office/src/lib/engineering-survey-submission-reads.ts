@@ -15,6 +15,7 @@ import {
   dtoToSubmission,
   loadEngineeringSurveySubmission,
 } from "./engineering-survey-submission-model";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 export { loadEngineeringSurveySubmission } from "./engineering-survey-submission-model";
 
 /**
@@ -51,7 +52,7 @@ export async function fetchEngineeringSurveySubmission(
     dirty = true;
   }
   if (
-    sub.status !== "submitted" &&
+    sub.status !== SubmissionStatuses.Submitted &&
     shouldUseJeddahDefaultCoords(sub.latitude, sub.longitude)
   ) {
     const defaults = jeddahDefaultCoords();

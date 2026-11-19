@@ -51,6 +51,8 @@ import { InspectorStepNav } from "./InspectorStepNav";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { inspectionContextOf } from "./field-inspection-work-state";
 import { useFieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 /** Placeholder while the work order is still loading — the documents query stays disabled. */
 const EMPTY_PROPERTY_FOR_DOCS = emptyProperty();
@@ -62,7 +64,7 @@ export function FieldInspectionWorkBody({
   submitting = false,
   beforeSubmitFooter,
   onRegisterFailure,
-  layout = "desktop",
+  layout = InspectorStepLayouts.Desktop,
   hideSubmitFooter = false,
 }: {
   def: PartyTaskPageDef;
@@ -74,7 +76,7 @@ export function FieldInspectionWorkBody({
   layout?: "desktop" | "mobile";
   hideSubmitFooter?: boolean;
 }) {
-  const mobile = layout === "mobile";
+  const mobile = layout === InspectorStepLayouts.Mobile;
   const workflow = useFieldInspectionWorkflow({ task, hostRef });
   const {
     activeStep,
@@ -139,7 +141,7 @@ export function FieldInspectionWorkBody({
         </Note>
       ) : null}
 
-      {draft.status === "reopened" && draft.returnNote?.trim() ? (
+      {draft.status === SubmissionStatuses.Reopened && draft.returnNote?.trim() ? (
         <ReturnedForCorrectionNote
           note={draft.returnNote}
           className={cn("mb-4", mobile && "mx-4 mt-3")}

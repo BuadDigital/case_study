@@ -10,6 +10,7 @@ import type {
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { feeRowMatchesSearch, feeStatementMeta } from "./fee-screen-state";
+import { InspectorFeeBillingStatuses, PartyBillingPayeeTypes, PartyBillingStatementStatuses } from "@platform/api-client";
 
 export {
   deedParts,
@@ -20,19 +21,21 @@ export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
 export type TabId = "action" | "tracking" | "ready" | "statements" | "visit-fees" | "key-fees";
 
-type UiStatus =
-  | "needs_submit"
-  | "draft_work"
-  | "returned_to_party"
-  | "returned_to_supervisor"
-  | "inquiry_to_party"
-  | "inquiry_at_supervisor"
-  | "sup_review"
-  | "at_finance"
-  | "listed"
-  | "paid"
-  | "suspended"
-  | "other";
+export const FeeUiStatuses = {
+  NeedsSubmit: "needs_submit",
+  DraftWork: "draft_work",
+  ReturnedToParty: "returned_to_party",
+  ReturnedToSupervisor: "returned_to_supervisor",
+  InquiryToParty: "inquiry_to_party",
+  InquiryAtSupervisor: "inquiry_at_supervisor",
+  SupReview: "sup_review",
+  AtFinance: "at_finance",
+  Listed: "listed",
+  Paid: "paid",
+  Suspended: "suspended",
+  Other: "other",
+} as const;
+type UiStatus = (typeof FeeUiStatuses)[keyof typeof FeeUiStatuses];
 
 /**
  * Individual-party status bucket (not the engineering-office lane).
@@ -40,32 +43,32 @@ type UiStatus =
  * finance/supervisor loops (e.g. returnTo=supervisor).
  */
 export function individualFeeUiStatus(row: InspectorFeeRowDto): UiStatus {
-  if (row.canSubmitToSupervisor) return "needs_submit";
+  if (row.canSubmitToSupervisor) return FeeUiStatuses.NeedsSubmit;
   const returnTo = (row.returnTo ?? "").trim().toLowerCase();
   switch (row.billingStatus) {
-    case "draft":
-      return "draft_work";
-    case "returned":
-      if (returnTo === "supervisor") return "returned_to_supervisor";
-      if (returnTo === "office" || returnTo === "party") return "returned_to_party";
-      return "returned_to_party";
-    case "inquiry":
-      if (returnTo === "supervisor") return "inquiry_at_supervisor";
-      return "inquiry_to_party";
-    case "sup-review":
-      return "sup_review";
-    case "at-finance":
-    case "deferred":
-    case "disb-req":
-      return "at_finance";
-    case "in-statement":
-      return "listed";
-    case "disbursed":
-      return "paid";
-    case "suspended":
-      return "suspended";
+    case InspectorFeeBillingStatuses.Draft:
+      return FeeUiStatuses.DraftWork;
+    case InspectorFeeBillingStatuses.Returned:
+      if (returnTo === "supervisor") return FeeUiStatuses.ReturnedToSupervisor;
+      if (returnTo === "office" || returnTo === "party") return FeeUiStatuses.ReturnedToParty;
+      return FeeUiStatuses.ReturnedToParty;
+    case InspectorFeeBillingStatuses.Inquiry:
+      if (returnTo === "supervisor") return FeeUiStatuses.InquiryAtSupervisor;
+      return FeeUiStatuses.InquiryToParty;
+    case InspectorFeeBillingStatuses.SupReview:
+      return FeeUiStatuses.SupReview;
+    case InspectorFeeBillingStatuses.AtFinance:
+    case InspectorFeeBillingStatuses.Deferred:
+    case InspectorFeeBillingStatuses.DisbReq:
+      return FeeUiStatuses.AtFinance;
+    case InspectorFeeBillingStatuses.InStatement:
+      return FeeUiStatuses.Listed;
+    case InspectorFeeBillingStatuses.Disbursed:
+      return FeeUiStatuses.Paid;
+    case InspectorFeeBillingStatuses.Suspended:
+      return FeeUiStatuses.Suspended;
     default:
-      return "other";
+      return FeeUiStatuses.Other;
   }
 }
 
@@ -74,7 +77,7 @@ export function individualFeeUiStatus(row: InspectorFeeRowDto): UiStatus {
  * not the individual party's action/tracking lane.
  */
 function isSupervisorOnlyFeeStatus(st: UiStatus): boolean {
-  return st === "returned_to_supervisor" || st === "inquiry_at_supervisor";
+  return st === FeeUiStatuses.ReturnedToSupervisor || st === FeeUiStatuses.InquiryAtSupervisor;
 }
 
 /**
@@ -222,7 +225,7 @@ export function ownLaneStatements(
   variant: IndividualFeesVariant,
 ): PartyBillingStatementDto[] {
   return raw.filter((s) => {
-    if (s.payeeType === "vendor") return false;
+    if (s.payeeType === PartyBillingPayeeTypes.Vendor) return false;
     const kind = (s.taskKind ?? "").trim();
     if (variant === "court-visit") {
       return kind === "court-visit" || kind === "government-review" || kind === "";
@@ -256,10 +259,10 @@ export function individualFeesKpi(input: {
       else openSar += amt;
     }
     const closedPaid = statements
-      .filter((s) => s.status === "closed")
+      .filter((s) => s.status === PartyBillingStatementStatuses.Closed)
       .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0);
     const openStmts = statements
-      .filter((s) => s.status !== "closed" && s.status !== "cancelled")
+      .filter((s) => s.status !== PartyBillingStatementStatuses.Closed && s.status !== PartyBillingStatementStatuses.Cancelled)
       .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0);
     return {
       outstanding: openSar + openStmts,
@@ -276,13 +279,13 @@ export function individualFeesKpi(input: {
   for (const row of rows) {
     const net = Number(row.netFeeSar) || 0;
     const st = individualFeeUiStatus(row);
-    if (st !== "paid") outstanding += net;
-    if (st === "needs_submit") actionSar += net;
-    if (st === "at_finance" || st === "listed") readySar += net;
-    if (st === "paid") paidSar += net;
+    if (st !== FeeUiStatuses.Paid) outstanding += net;
+    if (st === FeeUiStatuses.NeedsSubmit) actionSar += net;
+    if (st === FeeUiStatuses.AtFinance || st === FeeUiStatuses.Listed) readySar += net;
+    if (st === FeeUiStatuses.Paid) paidSar += net;
   }
   const closedPaid = statements
-    .filter((s) => s.status === "closed")
+    .filter((s) => s.status === PartyBillingStatementStatuses.Closed)
     .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0);
   return {
     outstanding,
@@ -294,7 +297,7 @@ export function individualFeesKpi(input: {
 
 /** Rows waiting on this party to submit them to the supervisor. */
 export function actionFeeRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[] {
-  return rows.filter((r) => individualFeeUiStatus(r) === "needs_submit");
+  return rows.filter((r) => individualFeeUiStatus(r) === FeeUiStatuses.NeedsSubmit);
 }
 
 /** In-flight rows: draft work, at the supervisor, bounced back, or suspended. */
@@ -302,11 +305,11 @@ export function trackingFeeRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[
   return rows.filter((r) => {
     const st = individualFeeUiStatus(r);
     return (
-      st === "draft_work" ||
-      st === "sup_review" ||
-      st === "returned_to_party" ||
-      st === "inquiry_to_party" ||
-      st === "suspended"
+      st === FeeUiStatuses.DraftWork ||
+      st === FeeUiStatuses.SupReview ||
+      st === FeeUiStatuses.ReturnedToParty ||
+      st === FeeUiStatuses.InquiryToParty ||
+      st === FeeUiStatuses.Suspended
     );
   });
 }
@@ -315,7 +318,7 @@ export function trackingFeeRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[
 export function readyFeeRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[] {
   return rows.filter((r) => {
     const st = individualFeeUiStatus(r);
-    return st === "at_finance" || st === "listed" || st === "paid";
+    return st === FeeUiStatuses.AtFinance || st === FeeUiStatuses.Listed || st === FeeUiStatuses.Paid;
   });
 }
 

@@ -13,6 +13,7 @@ import {
   resolveRevenueStage,
 } from "./finance-revenue-stages";
 import { statementDisplayTotal } from "./finance-cost-parties";
+import { PartyBillingPayeeTypes, PartyBillingStatementStatuses } from "@platform/api-client";
 
 type FinanceMyTaskKind =
   | "revenue_match"
@@ -220,7 +221,7 @@ function buildCostMyTasks(input: {
     }
     for (const [assigneeId, lines] of byAssignee) {
       const net = lines.reduce((s, l) => s + l.netFeeSar, 0);
-      const isVendor = lines.some((l) => l.payeeType === "vendor");
+      const isVendor = lines.some((l) => l.payeeType === PartyBillingPayeeTypes.Vendor);
       const total = isVendor
         ? statementDisplayTotal({ totalNetSar: net, payeeType: "vendor" })
         : net;
@@ -264,24 +265,24 @@ function buildCostMyTasks(input: {
     const payee = s.payeeTypeLabel || "مستحق";
     const amount = statementDisplayTotal(s);
 
-    if (s.status === "draft") {
+    if (s.status === PartyBillingStatementStatuses.Draft) {
       tasks.push({
         id: `cost-issue-${s.id}`,
         kind: "cost_issue_statement",
         domain: "costs",
         title:
-          s.payeeType === "individual"
+          s.payeeType === PartyBillingPayeeTypes.Individual
             ? "إصدار أمر الصرف"
             : "تحويل المسير للمكتب لإصدار الفاتورة",
         reference: baseRef,
         subject: payee,
         amountSar: amount,
         requirement:
-          s.payeeType === "individual"
+          s.payeeType === PartyBillingPayeeTypes.Individual
             ? "اعتماد أمر الصرف للأفراد"
             : "إرسال المسير للمكتب (القيمة مقفلة)",
         movesTo:
-          s.payeeType === "individual"
+          s.payeeType === PartyBillingPayeeTypes.Individual
             ? "بانتظار توثيق الصرف"
             : "بانتظار فاتورة المورّد",
         ageDays: daysSince(s.createdAtUtc),
@@ -290,7 +291,7 @@ function buildCostMyTasks(input: {
         openLabel: "فتح الإجراء",
         statementId: s.id,
       });
-    } else if (s.status === "invoice_received") {
+    } else if (s.status === PartyBillingStatementStatuses.InvoiceReceived) {
       // After match approval: leaves My Tasks — disbursement docs from Costs only.
       if (s.vendorInvoiceMatched) {
         continue;
@@ -311,7 +312,7 @@ function buildCostMyTasks(input: {
         openLabel: "فتح الإجراء",
         statementId: s.id,
       });
-    } else if (s.status === "issued" && s.payeeType === "individual") {
+    } else if (s.status === PartyBillingStatementStatuses.Issued && s.payeeType === PartyBillingPayeeTypes.Individual) {
       // Individual: no invoice — direct disbursement order (logic ref 4.2)
       tasks.push({
         id: `cost-close-${s.id}`,

@@ -1,6 +1,7 @@
 import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
 import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { PageId } from "@platform/types";
+import { Pages } from "@platform/types";
 
 type MyTasksChrome = {
   breadcrumb: string;
@@ -26,7 +27,7 @@ export function resolveMyTasksChrome(
   const parts = pathname.split("/").filter(Boolean);
   const page = parts[0] as PageId | undefined;
 
-  if (page === "active-survey" && parts[1]) {
+  if (page === Pages.ActiveSurvey && parts[1]) {
     const isEntry = parts[2] === "entry";
     if (isEntry) {
       return {
@@ -40,7 +41,7 @@ export function resolveMyTasksChrome(
     };
   }
 
-  if (page === "property-appraisal" && parts[1]) {
+  if (page === Pages.PropertyAppraisal && parts[1]) {
     const deed = options?.deedLabel?.trim();
     return {
       breadcrumb: deed || "نافذة التقييم",
@@ -48,14 +49,14 @@ export function resolveMyTasksChrome(
     };
   }
 
-  if (page === "active-inspection" && parts[1]) {
+  if (page === Pages.ActiveInspection && parts[1]) {
     return {
       breadcrumb: "معاينة العقار / مساحة العمل",
       title: "معاينة العقار",
     };
   }
 
-  if (page === "operations-tasks" && taskId) {
+  if (page === Pages.OperationsTasks && taskId) {
     const id = decodeTaskParam(taskId);
     const title = options?.opsTaskTitle?.trim() || id;
     return {
@@ -67,14 +68,14 @@ export function resolveMyTasksChrome(
   if (page && taskId) {
     const party = partyTaskPageDef(page);
     if (party) {
-      if (page === "property-appraisal") {
+      if (page === Pages.PropertyAppraisal) {
         const deed = options?.deedLabel?.trim();
         return {
           breadcrumb: deed || "نافذة التقييم",
           title: "",
         };
       }
-      if (page === "active-survey") {
+      if (page === Pages.ActiveSurvey) {
         return {
           breadcrumb: "مساحة العمل",
           title: "المكتب الهندسي — الرفع المساحي",

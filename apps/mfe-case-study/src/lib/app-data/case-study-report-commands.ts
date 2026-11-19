@@ -19,6 +19,7 @@ import {
   notifyPartyCaseStudyReportChanged,
   type CaseStudyReportDraft,
   type SaveCaseStudyReportDraftResult,
+  CaseStudyReportStatuses,
 } from "@platform/app-shared/app-data/case-study-report-model";
 import {
   caseStudyReopenReasonError,
@@ -56,7 +57,7 @@ export async function saveCaseStudyReportDraft(
       ),
     };
   }
-  if (payload.status === "issued") {
+  if (payload.status === CaseStudyReportStatuses.Issued) {
     notifyWorkOrdersChanged();
     notifyTasksChanged();
   }

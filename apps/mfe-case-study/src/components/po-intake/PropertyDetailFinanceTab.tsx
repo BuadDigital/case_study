@@ -24,6 +24,7 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 const FEE_KINDS = new Set([
   "field-inspection",
   "engineering-survey",
@@ -105,10 +106,10 @@ export function PropertyDetailFinanceTab({
   if (rows.length === 0) {
     const caseStudyOpen = tasks.some(
       (t) =>
-        t.kind === "case-study-property" &&
+        t.kind === WorkflowTaskKinds.CaseStudyProperty &&
         t.propertyId === property.id &&
-        t.status !== "completed" &&
-        t.status !== "cancelled",
+        t.status !== WorkflowTaskStatuses.Completed &&
+        t.status !== WorkflowTaskStatuses.Cancelled,
     );
     return (
       <>

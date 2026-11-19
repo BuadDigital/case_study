@@ -15,6 +15,7 @@ export type { CaseStudyQuestionSection };
 
 export type { CaseStudyReportAnswer } from "@platform/app-shared/app-data/case-study-report-model";
 import type { CaseStudyReportAnswer } from "@platform/app-shared/app-data/case-study-report-model";
+import { CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 
 export { CASE_STUDY_REPORT_STEPS } from "@platform/app-shared/domain/case-study/question-catalog";
 
@@ -121,7 +122,7 @@ export function caseStudyReportSummary(answers: Record<string, CaseStudyReportAn
 } {
   const total = caseStudyTotalQuestions();
   const answered = Object.values(answers).filter(
-    (v) => v === "A" || v === "B" || v === "NA",
+    (v) => v === CaseStudyReportAnswers.A || v === CaseStudyReportAnswers.B || v === "NA",
   ).length;
   const pending = total - answered;
   const pct = total > 0 ? Math.round((answered / total) * 100) : 0;

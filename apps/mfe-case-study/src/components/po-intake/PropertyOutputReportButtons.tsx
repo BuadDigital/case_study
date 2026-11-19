@@ -26,6 +26,8 @@ import { useTransactionQuery } from "../../query/use-transaction-query";
 import { HeroIconButton, type HeroIconState } from "./HeroIconButton";
 import { EmptyState } from "./PropertyDetailFields";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
+import { CaseStudyReportStatuses } from "@platform/app-shared/app-data/case-study-report-model";
 /** A clipboard with a tick — the case study's report. */
 const CASE_STUDY_REPORT_ICON =
   "M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4";
@@ -54,14 +56,14 @@ export function outputReportTasks(input: {
   tasks: WorkflowTask[];
 }): { studyTaskId: string; appraisalTask: WorkflowTask | null } {
   const { poNumber, propertyId, tasks } = input;
-  const ownAppraisal = partyChildTaskForProperty("property-appraisal", poNumber, propertyId, tasks);
+  const ownAppraisal = partyChildTaskForProperty(WorkflowTaskKinds.PropertyAppraisal, poNumber, propertyId, tasks);
   const studyTaskId =
     input.studyHolderTaskId?.trim() ||
     caseStudyTaskForProperty(poNumber, propertyId, tasks)?.id ||
     ownAppraisal?.parentTaskId?.trim() ||
     "";
   const studyAppraisal = studyTaskId
-    ? childTasksForCaseStudyParent(studyTaskId, tasks).find((t) => t.kind === "property-appraisal")
+    ? childTasksForCaseStudyParent(studyTaskId, tasks).find((t) => t.kind === WorkflowTaskKinds.PropertyAppraisal)
     : undefined;
   return { studyTaskId, appraisalTask: studyAppraisal ?? ownAppraisal };
 }
@@ -94,7 +96,7 @@ function CaseStudyReportWindow({
     <AppModal
       open
       onClose={onClose}
-      title={draft?.status === "issued" ? "تقرير دراسة الحالة" : "تقرير دراسة الحالة — مسودة"}
+      title={draft?.status === CaseStudyReportStatuses.Issued ? "تقرير دراسة الحالة" : "تقرير دراسة الحالة — مسودة"}
       subtitle="للقراءة — كما هو الآن"
       maxWidthPx={880}
     >
@@ -206,7 +208,7 @@ export function PropertyOutputReportButtons({
         <AppModal
           open
           onClose={() => setOpen(null)}
-          title={appraisalTask.status === "completed" ? "تقرير التقييم" : "تقرير التقييم — مسودة"}
+          title={appraisalTask.status === WorkflowTaskStatuses.Completed ? "تقرير التقييم" : "تقرير التقييم — مسودة"}
           subtitle="للقراءة — كما هو الآن"
           maxWidthPx={1180}
         >

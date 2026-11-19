@@ -2,6 +2,7 @@ import {
   deleteAttachment,
   listAttachments,
   uploadAttachment,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "./attachment-blob-cache";
 import { requestDocumentPreview } from "./document-preview-store";
@@ -226,7 +227,7 @@ export async function uploadTaskScopedAttachment(
           contentBase64: await fileToBase64(file),
         });
         if (!upload.ok) {
-          if (upload.kind === "network" || upload.kind === "server") {
+          if (upload.kind === ApiErrorKinds.Network || upload.kind === ApiErrorKinds.Server) {
             throw new TypeError("Failed to fetch");
           }
           const err = new Error(

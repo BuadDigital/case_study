@@ -1,4 +1,4 @@
-import { getPartyTaskSubmission, isPersistedPartyTaskSubmission, type PartyTaskSubmissionDto,} from "@platform/api-client";
+import { getPartyTaskSubmission, isPersistedPartyTaskSubmission, type PartyTaskSubmissionDto, ApiErrorKinds } from "@platform/api-client";
 import { resolveApiError, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import type {
   EngineeringSurveyChecklistRow,
@@ -6,6 +6,8 @@ import type {
   EvaluatorChecklist,
   EvaluatorSubmissionSnapshot,
 } from "./property-detail-party-submission-types";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 function parseEvaluatorPayload(
   dto: PartyTaskSubmissionDto,
@@ -59,7 +61,7 @@ export async function loadEvaluatorSubmissionSnapshot(
 
   const result = await getPartyTaskSubmission(config, taskId);
   if (!result.ok) {
-    if (result.kind === "not_found") return null;
+    if (result.kind === ApiErrorKinds.NotFound) return null;
     throw new Error(
       resolveApiError(result.kind, result.errors, "تعذّر تحميل بيانات التقييم"),
     );
@@ -76,7 +78,7 @@ export async function loadEngineeringSurveySubmissionSnapshot(
 
   const result = await getPartyTaskSubmission(config, taskId);
   if (!result.ok) {
-    if (result.kind === "not_found") return null;
+    if (result.kind === ApiErrorKinds.NotFound) return null;
     throw new Error(
       resolveApiError(result.kind, result.errors, "تعذّر تحميل بيانات الرفع المساحي"),
     );
@@ -87,7 +89,7 @@ export async function loadEngineeringSurveySubmissionSnapshot(
   const status =
     (payload.status as EngineeringSurveySubmissionSnapshot["status"] | undefined)
     ?? (result.data.status as EngineeringSurveySubmissionSnapshot["status"])
-    ?? "draft";
+    ?? SubmissionStatuses.Draft;
 
   return {
     status,
@@ -115,9 +117,9 @@ export async function loadEngineeringSurveySubmissionSnapshot(
     westBoundaryLengthM: String(payload.westBoundaryLengthM ?? ""),
     deedMatchesNature:
       payload.deedMatchesNature === "yes" || payload.deedMatchesNature === true
-        ? "yes"
+        ? ChecklistAnswers.Yes
         : payload.deedMatchesNature === "no" || payload.deedMatchesNature === false
-          ? "no"
+          ? ChecklistAnswers.No
           : null,
     surveyNotes: String(payload.surveyNotes ?? ""),
     transactionNote: String(payload.transactionNote ?? ""),

@@ -1,4 +1,5 @@
 import type { PageId } from "@platform/types";
+import { Pages } from "@platform/types";
 
 /** Sidebar group — matches Finance.html */
 export const FINANCIAL_GROUP = "المالية";
@@ -63,9 +64,9 @@ export function financeLeafForArea(area: FinanceNavArea): FinanceNavLeaf {
 }
 
 export function isInFinancialSection(page: PageId): boolean {
-  return page === "financial";
+  return page === Pages.Financial;
 }
 
 export function showFinancialNavGroup(rolePages: PageId[]): boolean {
-  return rolePages.includes("financial");
+  return rolePages.includes(Pages.Financial);
 }

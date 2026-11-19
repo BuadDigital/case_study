@@ -1,5 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type RegionsApiConfig = {
   baseUrl?: string;
@@ -85,12 +86,12 @@ export async function listSelectableRegions(
     const res = await fetch(`${base}/api/regions/selectable`, {
       headers: authHeaders(config.token, { accept: true, json: false }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const regions = (await res.json()) as SelectableRegionDto[];
     return { ok: true, regions: Array.isArray(regions) ? regions : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -113,12 +114,12 @@ export async function listSelectableCities(
       `${base}/api/regions/${encodeURIComponent(regionId)}/cities/selectable${qs}`,
       { headers: authHeaders(config.token, { accept: true, json: false }) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const cities = (await res.json()) as SelectableCityDto[];
     return { ok: true, cities: Array.isArray(cities) ? cities : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -141,12 +142,12 @@ export async function listSelectableDistricts(
       `${base}/api/regions/cities/${encodeURIComponent(cityId)}/districts${qs}`,
       { headers: authHeaders(config.token, { accept: true, json: false }) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const districts = (await res.json()) as SelectableDistrictDto[];
     return { ok: true, districts: Array.isArray(districts) ? districts : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -165,7 +166,7 @@ export async function suggestLocation(
       headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) {
       let message: string | undefined;
       try {
@@ -174,7 +175,7 @@ export async function suggestLocation(
       } catch {
         /* ignore */
       }
-      return { ok: false, kind: "server", message };
+      return { ok: false, kind: ApiErrorKinds.Server, message };
     }
     const result = (await res.json()) as SuggestLocationResultDto;
     return {
@@ -185,7 +186,7 @@ export async function suggestLocation(
       },
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -201,13 +202,13 @@ export async function listPendingLocations(
     const res = await fetch(`${base}/api/regions/pending`, {
       headers: authHeaders(config.token, { accept: true, json: false }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const items = (await res.json()) as PendingLocationDto[];
     return { ok: true, items: Array.isArray(items) ? items : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -247,8 +248,8 @@ async function reviewPending(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
     if (!res.ok) {
       let message: string | undefined;
       try {
@@ -257,10 +258,10 @@ async function reviewPending(
       } catch {
         /* ignore */
       }
-      return { ok: false, kind: "server", message };
+      return { ok: false, kind: ApiErrorKinds.Server, message };
     }
     return { ok: true };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

@@ -7,7 +7,12 @@ import type { CreateEnvelopeInput } from "../lib/keys-envelope-api";
 import type { KeyEnvelopeLinkedProperty } from "../lib/keys-envelope-types";
 
 /** Narrow UI scenarios — do not Extract from KeyReceiveScenario (`| string` widens to string → never). */
-export type SourceKind = "court" | "missing" | "third_party";
+export const SourceKinds = {
+  Court: "court",
+  Missing: "missing",
+  ThirdParty: "third_party",
+} as const;
+export type SourceKind = (typeof SourceKinds)[keyof typeof SourceKinds];
 
 export type RequestSuggestion = {
   requestNumber: string;
@@ -65,7 +70,7 @@ export function initialRegisterFormState(
   initialRequestNumber: string,
 ): RegisterFormState {
   return {
-    source: "court",
+    source: SourceKinds.Court,
     requestNumber: initialRequestNumber.trim(),
     court: "",
     circuit: "",
@@ -134,27 +139,27 @@ export function validateRegisterForm(state: RegisterFormState): string | null {
   const { source } = state;
   const actual = parseKeysCount(state.keysCountActual);
   if (!state.requestNumber.trim()) return "رقم طلب إنفاذ مطلوب.";
-  if (source === "third_party" && !state.partyName.trim()) {
+  if (source === SourceKinds.ThirdParty && !state.partyName.trim()) {
     return "يلزم إدخال اسم الطرف المسلِّم.";
   }
-  if (source === "third_party" && !state.partyPhone.trim()) {
+  if (source === SourceKinds.ThirdParty && !state.partyPhone.trim()) {
     return "يلزم إدخال رقم جوال الطرف المسلِّم.";
   }
-  if (source === "missing" && !state.missingPhones.trim()) {
+  if (source === SourceKinds.Missing && !state.missingPhones.trim()) {
     return "يلزم إدخال أرقام التواصل لسيناريو المفاتيح المفقودة.";
   }
-  if (source === "missing") {
+  if (source === SourceKinds.Missing) {
     if (actual < 0) return "عدد المفاتيح غير صالح.";
   } else if (actual < 1) {
     return "عدد المفاتيح الفعلي يجب أن يكون 1 على الأقل.";
   }
-  if (source === "court" && !state.photo?.attachmentId) {
+  if (source === SourceKinds.Court && !state.photo?.attachmentId) {
     return "صورة الظرف مطلوبة لإثبات أتعاب الاستلام.";
   }
-  if (source === "court" && !state.receipt?.attachmentId) {
+  if (source === SourceKinds.Court && !state.receipt?.attachmentId) {
     return "خطاب الاستلام مطلوب لسيناريو المحكمة.";
   }
-  if (source === "third_party" && !state.thirdPartyLetter?.attachmentId) {
+  if (source === SourceKinds.ThirdParty && !state.thirdPartyLetter?.attachmentId) {
     return "خطاب الطرف الثالث مطلوب.";
   }
   return null;
@@ -162,7 +167,7 @@ export function validateRegisterForm(state: RegisterFormState): string | null {
 
 /** Third party: name — «ممثل org» — «بصفتها role» — phone; missing: the phones; court: nothing. */
 export function buildRegisterContact(state: RegisterFormState): string {
-  if (state.source === "third_party") {
+  if (state.source === SourceKinds.ThirdParty) {
     return [
       state.partyName.trim(),
       state.partyOrg.trim() ? `ممثل ${state.partyOrg.trim()}` : "",
@@ -172,14 +177,14 @@ export function buildRegisterContact(state: RegisterFormState): string {
       .filter(Boolean)
       .join(" — ");
   }
-  return state.source === "missing" ? state.missingPhones.trim() : "";
+  return state.source === SourceKinds.Missing ? state.missingPhones.trim() : "";
 }
 
 export function buildRegisterEnvelopeInput(
   state: RegisterFormState,
   opts: { operationsTaskId?: string; linked: KeyEnvelopeLinkedProperty[] },
 ): CreateEnvelopeInput {
-  const missing = state.source === "missing";
+  const missing = state.source === SourceKinds.Missing;
   return {
     requestNumber: state.requestNumber.trim(),
     court: state.court.trim() || "—",
@@ -221,7 +226,7 @@ export function feeNoticePresentation(
   source: SourceKind,
   photoReady: boolean,
 ): FeeNoticePresentation {
-  if (source === "missing") {
+  if (source === SourceKinds.Missing) {
     return {
       ok: true,
       background: "color-mix(in srgb, var(--info, #4a7bb5) 12%, transparent)",

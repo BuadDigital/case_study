@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { emptyProperty } from "@platform/app-shared/app-data/po-intake-property-model";
 import {
   deedMatchSideRows,
+  deedMatchSourceView,
   inspectorBoundariesIndicateMismatch,
   inspectorMismatchNotesText,
   proposeDeedNatureMatch,
@@ -193,5 +195,41 @@ describe("deedMatchSideRows (Omar 2026-11-10)", () => {
     };
     const rows = deedMatchSideRows(draft, { ...property, eastFacadeFinishing: "طوب" });
     expect(rows.map((r) => r.facade)).toEqual(["رخام", "", "طوب", ""]);
+  });
+});
+
+describe("deedMatchSourceView", () => {
+  const building = { ...emptyProperty(), propertyType: "فيلا", northBoundary: "شارع", northFacadeFinishing: "حجر" };
+  const view = (patch: Partial<Parameters<typeof deedMatchSourceView>[0]>) =>
+    deedMatchSourceView({
+      property: building,
+      inspector: null,
+      survey: null,
+      hasPriorSurvey: false,
+      engineeringAssigned: false,
+      ...patch,
+    });
+
+  it("shows no sides and waits until the inspection is submitted", () => {
+    const hit = view({ inspector: inspectorDraft({ status: "draft", deedMatchesNature: "yes" }) });
+    expect(hit.sides).toEqual([]);
+    expect(hit.proposal.waiting).toBe(true);
+  });
+
+  it("keeps the facade for a building and drops it for land", () => {
+    const inspector = inspectorDraft({ status: "submitted" });
+    expect(view({ inspector }).sides[0]?.facade).not.toBe("");
+    const land = view({ property: { ...building, propertyType: "أرض" }, inspector });
+    expect(land.sides.length).toBeGreaterThan(0);
+    expect(land.sides.every((side) => side.facade === "")).toBe(true);
+  });
+
+  it("counts the engineering office's verdict only once its survey is submitted", () => {
+    const survey = { status: "draft" as const, acceptedAtUtc: null, deedMatchesNature: "no" as const };
+    expect(view({ engineeringAssigned: true, survey }).proposal.engineeringSaidNotMatched).toBe(false);
+    expect(
+      view({ engineeringAssigned: true, survey: { ...survey, status: "submitted" } }).proposal
+        .engineeringSaidNotMatched,
+    ).toBe(true);
   });
 });

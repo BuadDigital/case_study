@@ -24,6 +24,7 @@ import {
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
   type InspectorFeeRowDto,
+  InspectorFeeBillingStatuses,
 } from "@platform/api-client";
 import { PoNumber } from "../ui/PoNumber";
 import { useFeeTransition } from "../fees/useFeeLedgerWrites";
@@ -519,7 +520,7 @@ export function InspectorFeesBillingTable({
                           </div>
                         ) : mode === "finance" ? (
                           <div className="flex flex-col gap-1">
-                            {row.billingStatus === "disb-req" ? (
+                            {row.billingStatus === InspectorFeeBillingStatuses.DisbReq ? (
                               <Button
                                 type="button"
                                 size="sm"
@@ -531,8 +532,8 @@ export function InspectorFeesBillingTable({
                                 صرف
                               </Button>
                             ) : null}
-                            {row.billingStatus === "at-finance" ||
-                            row.billingStatus === "disb-req" ? (
+                            {row.billingStatus === InspectorFeeBillingStatuses.AtFinance ||
+                            row.billingStatus === InspectorFeeBillingStatuses.DisbReq ? (
                               <>
                                 <Button
                                   type="button"

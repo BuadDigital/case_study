@@ -1,5 +1,6 @@
 import type { WorkflowTask } from "./task-types";
 
+import { WorkflowTaskStatuses, WorkflowTaskKinds, CaseStudyTaskPhases } from "./task-types";
 /**
  * Whether a task is finished. A party child (inspection / survey / appraisal) is created in phase
  * "done" and stays there, so its phase says nothing: it is done only when its status is completed.
@@ -10,8 +11,8 @@ import type { WorkflowTask } from "./task-types";
 export function isPartyTaskDone(
   task: Pick<WorkflowTask, "kind" | "status" | "phase">,
 ): boolean {
-  if (task.status === "completed") return true;
-  return task.kind === "case-study-property" && task.phase === "done";
+  if (task.status === WorkflowTaskStatuses.Completed) return true;
+  return task.kind === WorkflowTaskKinds.CaseStudyProperty && task.phase === CaseStudyTaskPhases.Done;
 }
 
 /**
@@ -35,9 +36,9 @@ export function isValuationDepositedForTask(
   if (!propertyId) return false;
   let latest: WorkflowTask | undefined;
   for (const t of tasks) {
-    if (t.kind !== "property-appraisal" || t.status === "cancelled") continue;
+    if (t.kind !== WorkflowTaskKinds.PropertyAppraisal || t.status === WorkflowTaskStatuses.Cancelled) continue;
     if (t.propertyId !== propertyId) continue;
     if (!latest || t.createdAt.localeCompare(latest.createdAt) > 0) latest = t;
   }
-  return latest?.status === "completed";
+  return latest?.status === WorkflowTaskStatuses.Completed;
 }

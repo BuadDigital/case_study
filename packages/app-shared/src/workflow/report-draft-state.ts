@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { ValuationReportDraftStatuses } from "@platform/api-client";
 
 /**
  * Where a property's valuation-report draft stands, as the queues show it. The draft lives in the
@@ -94,10 +95,10 @@ export function appraisalStageLabel(
   if (draft.reportStage === "final_issued") {
     return { group: "closed", label: "صدر التقرير النهائي", className: "b-done" };
   }
-  if (draft.reportStage === "deposit_issued" || draft.status === "approved") {
+  if (draft.reportStage === "deposit_issued" || draft.status === ValuationReportDraftStatuses.Approved) {
     return { group: "approved", label: "معتمد — بانتظار رمز الإيداع", className: "b-gold" };
   }
-  if (draft.status === "sent") {
+  if (draft.status === ValuationReportDraftStatuses.Sent) {
     return { group: "draft_sent", label: "مسودة بانتظار اعتمادك", className: "b-gold" };
   }
   return null;

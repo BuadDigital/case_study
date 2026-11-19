@@ -28,13 +28,11 @@ import type { PartyQuestionContribution } from "../../lib/app-data/case-study-pa
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import {
-  answerToYn,
+  ANSWER_YN,
   contributionsToPartyAnswers,
   matrixAgreement,
-  PARTY_MATRIX_ORDER,
   PARTY_MATRIX_SHORT,
   type MatrixYn,
-  ynToAnswer,
 } from "./case-study-matrix-utils";
 
 function IconCheck({ size = 13 }: { size?: number }) {
@@ -270,19 +268,18 @@ export function CaseStudyMatrixTable({
 
   /** Per-question state and handlers shared by the desktop row and the phone card. */
   const rowModel = (key: string) => {
-    const official = answerToYn(answers[key]);
+    const official = ANSWER_YN.find(([answer]) => answer === answers[key])?.[1] ?? null;
     const editable = canEditKey ? canEditKey(key) : true;
     const partyAnswers = showPartyColumn
       ? contributionsToPartyAnswers(partyByKey?.[key] ?? [])
       : {};
     const { status, consensus } = matrixAgreement(partyAnswers);
     const hasPartyAnswers = status !== "pending";
-    const awaitingPartyAnswer =
-      showPartyColumn && status === "pending" && official === null;
+    const awaitingPartyAnswer = showPartyColumn && status === "pending" && official === null;
     const conflict = showPartyColumn && status === "conflict";
 
     const setOfficial = (next: MatrixYn | null) => {
-      onAnswer(key, ynToAnswer(next));
+      onAnswer(key, ANSWER_YN.find(([, yn]) => yn === next)?.[0] ?? null);
     };
     const showAdoptFor = (target: "Y" | "N") =>
       editable &&
@@ -291,8 +288,7 @@ export function CaseStudyMatrixTable({
       consensus === target &&
       official !== target;
 
-    const unansweredHighlight =
-      missingAnswerKeys?.has(key) && official === null;
+    const unansweredHighlight = missingAnswerKeys?.has(key) && official === null;
     const storedNote = answerNotes?.[key] ?? "";
     const noteOpen = openNoteKeys[key] ?? Boolean(storedNote.trim());
     const showNoteBox = noteOpen || Boolean(storedNote.trim());
@@ -325,13 +321,10 @@ export function CaseStudyMatrixTable({
   const partyBadges = (m: ReturnType<typeof rowModel>): ReactNode =>
     m.hasPartyAnswers ? (
       <div className="flex flex-wrap items-center gap-1.5">
-        {PARTY_MATRIX_ORDER.filter((k) => m.partyAnswers[k]).map((k) => (
-          <PartyBadge
-            key={k}
-            short={PARTY_MATRIX_SHORT[k]}
-            value={m.partyAnswers[k]!}
-          />
-        ))}
+        {Object.entries(PARTY_MATRIX_SHORT).map(([id, short]) => {
+          const value = m.partyAnswers[id as keyof typeof PARTY_MATRIX_SHORT];
+          return value ? <PartyBadge key={id} short={short} value={value} /> : null;
+        })}
       </div>
     ) : m.official !== null ? (
       <span className="text-[11px] text-text-3">—</span>

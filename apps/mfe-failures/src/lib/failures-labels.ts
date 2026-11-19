@@ -3,7 +3,7 @@ import {
   DEED_INACTIVE_RESOLVED_LABEL,
   failureProblemTypeLabel,
 } from "./failure-types-data";
-import { isHistoricalFailureStatus } from "@platform/app-shared/failures/failures-types";
+import { isHistoricalFailureStatus, FailureStatuses } from "@platform/app-shared/failures/failures-types";
 
 export function failureRecordTitle(
   failure: Pick<FailureRecord, "problemTypeId" | "title" | "status">,
@@ -21,18 +21,18 @@ export function isPanelBlockingFailure(
   failure: Pick<FailureRecord, "status">,
 ): boolean {
   return (
-    failure.status === "internal" ||
-    failure.status === "review" ||
-    failure.status === "returned"
+    failure.status === FailureStatuses.Internal ||
+    failure.status === FailureStatuses.Review ||
+    failure.status === FailureStatuses.Returned
   );
 }
 
 export function failureStatusLabel(status: FailureStatus): string {
-  if (status === "internal") return "مسودة داخلية";
-  if (status === "review") return "قيد المراجعة";
-  if (status === "suspended") return "معلّقة";
-  if (status === "approved") return "معتمد";
-  if (status === "resolved") return "تم الحل";
+  if (status === FailureStatuses.Internal) return "مسودة داخلية";
+  if (status === FailureStatuses.Review) return "قيد المراجعة";
+  if (status === FailureStatuses.Suspended) return "معلّقة";
+  if (status === FailureStatuses.Approved) return "معتمد";
+  if (status === FailureStatuses.Resolved) return "تم الحل";
   return "معاد للأخصائي";
 }
 
@@ -65,13 +65,13 @@ export function failureListStatusLabel(
   status: FailureStatus,
   severity?: FailureRecord["severity"],
 ): string {
-  if (status === "internal") {
+  if (status === FailureStatuses.Internal) {
     return severity === "suspected" ? "تعذّر محتمل" : "تعذّر داخلي";
   }
-  if (status === "returned") return "مُعاد";
-  if (status === "review") return "قيد المراجعة";
-  if (status === "approved") return "تعذّر نهائي";
-  if (status === "resolved") return "تم الحل";
+  if (status === FailureStatuses.Returned) return "مُعاد";
+  if (status === FailureStatuses.Review) return "قيد المراجعة";
+  if (status === FailureStatuses.Approved) return "تعذّر نهائي";
+  if (status === FailureStatuses.Resolved) return "تم الحل";
   if (status === "suspended") return "معلّق";
   return failureStatusLabel(status);
 }
@@ -91,11 +91,11 @@ export function failureListStatusColor(
   status: FailureStatus,
   severity?: FailureRecord["severity"],
 ): string {
-  if (status === "internal") return severity === "suspected" ? "#102B4E" : "#d9694f";
-  if (status === "returned") return "#d9694f";
-  if (status === "review") return "#d9a441";
-  if (status === "approved") return "#a33a3a";
-  if (status === "resolved") return "#3f8f5f";
+  if (status === FailureStatuses.Internal) return severity === "suspected" ? "#102B4E" : "#d9694f";
+  if (status === FailureStatuses.Returned) return "#d9694f";
+  if (status === FailureStatuses.Review) return "#d9a441";
+  if (status === FailureStatuses.Approved) return "#a33a3a";
+  if (status === FailureStatuses.Resolved) return "#3f8f5f";
   return "#8a8d96";
 }
 

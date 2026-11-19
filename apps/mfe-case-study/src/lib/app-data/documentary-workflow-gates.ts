@@ -2,18 +2,20 @@ import type { RoleId } from "@platform/types";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { WorkflowTask } from "./tasks";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
 export function roleBypassesDocumentaryGates(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "section-supervisor";
+  return isSuperAdmin(role) || role === Roles.SectionSupervisor;
 }
 
 /** Roles allowed to set location map URL (specialist / appraiser / inspector / bypass). */
 export function roleCanSetLocationMapUrl(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||
-    role === "section-supervisor" ||
-    role === "case-specialist" ||
-    role === "real-estate-appraiser" ||
-    role === "field-inspector"
+    role === Roles.SectionSupervisor ||
+    role === Roles.CaseSpecialist ||
+    role === Roles.RealEstateAppraiser ||
+    role === Roles.FieldInspector
   );
 }
 
@@ -44,7 +46,7 @@ export function findSiblingInspectionTask(
       (t) =>
         t.parentTaskId === surveyTask.parentTaskId &&
         t.propertyId === surveyTask.propertyId &&
-        t.kind === "field-inspection",
+        t.kind === WorkflowTaskKinds.FieldInspection,
     ) ?? null;
   if (visible) return visible;
   const siblingId = surveyTask.fieldInspectionTaskId?.trim();
@@ -59,16 +61,16 @@ function inspectionTaskFromSiblingId(
 ): WorkflowTask {
   return {
     id: siblingId,
-    kind: "field-inspection",
+    kind: WorkflowTaskKinds.FieldInspection,
     poNumber: source.poNumber,
     propertyId: source.propertyId,
     propertyOrdinal: source.propertyOrdinal,
     title: "معاينة العقار",
     phase: source.phase,
-    assigneeRole: "field-inspector",
+    assigneeRole: Roles.FieldInspector,
     assigneeName: "",
     parentTaskId: source.parentTaskId,
-    status: "completed",
+    status: WorkflowTaskStatuses.Completed,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt,
   };
@@ -106,7 +108,7 @@ export function resolveInspectionTaskForProperty(input: {
   const fromParent = input.parentTask
     ? input.tasks.find(
         (t) =>
-          t.kind === "field-inspection" &&
+          t.kind === WorkflowTaskKinds.FieldInspection &&
           t.parentTaskId === input.parentTask!.id &&
           t.propertyId === input.propertyId,
       )
@@ -114,7 +116,7 @@ export function resolveInspectionTaskForProperty(input: {
   if (fromParent) return fromParent;
 
   const visible = partyChildTaskForProperty(
-    "field-inspection",
+    WorkflowTaskKinds.FieldInspection,
     input.poNumber,
     input.propertyId,
     input.tasks,
@@ -153,7 +155,7 @@ export function surveyWorkGate(input: {
     typeof input.fieldInspectionCompleted === "boolean"
       ? input.fieldInspectionCompleted
       : findSiblingInspectionTask(input.surveyTask, input.tasks)?.status ===
-        "completed";
+        WorkflowTaskStatuses.Completed;
   if (!inspectionCompleted) {
     return {
       ready: false,

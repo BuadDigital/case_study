@@ -6,6 +6,7 @@ import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { readErrorText } from "./parse-json";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 /** Prefer field errors when present; otherwise surface `{ error }` like eng-billing. */
 async function readMutationError(res: Response): Promise<ApiErr> {
@@ -17,14 +18,14 @@ async function readMutationError(res: Response): Promise<ApiErr> {
     };
     const fieldErrors = normalizeFieldErrors(body.errors);
     if (Object.keys(fieldErrors).length > 0) {
-      return { ok: false, kind: "validation", errors: fieldErrors };
+      return { ok: false, kind: ApiErrorKinds.Validation, errors: fieldErrors };
     }
     const message = String(
       body.error ?? body.Error ?? `HTTP ${res.status}`,
     );
-    return { ok: false, kind: "server", message };
+    return { ok: false, kind: ApiErrorKinds.Server, message };
   } catch {
-    return { ok: false, kind: "server", message: `HTTP ${res.status}` };
+    return { ok: false, kind: ApiErrorKinds.Server, message: `HTTP ${res.status}` };
   }
 }
 
@@ -36,17 +37,19 @@ export type InspectorFeesApiConfig = WorkOrdersApiConfig;
  * office approve / dispute states (`office-review`, `disputed`) are retired — the office is told
  * about a proposed discount, never asked.
  */
-export type InspectorFeeBillingStatus =
-  | "draft"
-  | "sup-review"
-  | "at-finance"
-  | "deferred"
-  | "in-statement"
-  | "disb-req"
-  | "disbursed"
-  | "returned"
-  | "inquiry"
-  | "suspended";
+export const InspectorFeeBillingStatuses = {
+  Draft: "draft",
+  SupReview: "sup-review",
+  AtFinance: "at-finance",
+  Deferred: "deferred",
+  InStatement: "in-statement",
+  DisbReq: "disb-req",
+  Disbursed: "disbursed",
+  Returned: "returned",
+  Inquiry: "inquiry",
+  Suspended: "suspended",
+} as const;
+export type InspectorFeeBillingStatus = (typeof InspectorFeeBillingStatuses)[keyof typeof InspectorFeeBillingStatuses];
 
 export type InspectorFeeWorkStatus = "in_progress" | "done" | "cancelled";
 
@@ -194,7 +197,7 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
       (raw.discountReason ?? raw.DiscountReason ?? null) as string | null,
     netFeeSar: Number(raw.netFeeSar ?? raw.NetFeeSar ?? 0),
     paidAmountSar: Number(raw.paidAmountSar ?? raw.PaidAmountSar ?? 0),
-    billingStatus: (raw.billingStatus ?? raw.BillingStatus ?? "draft") as
+    billingStatus: (raw.billingStatus ?? raw.BillingStatus ?? InspectorFeeBillingStatuses.Draft) as
       InspectorFeeBillingStatus,
     billingStatusLabel: String(
       raw.billingStatusLabel ?? raw.BillingStatusLabel ?? "",
@@ -309,12 +312,12 @@ export async function listInspectorFees(
     const res = await fetch(`${base}/api/inspector-fees${queryString(query)}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeSummary(raw) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -330,13 +333,13 @@ export async function patchInspectorFee(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (!res.ok) return readMutationError(res);
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeRow(raw) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -355,16 +358,16 @@ export async function transitionInspectorFee(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (!res.ok) {
-      return { ok: false, kind: "server", message: await readErrorText(res) };
+      return { ok: false, kind: ApiErrorKinds.Server, message: await readErrorText(res) };
     }
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeRow(raw) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -392,14 +395,14 @@ async function postFeeCommand<T>(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401 || res.status === 403) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401 || res.status === 403) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (!res.ok) {
-      return { ok: false, kind: "server", message: await readErrorText(res) };
+      return { ok: false, kind: ApiErrorKinds.Server, message: await readErrorText(res) };
     }
     return { ok: true, data: read((await res.json()) as Record<string, unknown>) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -449,25 +452,25 @@ export function inspectorFeeStatusLabel(
   status: InspectorFeeBillingStatus,
 ): string {
   switch (status) {
-    case "draft":
+    case InspectorFeeBillingStatuses.Draft:
       return "مستحق";
-    case "sup-review":
+    case InspectorFeeBillingStatuses.SupReview:
       return "بانتظار اعتماد المشرف";
-    case "at-finance":
+    case InspectorFeeBillingStatuses.AtFinance:
       return "جاهز للفوترة";
-    case "deferred":
+    case InspectorFeeBillingStatuses.Deferred:
       return "جاهز — مرحَّل";
-    case "in-statement":
+    case InspectorFeeBillingStatuses.InStatement:
       return "مدرج";
-    case "disb-req":
+    case InspectorFeeBillingStatuses.DisbReq:
       return "ضمن أمر صرف";
-    case "disbursed":
+    case InspectorFeeBillingStatuses.Disbursed:
       return "مفوترة / مدفوعة";
-    case "returned":
+    case InspectorFeeBillingStatuses.Returned:
       return "مُعاد للتعديل";
-    case "inquiry":
+    case InspectorFeeBillingStatuses.Inquiry:
       return "استفسار مفتوح";
-    case "suspended":
+    case InspectorFeeBillingStatuses.Suspended:
       return "موقوف";
     default:
       return "—";
@@ -478,21 +481,21 @@ export function inspectorFeeStatusTone(
   status: InspectorFeeBillingStatus,
 ): "default" | "warning" | "success" | "danger" | "info" {
   switch (status) {
-    case "sup-review":
+    case InspectorFeeBillingStatuses.SupReview:
       return "warning";
-    case "at-finance":
+    case InspectorFeeBillingStatuses.AtFinance:
       return "info";
-    case "deferred":
+    case InspectorFeeBillingStatuses.Deferred:
       return "warning";
-    case "in-statement":
-    case "disb-req":
+    case InspectorFeeBillingStatuses.InStatement:
+    case InspectorFeeBillingStatuses.DisbReq:
       return "info";
-    case "disbursed":
+    case InspectorFeeBillingStatuses.Disbursed:
       return "success";
-    case "returned":
-    case "inquiry":
+    case InspectorFeeBillingStatuses.Returned:
+    case InspectorFeeBillingStatuses.Inquiry:
       return "danger";
-    case "suspended":
+    case InspectorFeeBillingStatuses.Suspended:
       return "warning";
     default:
       return "default";

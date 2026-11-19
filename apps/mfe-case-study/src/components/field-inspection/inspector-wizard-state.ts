@@ -20,8 +20,10 @@ import {
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
   type ServiceAmenityPhotoSlotDef,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 /** A section of the inspector's page on the work page's frame — one per wizard step. */
 export type InspectorSectionId = `ins-step-${InspectorStepId}`;
@@ -243,7 +245,7 @@ export function inspectorReferenceMapPins(
   mapPinned: boolean,
 ): GoogleMapContextPin[] {
   if (
-    mapActor !== "specialist" ||
+    mapActor !== WorkspaceActors.Specialist ||
     !mapPinned ||
     !hasInspectorOriginalMapPin(draft) ||
     !activeMapDiffersFromInspectorOriginal(draft)
@@ -261,7 +263,7 @@ export function engineeringOfficeContextPins(
   mapActor: InspectorMapActor,
   engineeringPin: { lat: number; lng: number } | null,
 ): GoogleMapContextPin[] {
-  if (mapActor !== "specialist" || !engineeringPin) return [];
+  if (mapActor !== WorkspaceActors.Specialist || !engineeringPin) return [];
   const active = parseLatLng(draft.mapLatitude, draft.mapLongitude);
   if (
     active &&
@@ -366,7 +368,7 @@ export function definedPhotosIntroText(
   layout: "desktop" | "mobile",
   canPickFromTransaction: boolean,
 ): string {
-  if (layout === "desktop") {
+  if (layout === InspectorStepLayouts.Desktop) {
     return canPickFromTransaction
       ? "لكل خدمة/مرفق اخترته أعلاه تظهر خانة صورة واحدة. يمكن رفع ملف أو اختيار صورة من مرفقات المعاملة (مثل إثبات الكهرباء والماء)."
       : "لكل خدمة/مرفق اخترته في القسم أعلاه: ارفع صورة توثيقية (كاميرا أو ملف). بدون اختيار لا تظهر خانات.";

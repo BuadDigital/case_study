@@ -6,12 +6,13 @@ import type { RoleId } from "@platform/types";
 import { PartyFeesWorkspace } from "../components/fees/PartyFeesWorkspace";
 import type { PartyFeesVariant } from "../components/field-inspection/InspectorFeesTab";
 import { opsTfNote } from "../lib/app-data/ops-tasks-tw";
+import { Roles } from "@platform/types";
 
 /** Role → party fees lane (one module shell, per-party content). */
 function feesVariantForRole(role: RoleId): PartyFeesVariant | null {
-  if (role === "field-inspector") return "field-inspection";
-  if (role === "engineering-office") return "engineering-survey";
-  if (role === "government-reviewer") return "court-visit";
+  if (role === Roles.FieldInspector) return "field-inspection";
+  if (role === Roles.EngineeringOffice) return "engineering-survey";
+  if (role === Roles.GovernmentReviewer) return "court-visit";
   return null;
 }
 

@@ -1,6 +1,7 @@
 import {
   getEvaluatorRecallApi,
   listEvaluatorRecallsApi,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { resolveApiError } from "@platform/app-shared/app-data/work-orders-api-config";
 import { prototypeModulesApiConfig } from "./modules-api-config";
@@ -55,7 +56,7 @@ export async function hydratePartyTaskRecallForTask(
 
   const result = await getEvaluatorRecallApi(config, taskId);
   if (!result.ok) {
-    if (result.kind === "not_found") {
+    if (result.kind === ApiErrorKinds.NotFound) {
       clearPartyTaskRecall(taskId);
       return null;
     }

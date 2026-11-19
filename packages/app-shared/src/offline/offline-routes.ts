@@ -1,5 +1,6 @@
 import type { PageId } from "@platform/types";
 import { pageIdFromPathname } from "../app-data/page-access";
+import { Pages } from "@platform/types";
 
 /**
  * Spec: offline, the field inspector and government reviewer get input forms
@@ -8,9 +9,9 @@ import { pageIdFromPathname } from "../app-data/page-access";
  * The service worker keeps exactly these pages (`OFFLINE_PAGE_PREFIXES` in sw.js).
  */
 const OFFLINE_FORM_PAGE_IDS: readonly PageId[] = [
-  "active-inspection",
-  "operations-tasks",
-  "keys",
+  Pages.ActiveInspection,
+  Pages.OperationsTasks,
+  Pages.Keys,
 ];
 
 /** The role's pages that stay open offline, in `OFFLINE_FORM_PAGE_IDS` order. */

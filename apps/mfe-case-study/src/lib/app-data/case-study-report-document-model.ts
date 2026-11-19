@@ -1,6 +1,7 @@
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   type CaseStudyQuestionCatalog,
+  CaseStudyQuestionSections,
 } from "@platform/app-shared/domain/case-study/question-catalog";
 import {
   caseStudyProviderName,
@@ -23,6 +24,7 @@ import {
 } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks";
 import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
+import { CASE_STUDY_METER_TYPE_OPTIONS, CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 
 type CaseStudyReportQuestionRow = {
   question: string;
@@ -152,12 +154,6 @@ const SECTION_TITLES: Record<CaseStudyQuestionSection, string> = {
   extra: "ملاحظات إضافية",
 };
 
-const METER_LABELS: Record<string, string> = {
-  electronic: "إلكتروني",
-  analog: "مؤرشف",
-  none: "لا يوجد",
-};
-
 function resolveRequestDateIso(
   poRecord: Pick<
     PoIntakeRecord,
@@ -234,9 +230,9 @@ function buildSectionRows(
       colAHeader: headers.colA,
       colBHeader: headers.colB,
       colNaHeader: headers.colNa,
-      markA: val === "A",
-      markB: val === "B",
-      markNa: val === "NA",
+      markA: val === CaseStudyReportAnswers.A,
+      markB: val === CaseStudyReportAnswers.B,
+      markNa: val === CaseStudyReportAnswers.NA,
       note,
     };
   });
@@ -245,7 +241,7 @@ function buildSectionRows(
 function meterExtras(draft: CaseStudyReportDraft): string[] {
   const lines: string[] = [];
   const meterLabel = draft.meterType
-    ? METER_LABELS[draft.meterType] ?? draft.meterType
+    ? (CASE_STUDY_METER_TYPE_OPTIONS.find((o) => o.value === draft.meterType)?.label ?? draft.meterType)
     : "";
   const meterNum = draft.meterNumber.trim();
   if (meterLabel || meterNum) {
@@ -299,19 +295,19 @@ export function buildCaseStudyReportModel(
       ),
     };
 
-    if (id === "deed" && draft.deedRemarks.trim()) {
+    if (id === CaseStudyQuestionSections.Deed && draft.deedRemarks.trim()) {
       section.remarks = draft.deedRemarks.trim();
     }
-    if (id === "survey" && draft.surveyRemarks.trim()) {
+    if (id === CaseStudyQuestionSections.Survey && draft.surveyRemarks.trim()) {
       section.remarks = draft.surveyRemarks.trim();
     }
-    if (id === "comp") {
+    if (id === CaseStudyQuestionSections.Comp) {
       section.extras = meterExtras(draft);
       if (draft.componentsRemarks.trim()) {
         section.remarks = draft.componentsRemarks.trim();
       }
     }
-    if (id === "occ") {
+    if (id === CaseStudyQuestionSections.Occ) {
       const occExtras: string[] = [];
       if (draft.hoaFee.trim()) {
         occExtras.push(

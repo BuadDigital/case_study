@@ -4,6 +4,7 @@ import {
   listOperationsTasksPage,
   type CourtVisitFeeReportRowDto,
   type OperationsTaskListQuery,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   currentOfflineUserId,
@@ -134,7 +135,7 @@ export async function loadOperationsTasksPage(
   const result = await listOperationsTasksPage(config!, query);
   if (!result.ok) {
     const page =
-      result.kind === "network" ? await offlineOperationsTasksPage(query) : null;
+      result.kind === ApiErrorKinds.Network ? await offlineOperationsTasksPage(query) : null;
     if (page) {
       noteSnapshotFallback("operations-tasks-page");
       return page;

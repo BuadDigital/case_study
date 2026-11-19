@@ -23,6 +23,8 @@ import {
 import { InspectorSaveChip } from "./InspectorSaveChip";
 import { handleSiteLocationAckClick } from "../../lib/app-data/site-location-ack-open";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
+import { WorkspaceActors } from "@platform/app-shared/app-data/inspector-workspace-data";
 
 export function InspectorAccessPhotosCards({
   activeStep,
@@ -121,7 +123,7 @@ export function InspectorAccessPhotosCards({
               contacts={property?.contacts}
               editable={!locked}
               fieldErrors={fieldErrors}
-              layout={mobile ? "mobile" : "desktop"}
+              layout={mobile ? InspectorStepLayouts.Mobile : InspectorStepLayouts.Desktop}
               onPatch={(patch) => persist(patch)}
               onAckClick={onAckClick}
               ackTitle={ackTitle}
@@ -183,7 +185,7 @@ export function InspectorAccessPhotosCards({
           <InspectorPropertyPhotosSection
             draft={draft}
             disabled={locked}
-            actor="inspector"
+            actor={WorkspaceActors.Inspector}
             isLand={isLand}
             mobile={mobile}
             onPatch={(patch) => persist(patch)}

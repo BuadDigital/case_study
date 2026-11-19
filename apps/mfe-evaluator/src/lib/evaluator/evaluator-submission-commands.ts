@@ -4,7 +4,7 @@ import {
   submitPartySubmission,
 } from "@platform/app-shared/app-data/party-submission-api";
 import { createKeyedWriteQueue } from "@platform/app-shared/lib/keyed-write-queue";
-import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
+import { notifyTasksChanged, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 import {
   dispatchWorkflowSubmitted,
 } from "@platform/app-shared/app-data/party-workflow-events";
@@ -174,7 +174,7 @@ async function updateDraftNow(
       ? { ...current.checklist, ...patch.checklist }
       : current.checklist,
     status:
-      current.status === "reopened" ? "reopened" : ("draft" as const),
+      current.status === SubmissionStatuses.Reopened ? "reopened" : ("draft" as const),
     updatedAtUtc: new Date().toISOString(),
   };
   return saveEvaluatorSubmission(next, reportMetadata, planImageMetadata);

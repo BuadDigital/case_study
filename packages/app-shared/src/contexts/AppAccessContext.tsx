@@ -11,9 +11,10 @@ import { usePermissionsQuery } from "@platform/app-shared/query/permissions-quer
 import { useUsableAuthSession } from "../auth/use-auth-session";
 import { useViewportDesktop } from "../hooks/use-viewport-desktop";
 import { roleFromPermissions, rolePagesFromPermissions } from "./app-access-role";
+import { Roles } from "@platform/types";
 
 /** Least-privilege placeholder while access is unresolved or refused — never GM. */
-const PLACEHOLDER_ROLE: RoleId = "field-inspector";
+const PLACEHOLDER_ROLE: RoleId = Roles.FieldInspector;
 
 type Ctx = {
   role: RoleId;

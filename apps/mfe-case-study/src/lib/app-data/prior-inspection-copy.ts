@@ -1,5 +1,5 @@
 import { copyPriorInspection, listPriorInspections, type PriorInspectionOption } from "@platform/api-client";
-import { mapPinPatchForActor } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { mapPinPatchForActor, WorkspaceActors } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   payloadToDraft,
   type InspectorWorkspacePatch,
@@ -40,7 +40,7 @@ export function priorInspectionPatch(payload: Record<string, unknown>): Inspecto
     ) as InspectorWorkspacePatch;
     const point =
       read.mapLatitude.trim() && read.mapLongitude.trim()
-        ? mapPinPatchForActor(current, read.mapLatitude, read.mapLongitude, "inspector")
+        ? mapPinPatchForActor(current, read.mapLatitude, read.mapLongitude, WorkspaceActors.Inspector)
         : {};
     return { ...patch, ...point, mapPinned: false };
   };

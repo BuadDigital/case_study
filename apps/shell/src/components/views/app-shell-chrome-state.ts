@@ -25,6 +25,7 @@ import { formatPropertyDeedDisplay } from "@case-study/mfe/lib/app-data/po-intak
 import { slashTrailToSegments, type BreadcrumbSegment } from "../../lib/breadcrumb";
 import { buildPoPropertyWorkspaceSegments } from "../../lib/po-chrome";
 import type { ShellRoute } from "./app-shell-nav-state";
+import { Pages } from "@platform/types";
 
 /** Minimal read surface of `URLSearchParams` so tests can pass a plain map. */
 type SearchLike = { get(name: string): string | null };
@@ -36,7 +37,7 @@ export function resolveKeysChrome(
   currentPage: PageId,
   search: SearchLike,
 ): LeafChrome | null {
-  if (currentPage !== "keys") return null;
+  if (currentPage !== Pages.Keys) return null;
   const envelope = search.get("envelope")?.trim();
   if (envelope) return { title: "ملف الظرف", breadcrumb: "ملف الظرف" };
   if (search.get("tab") === "fees") {
@@ -49,21 +50,21 @@ export function resolveOrgSettingsChrome(
   currentPage: PageId,
   search: SearchLike,
 ): LeafChrome | null {
-  if (currentPage === "admin-panel") {
+  if (currentPage === Pages.AdminPanel) {
     const title = adminPanelLeafTitle(search.get("tab"));
     return { title, breadcrumb: title };
   }
-  if (currentPage !== "organization-settings") return null;
+  if (currentPage !== Pages.OrganizationSettings) return null;
   const title = organizationSettingsLeafTitle(search.get("tab"));
   return { title, breadcrumb: title };
 }
 
 const TASK_QUEUE_PAGES: readonly PageId[] = [
-  "active-primary-data",
-  "all-transactions",
-  "active-distribution",
-  "active-case-study",
-  "operations-tasks",
+  Pages.ActivePrimaryData,
+  Pages.AllTransactions,
+  Pages.ActiveDistribution,
+  Pages.ActiveCaseStudy,
+  Pages.OperationsTasks,
 ];
 
 /**
@@ -97,9 +98,9 @@ export function isOnTaskWork(
 ): boolean {
   const hasTask = Boolean(taskQuery);
   return (
-    (route.currentPage === "active-primary-data" && hasTask) ||
-    (route.currentPage === "all-transactions" && hasTask) ||
-    (route.currentPage === "active-distribution" && hasTask) ||
+    (route.currentPage === Pages.ActivePrimaryData && hasTask) ||
+    (route.currentPage === Pages.AllTransactions && hasTask) ||
+    (route.currentPage === Pages.ActiveDistribution && hasTask) ||
     route.onActiveSurveyRoute ||
     route.onPropertyAppraisalWorkspace ||
     route.onFieldInspectionWorkspace ||
@@ -188,13 +189,13 @@ export function resolvePageChrome({
   orgSettingsChrome,
 }: PageChromeInput): PageChrome {
   const partyFeesUnderActiveTx =
-    currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role);
+    currentPage === Pages.PartyFees && isPartyFeesUnderActiveTransactions(role);
   // Engineering fees under active-transactions — same parent group as other active queues.
   const engineeringFeesCrumb = partyFeesUnderActiveTx
     ? slashTrailToSegments("قوائم المراحل / فوترة الأتعاب")
     : null;
   const financeLeaf =
-    currentPage === "financial" ? financeLeafForArea(financeArea) : null;
+    currentPage === Pages.Financial ? financeLeafForArea(financeArea) : null;
   const financialCrumb = financeLeaf ? slashTrailToSegments(financeLeaf.crumb) : null;
 
   const breadcrumbSegments =

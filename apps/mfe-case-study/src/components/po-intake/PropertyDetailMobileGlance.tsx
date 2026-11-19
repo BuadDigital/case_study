@@ -19,6 +19,7 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import type { InspectorFeeRowDto } from "@platform/api-client";
 import { operationsTaskPath } from "../../lib/my-task-routes";
+import { InspectorFeeBillingStatuses } from "@platform/api-client";
 
 type GlanceTabId = "keys" | "finance" | "failures" | "linked";
 
@@ -59,10 +60,10 @@ export function PropertyDetailMobileGlance({
   // Fees not yet with finance (sup-review includes a proposed discount awaiting the supervisor).
   const pendingFees = feeRows.filter(
     (r) =>
-      r.billingStatus === "draft" ||
-      r.billingStatus === "returned" ||
-      r.billingStatus === "inquiry" ||
-      r.billingStatus === "sup-review",
+      r.billingStatus === InspectorFeeBillingStatuses.Draft ||
+      r.billingStatus === InspectorFeeBillingStatuses.Returned ||
+      r.billingStatus === InspectorFeeBillingStatuses.Inquiry ||
+      r.billingStatus === InspectorFeeBillingStatuses.SupReview,
   ).length;
 
   const feeLabel =

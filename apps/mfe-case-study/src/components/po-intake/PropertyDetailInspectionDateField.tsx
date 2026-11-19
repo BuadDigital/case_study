@@ -15,8 +15,8 @@ import { cn } from "@platform/ui-kit";
 import {
   formatDualCalendarDate,
   parseDualCalendarDate,
-  type DualCalendarKind,
 } from "../../lib/app-data/dual-calendar-date";
+import type { DualCalendarKind } from "@platform/app-shared/format/hijri";
 import { DualCalendarPickerPanel } from "../field-inspection/DualCalendarPickerPanel";
 import {
   InsReadField,
@@ -30,6 +30,7 @@ import {
   dualCalendarPanelPlacement,
 } from "./property-detail-inspection-state";
 import { useInsControlClass } from "./PropertyDetailInspectionFields";
+import { DualCalendarKinds } from "@platform/app-shared/format/hijri";
 
 function InsCalendarIcon({ className }: { className?: string }) {
   return (
@@ -111,7 +112,7 @@ export function InsDualCalendarDateField({
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const parsed = useMemo(() => parseDualCalendarDate(value), [value]);
   const [panelCalendar, setPanelCalendar] = useState<DualCalendarKind>(
-    () => parsed?.kind ?? "gregorian",
+    () => parsed?.kind ?? DualCalendarKinds.Gregorian,
   );
 
   // A typed value decides which calendar the panel opens on.

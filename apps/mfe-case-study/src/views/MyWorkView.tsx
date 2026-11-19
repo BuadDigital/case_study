@@ -52,7 +52,7 @@ import type { PageSituationCardDef } from "../lib/app-data/active-transaction-pa
 import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
 import { tasksForRole, type WorkflowTask } from "../lib/app-data/tasks";
 import { seesAllCaseStudyWorkflowTasks } from "../lib/app-data/viewer-task-access";
-import { isFoldedAppraisalTask } from "@platform/app-shared/workflow/task-types";
+import { isFoldedAppraisalTask, WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 import { workspaceHasDraftProgress } from "../lib/app-data/field-inspection-work-queue";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import {
@@ -253,13 +253,13 @@ export function MyWorkView() {
       mine
         .filter(
           (t) =>
-            (t.kind === "case-study-property" &&
+            (t.kind === WorkflowTaskKinds.CaseStudyProperty &&
               t.studyReportIssued &&
               !t.propertyHandedOverToEnfaz) ||
             (asAppraiser &&
-              t.kind === "property-appraisal" &&
-              t.status !== "cancelled" &&
-              t.status !== "completed" &&
+              t.kind === WorkflowTaskKinds.PropertyAppraisal &&
+              t.status !== WorkflowTaskStatuses.Cancelled &&
+              t.status !== WorkflowTaskStatuses.Completed &&
               !isFoldedAppraisalTask(t)),
         )
         .map((t) => t.propertyId),

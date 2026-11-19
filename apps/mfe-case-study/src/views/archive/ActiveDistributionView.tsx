@@ -14,12 +14,14 @@ import {
   FAILURES_CHANGED_EVENT,
   TASKS_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { Pages } from "@platform/types";
+import { ActiveTransactionQueueTableLayouts } from "../active-transaction-queue-state";
 
 const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
-  pageId: "active-distribution",
+  pageId: Pages.ActiveDistribution,
   pageTitle: "توزيع المعاملات",
   hidePageTitle: true,
-  tableLayout: "distribution",
+  tableLayout: ActiveTransactionQueueTableLayouts.Distribution,
   emptyLine: "لا توجد معاملات بانتظار التوزيع.",
   emptyHint:
     "تظهر هنا بعد إكمال البيانات الأولية واستعلام البورصة عند الحاجة.",

@@ -27,6 +27,7 @@ import {
   type TabId,
 } from "./eng-fees-state";
 import { useFeeLedgerWrites } from "./useFeeLedgerWrites";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 export function useEngFeesWorkflow(assigneeId: string | undefined) {
   const { showToast, busyId, setBusyId, invalidate } = useFeeLedgerWrites();
@@ -73,7 +74,7 @@ export function useEngFeesWorkflow(assigneeId: string | undefined) {
   const closedPaid = useMemo(
     () =>
       statements
-        .filter((s) => s.status === "closed")
+        .filter((s) => s.status === PartyBillingStatementStatuses.Closed)
         .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0),
     [statements],
   );

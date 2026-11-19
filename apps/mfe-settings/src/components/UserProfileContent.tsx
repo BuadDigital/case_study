@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import {
   listInspectorFees,
   type InspectorFeeRowDto,
+  InspectorFeeBillingStatuses,
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
@@ -146,10 +147,10 @@ function completedRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[] {
   return rows.filter(
     (row) =>
       row.workStatus === "done" ||
-      row.billingStatus === "disbursed" ||
-      row.billingStatus === "at-finance" ||
-      row.billingStatus === "in-statement" ||
-      row.billingStatus === "disb-req",
+      row.billingStatus === InspectorFeeBillingStatuses.Disbursed ||
+      row.billingStatus === InspectorFeeBillingStatuses.AtFinance ||
+      row.billingStatus === InspectorFeeBillingStatuses.InStatement ||
+      row.billingStatus === InspectorFeeBillingStatuses.DisbReq,
   );
 }
 
@@ -272,9 +273,9 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     for (const row of feeRows) {
       const paidAmt = row.paidAmountSar > 0 ? row.paidAmountSar : 0;
       const net = row.netFeeSar;
-      if (row.billingStatus === "disbursed" || paidAmt > 0) {
+      if (row.billingStatus === InspectorFeeBillingStatuses.Disbursed || paidAmt > 0) {
         paid += paidAmt > 0 ? paidAmt : net;
-      } else if (row.billingStatus === "suspended") {
+      } else if (row.billingStatus === InspectorFeeBillingStatuses.Suspended) {
         suspended += net;
       } else {
         due += net;

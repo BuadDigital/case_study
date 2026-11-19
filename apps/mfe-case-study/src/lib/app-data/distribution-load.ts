@@ -1,5 +1,7 @@
 import type { WorkflowTask } from "./tasks";
 
+import { WorkflowTaskKinds, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
 /** Open queue statuses — same idea as reporting team-load / active queues. */
 function isActiveWorkloadStatus(status: string): boolean {
   return status === "open" || status === "blocked";
@@ -14,16 +16,16 @@ export function taskCountsTowardDistributionLoad(task: WorkflowTask): boolean {
   if (!isActiveWorkloadStatus(task.status)) return false;
   const role = task.assigneeRole;
   switch (role) {
-    case "case-specialist":
+    case Roles.CaseSpecialist:
       return (
-        task.kind === "case-study-property" && task.phase === "case-study"
+        task.kind === WorkflowTaskKinds.CaseStudyProperty && task.phase === CaseStudyTaskPhases.CaseStudy
       );
-    case "field-inspector":
-      return task.kind === "field-inspection";
-    case "real-estate-appraiser":
-      return task.kind === "property-appraisal";
-    case "engineering-office":
-      return task.kind === "engineering-survey";
+    case Roles.FieldInspector:
+      return task.kind === WorkflowTaskKinds.FieldInspection;
+    case Roles.RealEstateAppraiser:
+      return task.kind === WorkflowTaskKinds.PropertyAppraisal;
+    case Roles.EngineeringOffice:
+      return task.kind === WorkflowTaskKinds.EngineeringSurvey;
     default:
       return false;
   }

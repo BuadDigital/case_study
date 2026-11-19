@@ -15,6 +15,7 @@ import {
 import type { findPropertyForTask } from "../../lib/app-data/my-task-row";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 /**
  * Step 3 — specialist reviews the appraiser's valuation report package.
@@ -41,12 +42,12 @@ export function CaseStudyValuationPanel({
     const fromParent = childTasksForCaseStudyParent(
       caseStudyTask.id,
       tasks,
-    ).find((t) => t.kind === "property-appraisal");
+    ).find((t) => t.kind === WorkflowTaskKinds.PropertyAppraisal);
     if (fromParent) return fromParent;
     return (
       tasks.find(
         (t) =>
-          t.kind === "property-appraisal" &&
+          t.kind === WorkflowTaskKinds.PropertyAppraisal &&
           t.poNumber.trim() === caseStudyTask.poNumber.trim() &&
           t.propertyId === property.id,
       ) ?? null

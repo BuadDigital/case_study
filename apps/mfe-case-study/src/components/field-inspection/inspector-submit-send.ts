@@ -21,6 +21,7 @@ import {
   inspectorWizardStepForErrorTarget,
   scheduleInspectorErrorScroll,
   type InspectorWorkspaceFieldErrors,
+  InspectorStepLayouts,
 } from "../../lib/app-data/inspector-workspace-validation";
 import { inspectorSubmitStamp } from "../../lib/app-data/inspector-submit-gate";
 import type { InspectorStepId } from "./InspectorStepNav";
@@ -105,7 +106,7 @@ export async function sendInspectorSubmission(input: {
       input.setFieldErrors(nextErrors);
       const targetId = firstInspectorWorkspaceErrorTarget(nextErrors);
       // The phone body's step order (its only caller) — fixed 2026-11-04, it used the desktop's.
-      if (targetId) input.setActiveStep(inspectorWizardStepForErrorTarget(targetId, "mobile"));
+      if (targetId) input.setActiveStep(inspectorWizardStepForErrorTarget(targetId, InspectorStepLayouts.Mobile));
       scheduleInspectorErrorScroll(nextErrors);
     }
     fail(result.message);

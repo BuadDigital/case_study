@@ -1,4 +1,5 @@
 import type { PageId } from "@platform/types";
+import { Pages } from "@platform/types";
 
 export type SystemFieldsNavItem = {
   id: PageId;
@@ -9,17 +10,17 @@ export type SystemFieldsNavItem = {
 /** Case study — inside the settings tree v2 */
 export const SYSTEM_FIELDS_NAV: SystemFieldsNavItem[] = [
   {
-    id: "case-study-info-roles",
+    id: Pages.CaseStudyInfoRoles,
     label: "علاقة المستخدم بالمعلومة",
     icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM22 12h-4l-3 9L9 3l-3 9H2",
   },
   {
-    id: "failure-types",
+    id: Pages.FailureTypes,
     label: "أنواع التعذّرات",
     icon: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
   },
   {
-    id: "courts",
+    id: Pages.Courts,
     label: "المحاكم والدوائر",
     icon: "M3 21h18M5 21V7l8-4 8 4v14M9 21v-6h6v6",
   },

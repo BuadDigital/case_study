@@ -5,6 +5,7 @@ import {
   subRolesFromPermissions,
 } from "../app-data/case-specialist-sub-roles";
 import { pagesFromPermissions, roleSeesAllTransactionsPage } from "../app-data/permissions-pages";
+import { Roles, Pages } from "@platform/types";
 
 /** Map server permissions to a known prototype role. Unknown or missing → null (no access). */
 export function roleFromPermissions(
@@ -17,7 +18,7 @@ export function roleFromPermissions(
         role.toLowerCase() === "cdo" || role.toLowerCase() === "admin",
     )
   ) {
-    return "cdo";
+    return Roles.Cdo;
   }
 
   const apiRole = prototypeRole?.trim().toLowerCase();
@@ -39,15 +40,15 @@ export function pagesForViewport(
   pages: readonly PageId[],
   desktop: boolean,
 ): PageId[] {
-  if (desktop || role !== "field-inspector") return [...pages];
-  return pages.filter((page) => page !== "my-work");
+  if (desktop || role !== Roles.FieldInspector) return [...pages];
+  return pages.filter((page) => page !== Pages.MyWork);
 }
 
 /**
  * Pages hidden from every role (Omar 2026-11-15: «لوحة التحكم» is hidden from everyone, the system
  * owner included). The page and its grant stay in place; emptying this set brings it back.
  */
-const HIDDEN_PAGES: ReadonlySet<PageId> = new Set<PageId>(["dashboard"]);
+const HIDDEN_PAGES: ReadonlySet<PageId> = new Set<PageId>([Pages.Dashboard]);
 
 /** The part of `/api/permissions` a user's pages are worked out from. */
 export type RolePagesSource = {
@@ -89,7 +90,7 @@ function pagesBeforeViewport(role: RoleId, permissions: RolePagesSource | null |
     role,
     subRolesFromPermissions(role, permissions?.subRoles),
     ROLES[role].pages,
-  ).filter((page) => page !== "all-transactions" || roleSeesAllTransactionsPage(role));
+  ).filter((page) => page !== Pages.AllTransactions || roleSeesAllTransactionsPage(role));
   if (!permissions?.pages?.length) return baseline;
   const fromApi = pagesFromPermissions(permissions.pages, {
     prototypeRole: permissions.prototypeRole,

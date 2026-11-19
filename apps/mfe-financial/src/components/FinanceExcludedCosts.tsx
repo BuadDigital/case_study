@@ -30,6 +30,7 @@ import {
   financeExcludedFeesOptions,
   financeExcludedStatementsOptions,
 } from "../query/costs-account-queries";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 /** Why a line left the payout cycle (table cell and phone card). */
 function excludedReason(row: {
@@ -80,7 +81,7 @@ export function FinanceExcludedCosts({
   const cancelledStatements = useMemo(
     () =>
       (statementsQuery.data ?? []).filter((s) => {
-        if (s.status !== "cancelled") return false;
+        if (s.status !== PartyBillingStatementStatuses.Cancelled) return false;
         if (assigneeId?.trim()) return s.assigneeId === assigneeId.trim();
         return true;
       }),

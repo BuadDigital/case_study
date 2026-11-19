@@ -7,6 +7,7 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson, serverFailure } from "./parse-json";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type ValuationListItemDto = {
   id: string;
@@ -67,8 +68,8 @@ export function activeValuationListOptions(
 
 /** The answer of both GET and PUT: 401 → auth, 403 → forbidden, other failures → server. */
 async function readListsResult(res: Response): Promise<Result<ValuationListsDto>> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 403) return { ok: false, kind: "forbidden" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
   if (!res.ok) return await serverFailure(res);
   return { ok: true, data: normalize(await parseJson<ValuationListsDto>(res)) };
 }
@@ -83,7 +84,7 @@ export async function getValuationLists(
     });
     return await readListsResult(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -105,7 +106,7 @@ export async function reviewPropertyUsage(
     );
     return await readListsResult(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -127,6 +128,6 @@ export async function saveValuationLists(
     });
     return await readListsResult(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

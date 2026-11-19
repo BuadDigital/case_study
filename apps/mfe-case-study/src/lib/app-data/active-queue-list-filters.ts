@@ -15,6 +15,7 @@ import {
   isTaskFailureObstructed,
 } from "@platform/app-shared/workflow/task-failure-status";
 import { transactionNumberOf } from "./transaction-number";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 export type QueueTaskStatusBadge = { label: string; className: string };
 
@@ -28,7 +29,7 @@ export function resolveQueueTaskStatusBadge(
 ): QueueTaskStatusBadge | null {
   void options.partySubmission;
   if (isTaskFailureObstructed(task)) return { ...FAILURE_OBSTRUCTED_BADGE };
-  if (task.kind === "field-inspection") {
+  if (task.kind === WorkflowTaskKinds.FieldInspection) {
     return fieldInspectionTaskStatusBadge(
       task.id,
       task.status,

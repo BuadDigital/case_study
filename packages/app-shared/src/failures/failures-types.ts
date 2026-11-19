@@ -1,10 +1,12 @@
-export type FailureStatus =
-  | "internal"
-  | "review"
-  | "approved"
-  | "returned"
-  | "resolved"
-  | "suspended";
+export const FailureStatuses = {
+  Internal: "internal",
+  Review: "review",
+  Approved: "approved",
+  Returned: "returned",
+  Resolved: "resolved",
+  Suspended: "suspended",
+} as const;
+export type FailureStatus = (typeof FailureStatuses)[keyof typeof FailureStatuses];
 
 /** Possible failure — warning only; internal failure — stops work on the property. */
 export type FailureSeverity = "suspected" | "internal";
@@ -66,22 +68,22 @@ export type ResolveFailureInput = {
 };
 
 export function isActiveFailureStatus(status: FailureStatus): boolean {
-  return status !== "resolved" && status !== "suspended";
+  return status !== FailureStatuses.Resolved && status !== FailureStatuses.Suspended;
 }
 
 /** Stops work and shows as an open obstruction (not yet cleared). */
 export function isBlockingFailureStatus(status: FailureStatus): boolean {
   return (
-    status === "internal" ||
-    status === "review" ||
-    status === "returned" ||
-    status === "approved"
+    status === FailureStatuses.Internal ||
+    status === FailureStatuses.Review ||
+    status === FailureStatuses.Returned ||
+    status === FailureStatuses.Approved
   );
 }
 
 /** Closed failures — show as «prior failures», not as active blockers. */
 export function isHistoricalFailureStatus(status: FailureStatus): boolean {
-  return status === "resolved" || status === "suspended";
+  return status === FailureStatuses.Resolved || status === FailureStatuses.Suspended;
 }
 
 /** Open failures for sidebar badge and stats (not approved / resolved). */
@@ -89,8 +91,8 @@ export function countOpenFailures(records: FailureRecord[]): number {
   return records.filter(
     (f) =>
       isActiveFailureStatus(f.status) &&
-      (f.status === "internal" ||
-        f.status === "review" ||
-        f.status === "returned"),
+      (f.status === FailureStatuses.Internal ||
+        f.status === FailureStatuses.Review ||
+        f.status === FailureStatuses.Returned),
   ).length;
 }

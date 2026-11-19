@@ -54,6 +54,7 @@ import {
 } from "../../lib/domain/po-intake/property-deed-validation";
 import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
 import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake/po-field-error-targets";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 export type IntakeSection = "enfath" | "bourse";
 
@@ -73,7 +74,7 @@ function sectionDirtyCount(
   const bourseKeys = new Set(Object.keys(propertyToBourseRequest(property)));
   return Object.keys(now).filter(
     (key) =>
-      bourseKeys.has(key) === (section === "bourse") &&
+      bourseKeys.has(key) === (section === CaseStudyTaskPhases.Bourse) &&
       JSON.stringify(now[key] ?? null) !== JSON.stringify(was[key] ?? null),
   ).length;
 }
@@ -214,7 +215,7 @@ export function usePropertyIntakeEditor({
       return;
     }
     const errors: FieldErrors =
-      section === "enfath"
+      section === CaseStudyTaskPhases.Enfath
         ? mergeFieldErrors(
             mergePropertyEnfathValidation(
               property,
@@ -227,7 +228,7 @@ export function usePropertyIntakeEditor({
           ? validatePropertyBourseFields(property)
           : {};
     if (
-      section === "enfath" &&
+      section === CaseStudyTaskPhases.Enfath &&
       (await deedExistsInPo(poNumber, property.deedNumber, propertyId))
     ) {
       errors.deedNumber = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
@@ -235,7 +236,7 @@ export function usePropertyIntakeEditor({
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
       setFormError(
-        section === "enfath"
+        section === CaseStudyTaskPhases.Enfath
           ? firstEnfathValidationMessage(errors)
           : firstBourseValidationMessage(errors),
       );
@@ -381,10 +382,10 @@ export function PropertyIntakeEnfathCard({
         title={
           deed ? `${SECTION_TITLES.enfath} — ${deed}` : SECTION_TITLES.enfath
         }
-        dirtyCount={editor.dirtyCount("enfath")}
-        saving={editor.savingSection === "enfath"}
+        dirtyCount={editor.dirtyCount(CaseStudyTaskPhases.Enfath)}
+        saving={editor.savingSection === CaseStudyTaskPhases.Enfath}
         disabled={disabled || editor.savingSection !== null}
-        onSave={() => void editor.saveSection("enfath")}
+        onSave={() => void editor.saveSection(CaseStudyTaskPhases.Enfath)}
       />
       <CardBody>
         <PoPropertyEnfathForm
@@ -435,10 +436,10 @@ export function PropertyIntakeBourseCard({
       <IntakeSectionHeader
         title={SECTION_TITLES.bourse}
         subtitle="المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة"
-        dirtyCount={editor.dirtyCount("bourse")}
-        saving={editor.savingSection === "bourse"}
+        dirtyCount={editor.dirtyCount(CaseStudyTaskPhases.Bourse)}
+        saving={editor.savingSection === CaseStudyTaskPhases.Bourse}
         disabled={disabled || editor.savingSection !== null}
-        onSave={() => void editor.saveSection("bourse")}
+        onSave={() => void editor.saveSection(CaseStudyTaskPhases.Bourse)}
       />
       <CardBody>
         <PoPropertyBourseForm

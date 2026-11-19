@@ -16,6 +16,7 @@ import {
   hijriToGregorian,
   isValidGregorianDate,
   isValidHijriDate,
+  DualCalendarKinds,
 } from "@platform/app-shared/format/hijri";
 import { toLatinDigits } from "@platform/ui-kit";
 
@@ -94,9 +95,9 @@ export function parseReportCalendarDay(
     hijriMarked || (!gregorianMarked && year >= 1300 && year < 1600);
 
   if (isHijri) {
-    return isValidHijriDate(year, month, day) ? { kind: "hijri", year, month, day } : null;
+    return isValidHijriDate(year, month, day) ? { kind: DualCalendarKinds.Hijri, year, month, day } : null;
   }
-  return isValidGregorianDate(year, month, day) ? { kind: "gregorian", year, month, day } : null;
+  return isValidGregorianDate(year, month, day) ? { kind: DualCalendarKinds.Gregorian, year, month, day } : null;
 }
 
 /** Parse inspector license date (Hijri or Gregorian) to a local noon Date. */
@@ -105,7 +106,7 @@ export function parseLicenseDateForAge(
 ): Date | null {
   const parsed = parseReportCalendarDay(raw);
   if (!parsed) return null;
-  if (parsed.kind === "hijri") {
+  if (parsed.kind === DualCalendarKinds.Hijri) {
     const g = hijriToGregorian(parsed.year, parsed.month, parsed.day);
     if (!g) return null;
     return new Date(g.year, g.month - 1, g.day, 12, 0, 0, 0);
@@ -130,7 +131,7 @@ export function formatReportCalendarDate(raw: string | null | undefined): string
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return ymd(text);
   const parsed = parseReportCalendarDay(text);
   if (!parsed) return text;
-  if (parsed.kind === "hijri") return formatHijriDate(parsed, { order: "ymd" });
+  if (parsed.kind === DualCalendarKinds.Hijri) return formatHijriDate(parsed, { order: "ymd" });
   return `${parsed.year}/${pad2(parsed.month)}/${pad2(parsed.day)}`;
 }
 

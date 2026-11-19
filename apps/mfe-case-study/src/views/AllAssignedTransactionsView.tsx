@@ -52,6 +52,9 @@ import {
   EVALUATOR_SUBMISSION_CHANGED_EVENT,
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { WorkflowTaskKinds, CaseStudyTaskPhases, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
+import { Pages } from "@platform/types";
+import { ActiveTransactionQueueTableLayouts } from "./active-transaction-queue-state";
 // Row-menu reopen dialogs: code warmed on idle for the roles that may reopen, so
 // the dialog opens on the click (preloadableLazy skips the suspense reveal delay).
 const reopenCompletedModal = preloadableLazy(() =>
@@ -145,10 +148,10 @@ export function AllAssignedTransactionsView() {
 
   const config = useMemo((): ActiveTransactionQueueConfig => {
     return {
-      pageId: "all-transactions",
+      pageId: Pages.AllTransactions,
       pageTitle: "جميع العقارات",
       hidePageTitle: true,
-      tableLayout: "all-transactions",
+      tableLayout: ActiveTransactionQueueTableLayouts.AllTransactions,
       emptyLine: "لا توجد عقارات.",
       emptyHint: listsOwn
         ? "تظهر هنا المعاملات المسندة إليك — صف واحد لكل صك مع آخر مرحلة وصل إليها."
@@ -189,15 +192,15 @@ export function AllAssignedTransactionsView() {
         // deed's case-study task once distributed (the server's rule), to whoever may do either.
         // The parent is read from this page's own list.
         const parent =
-          ctx.task.kind === "case-study-property"
+          ctx.task.kind === WorkflowTaskKinds.CaseStudyProperty
             ? ctx.task
             : ctx.queueTasks.find((t) => t.id === ctx.task.parentTaskId);
         if (
           !isPartyRole &&
-          parent?.kind === "case-study-property" &&
-          parent.phase === "case-study" &&
-          parent.status !== "cancelled" &&
-          parent.status !== "completed" &&
+          parent?.kind === WorkflowTaskKinds.CaseStudyProperty &&
+          parent.phase === CaseStudyTaskPhases.CaseStudy &&
+          parent.status !== WorkflowTaskStatuses.Cancelled &&
+          parent.status !== WorkflowTaskStatuses.Completed &&
           (mayReassignParties || mayDropOffice)
         ) {
           stageItems.push({
@@ -265,7 +268,7 @@ export function AllAssignedTransactionsView() {
         allowDropOffice={mayDropOffice}
       />
       <Suspense fallback={null}>
-        {reopenTask !== null && reopenTask.kind === "case-study-property" ? (
+        {reopenTask !== null && reopenTask.kind === WorkflowTaskKinds.CaseStudyProperty ? (
           // A case-study parent reopens through its issued report (the server refuses the generic reopen).
           <CaseStudyReportReopenDialog
             open
@@ -289,7 +292,7 @@ export function AllAssignedTransactionsView() {
             }}
           />
         ) : null}
-        {reopenTask !== null && reopenTask.kind !== "case-study-property" ? (
+        {reopenTask !== null && reopenTask.kind !== WorkflowTaskKinds.CaseStudyProperty ? (
           <ReopenCompletedTransactionModal
             open={reopenTask !== null}
             task={reopenTask}

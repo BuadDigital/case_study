@@ -1,4 +1,4 @@
-import { getPropertyKeyGate, type PropertyKeyGateDto } from "@platform/api-client";
+import { getPropertyKeyGate, type PropertyKeyGateDto, ApiErrorKinds } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "../app-data/modules-api-config";
 import { currentOfflineUserId } from "./offline-write";
 import { readPrefetchedJson, savePrefetchedJson } from "./prefetch-read";
@@ -42,7 +42,7 @@ export async function loadPropertyKeyGate(
     }
     return result.data;
   }
-  if (result.kind === "network" && prefetchId) {
+  if (result.kind === ApiErrorKinds.Network && prefetchId) {
     const copy = await readPrefetchedJson<PropertyKeyGateDto>(prefetchId).catch(
       () => null,
     );

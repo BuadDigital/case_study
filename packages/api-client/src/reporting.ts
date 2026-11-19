@@ -1,5 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type ReportingTeamMemberDto = {
   initials: string;
@@ -111,8 +112,8 @@ export async function fetchReportingDashboard(
     const res = await fetch(`${baseUrl(config)}/api/reporting/v1/dashboard`, {
       headers: authHeaders(config.token, { json: false }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     const progressRaw = (raw.fieldInspectionProgress ??
       raw.FieldInspectionProgress) as Record<string, unknown> | undefined;
@@ -163,6 +164,6 @@ export async function fetchReportingDashboard(
     }
     return { ok: true, data };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

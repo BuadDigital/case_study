@@ -9,6 +9,7 @@
  */
 import type { ReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
 import type { ReviewLock } from "./work-page-model";
+import { ValuationReportDraftStatuses } from "@platform/api-client";
 
 export type ReviewCorrectionSource = "study" | "valuation";
 
@@ -50,7 +51,7 @@ export function reviewCorrectionOptions(input: {
   draft?: Pick<ReportDraftState, "status"> & Partial<Pick<ReportDraftState, "reportStage">>;
 }): ReviewCorrectionOption[] {
   const locked = input.reviewLock === "report-approved";
-  const draftWithAppraiser = input.draft?.status === "sent";
+  const draftWithAppraiser = input.draft?.status === ValuationReportDraftStatuses.Sent;
   // Omar 2026-11-18: review's return voids the appraiser's approval while no deposit code is recorded
   // (the final copy is issued with the code); after the deposit the path is «التعديل».
   const approvalVoidable =

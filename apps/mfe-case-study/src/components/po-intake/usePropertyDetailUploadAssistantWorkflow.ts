@@ -76,6 +76,7 @@ import {
   withCopiedKey,
   type CopyKey,
 } from "./property-detail-upload-assistant-state";
+import { CaseStudyReportStatuses } from "@platform/app-shared/app-data/case-study-report-model";
 
 type PropertyDetailEnfathUploadWorkflow = {
   model: InfathUploadModel;
@@ -370,7 +371,7 @@ export function usePropertyDetailEnfathUploadWorkflow({
     reportVersion: reportDraft?.version,
   });
   const { data: caseStudyDraft } = useInfathCaseStudyReportDraft(studyTask?.id);
-  const caseStudyReportIssued = caseStudyDraft?.status === "issued";
+  const caseStudyReportIssued = caseStudyDraft?.status === CaseStudyReportStatuses.Issued;
 
   const attachmentSources = useMemo(
     () => ({

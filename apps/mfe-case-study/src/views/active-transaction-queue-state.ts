@@ -35,6 +35,7 @@ import {
   ALL_TX_PARTIES,
   type AllTransactionsQueueRowMeta,
 } from "../lib/app-data/all-transactions-queue";
+import { Pages } from "@platform/types";
 
 /**
  * What: «جميع العقارات»'s rows for the status filter when it names a party.
@@ -64,14 +65,16 @@ export const APPRAISAL_STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "reopened", label: "معادة للتصحيح" },
 ];
 
-export type ActiveTransactionQueueTableLayout =
-  | "primary-data"
-  | "distribution"
-  | "case-study"
-  | "all-transactions"
-  | "engineering-survey"
-  | "property-appraisal"
-  | "field-inspection";
+export const ActiveTransactionQueueTableLayouts = {
+  PrimaryData: "primary-data",
+  Distribution: "distribution",
+  CaseStudy: "case-study",
+  AllTransactions: "all-transactions",
+  EngineeringSurvey: "engineering-survey",
+  PropertyAppraisal: "property-appraisal",
+  FieldInspection: "field-inspection",
+} as const;
+export type ActiveTransactionQueueTableLayout = (typeof ActiveTransactionQueueTableLayouts)[keyof typeof ActiveTransactionQueueTableLayouts];
 
 export type ActiveTransactionQueueConfig = {
   pageTitle: string;
@@ -230,9 +233,9 @@ export function buildQueueServerQuery(input: {
   const q = input.search?.trim() ?? "";
 
   const showAllToggle =
-    config.tableLayout === "engineering-survey" ||
-    config.tableLayout === "property-appraisal" ||
-    config.tableLayout === "field-inspection";
+    config.tableLayout === ActiveTransactionQueueTableLayouts.EngineeringSurvey ||
+    config.tableLayout === ActiveTransactionQueueTableLayouts.PropertyAppraisal ||
+    config.tableLayout === ActiveTransactionQueueTableLayouts.FieldInspection;
   const showAll =
     Boolean(config.includeAllStatuses) || (showAllToggle && input.showCompleted);
   const status =
@@ -279,10 +282,10 @@ export function queueLayoutSupportsPaging(
   layout: ActiveTransactionQueueTableLayout | undefined,
 ): boolean {
   return (
-    layout !== "distribution" &&
-    layout !== "case-study" &&
-    layout !== "property-appraisal" &&
-    layout !== "all-transactions"
+    layout !== ActiveTransactionQueueTableLayouts.Distribution &&
+    layout !== ActiveTransactionQueueTableLayouts.CaseStudy &&
+    layout !== ActiveTransactionQueueTableLayouts.PropertyAppraisal &&
+    layout !== ActiveTransactionQueueTableLayouts.AllTransactions
   );
 }
 
@@ -377,15 +380,15 @@ export type QueueLayoutFlags = {
 export function resolveQueueLayoutFlags(
   config: ActiveTransactionQueueConfig,
 ): QueueLayoutFlags {
-  const isEngineeringSurveyTable = config.tableLayout === "engineering-survey";
-  const isPropertyAppraisalTable = config.tableLayout === "property-appraisal";
-  const isFieldInspectionTable = config.tableLayout === "field-inspection";
+  const isEngineeringSurveyTable = config.tableLayout === ActiveTransactionQueueTableLayouts.EngineeringSurvey;
+  const isPropertyAppraisalTable = config.tableLayout === ActiveTransactionQueueTableLayouts.PropertyAppraisal;
+  const isFieldInspectionTable = config.tableLayout === ActiveTransactionQueueTableLayouts.FieldInspection;
   return {
-    isPropertyInspectionQueue: config.pageId === "active-inspection",
+    isPropertyInspectionQueue: config.pageId === Pages.ActiveInspection,
     isDistributionTable:
-      config.tableLayout === "distribution" ||
-      config.tableLayout === "case-study",
-    isAllTransactionsTable: config.tableLayout === "all-transactions",
+      config.tableLayout === ActiveTransactionQueueTableLayouts.Distribution ||
+      config.tableLayout === ActiveTransactionQueueTableLayouts.CaseStudy,
+    isAllTransactionsTable: config.tableLayout === ActiveTransactionQueueTableLayouts.AllTransactions,
     isEngineeringSurveyTable,
     isPropertyAppraisalTable,
     isFieldInspectionTable,
@@ -393,7 +396,7 @@ export function resolveQueueLayoutFlags(
       isEngineeringSurveyTable ||
       isPropertyAppraisalTable ||
       isFieldInspectionTable,
-    showPartyColumns: config.tableLayout === "case-study",
+    showPartyColumns: config.tableLayout === ActiveTransactionQueueTableLayouts.CaseStudy,
   };
 }
 
@@ -471,9 +474,9 @@ export function buildListedQueue({
 }): WorkflowTask[] {
   const sortMode = config.queueSort ?? "distributed-newest-first";
   const compare = queueSortComparator(sortMode);
-  const isSurveyLayout = config.tableLayout === "engineering-survey";
-  const isAppraisalLayout = config.tableLayout === "property-appraisal";
-  const isInspectionLayout = config.tableLayout === "field-inspection";
+  const isSurveyLayout = config.tableLayout === ActiveTransactionQueueTableLayouts.EngineeringSurvey;
+  const isAppraisalLayout = config.tableLayout === ActiveTransactionQueueTableLayouts.PropertyAppraisal;
+  const isInspectionLayout = config.tableLayout === ActiveTransactionQueueTableLayouts.FieldInspection;
   const showAllToggle =
     isSurveyLayout || isAppraisalLayout || isInspectionLayout;
   return config

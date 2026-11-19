@@ -3,6 +3,7 @@ import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { getPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
 import { requestPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-commands";
 import { loadEvaluatorSubmission } from "./evaluator-submission-model";
+import { WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 
 export function buildAppraiserRecallMenuItems(
   task: WorkflowTask,
@@ -13,7 +14,7 @@ export function buildAppraiserRecallMenuItems(
   },
 ): RowMoreMenuItem[] {
   // After the final issuance the report is deposited: a change is a new version by the specialist.
-  if (task.status === "completed") return [];
+  if (task.status === WorkflowTaskStatuses.Completed) return [];
   const submission = loadEvaluatorSubmission(task.id);
   if (submission?.status !== "submitted") return [];
 

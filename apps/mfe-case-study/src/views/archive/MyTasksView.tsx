@@ -19,9 +19,11 @@ import {
   skipsBourseForIdentifier,
   type PropertyIdentifierType,
 } from "../../lib/app-data/po-intake-data";
+import { Pages } from "@platform/types";
+import { TaskWorkLayouts } from "../my-task-work-state";
 
 const PRIMARY_DATA_QUEUE: ActiveTransactionQueueConfig = {
-  pageId: "active-primary-data",
+  pageId: Pages.ActivePrimaryData,
   pageTitle: "البيانات الأولية",
   hidePageTitle: true,
   emptyLine: "لا توجد معاملات في «البيانات الأولية».",
@@ -92,7 +94,7 @@ export function MyTasksView() {
           key={task.id}
           task={task}
           onRefresh={onRefresh}
-          layout="panel"
+          layout={TaskWorkLayouts.Panel}
           onClose={onClose}
           onEnfathSaved={handleEnfathSaved}
         />

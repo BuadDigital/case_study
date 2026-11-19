@@ -20,6 +20,7 @@ import {
 import { ENGINEERING_SURVEY_CHECKLIST_ITEMS } from "../lib/engineering-survey-data";
 import type { EngineeringSurveyChecklistRow } from "../lib/engineering-survey-data";
 import { patchChecklistRow } from "../lib/engineering-survey-submission-model";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 const EMPTY_CHECKLIST_ROW: EngineeringSurveyChecklistRow = {
   answer: null,
@@ -28,7 +29,7 @@ const EMPTY_CHECKLIST_ROW: EngineeringSurveyChecklistRow = {
 
 /** Survey rows store «yes» / «no»; the shared toggle speaks booleans. */
 function answerIsYes(answer: EngineeringSurveyChecklistRow["answer"]): boolean | null {
-  return answer === null ? null : answer === "yes";
+  return answer === null ? null : answer === ChecklistAnswers.Yes;
 }
 
 function ChecklistNoteField({
@@ -112,7 +113,7 @@ export function EngineeringSurveyChecklist({
                   name={`m-eng-q-${index}`}
                   value={answerIsYes(row.answer)}
                   disabled={disabled}
-                  onChange={(yes) => patchRow(index, { answer: yes ? "yes" : "no" })}
+                  onChange={(yes) => patchRow(index, { answer: yes ? ChecklistAnswers.Yes : ChecklistAnswers.No })}
                 />
                 <label className="mt-2.5 block">
                   <span className="mb-1 block text-[11px] font-medium text-text-3">
@@ -159,7 +160,7 @@ export function EngineeringSurveyChecklist({
                           value={answerIsYes(row.answer)}
                           disabled={disabled}
                           onChange={(yes) =>
-                            patchRow(index, { answer: yes ? "yes" : "no" })
+                            patchRow(index, { answer: yes ? ChecklistAnswers.Yes : ChecklistAnswers.No })
                           }
                         />
                       </div>

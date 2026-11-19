@@ -12,6 +12,7 @@ import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/dom
 import {
   mapPinPatchForActor,
   type InspectorWorkspaceDraft,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   InsBadge,
@@ -131,7 +132,7 @@ export function InspectorLocationCard({
                     draft,
                     e.target.value,
                     draft.mapLongitude,
-                    "inspector",
+                    WorkspaceActors.Inspector,
                   ),
                 )
               }
@@ -154,7 +155,7 @@ export function InspectorLocationCard({
                     draft,
                     draft.mapLatitude,
                     e.target.value,
-                    "inspector",
+                    WorkspaceActors.Inspector,
                   ),
                 )
               }
@@ -168,7 +169,7 @@ export function InspectorLocationCard({
           invalid={Boolean(fieldErrors.mapLatitude)}
           className="mb-2.5"
           onOutsideChange={setCoordsOutside}
-          onCoords={(lat, lng) => persist(mapPinPatchForActor(draft, lat, lng, "inspector"))}
+          onCoords={(lat, lng) => persist(mapPinPatchForActor(draft, lat, lng, WorkspaceActors.Inspector))}
         />
       ) : null}
       {fieldErrors.mapLatitude ? (

@@ -24,6 +24,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     private readonly TimeProvider _time;
     private readonly IAuditLogWriter? _audit;
     private readonly IAuditLogAppend? _auditLog;
+    private readonly IWorkflowTaskSlotSynchronizer? _slots;
 
     [ActivatorUtilitiesConstructor]
     public WorkOrderPropertyCommands(
@@ -36,11 +37,13 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         INotificationRecipientResolver recipients,
         TimeProvider? time = null,
         IAuditLogWriter? audit = null,
-        IAuditLogAppend? auditLog = null)
+        IAuditLogAppend? auditLog = null,
+        IWorkflowTaskSlotSynchronizer? slots = null)
     {
         _time = time ?? TimeProvider.System;
         _audit = audit;
         _auditLog = auditLog;
+        _slots = slots;
 
         _db = db;
         _failureGate = failureGate;
@@ -97,6 +100,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         await _db.SaveChangesAsync(cancellationToken);
         // A property registered after the PO was created (the usual path) starts its timeline with the Enfaz receipt.
         await _timeline.RecordManyAsync([WorkOrderService.EnfathReceivedEvent(entity, mapped.Id, actorName)], cancellationToken);
+        // The new deed takes a free slot.
+        await SyncSlotsAsync(entity.PoNumber, cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(mapped), null);
     }
 
@@ -318,6 +323,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         var saved = await _db.GetSavedPropertyWithContactsAsync(propertyId, cancellationToken);
         var savedDto = WorkOrderMapper.ToPropertyDto(saved);
         await AppendFieldChangesAsync(beforeEdit, savedDto, changeActor, actorName, softDraft, cancellationToken);
+        // The identifier type decides the stage after the primary data.
+        await SyncSlotsAsync(entity.PoNumber, cancellationToken);
         return (savedDto, null);
     }
 
@@ -480,7 +487,10 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             $"property-bourse-completed:{propertyId:N}",
             cancellationToken);
 
-        return (WorkOrderMapper.ToPropertyDto(existing), null);
+        var bourseDto = WorkOrderMapper.ToPropertyDto(existing);
+        // A completed bourse moves the deed's task to its next stage.
+        await SyncSlotsAsync(entity.PoNumber, cancellationToken);
+        return (bourseDto, null);
     }
 
     public async Task<(bool Ok, string? Error)> DeletePropertyAsync(
@@ -506,8 +516,17 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             entity.ExpectedPropertyCount);
 
         await _db.SaveChangesAsync(cancellationToken);
+        // The removed deed's task goes back to an empty slot.
+        await SyncSlotsAsync(entity.PoNumber, cancellationToken);
         return (true, null);
     }
+
+    /// <summary>
+    /// The work order's task slots follow its deeds once a deed is saved (2026-11-19 — they used to
+    /// wait for the browser's whole-table sync on the next read).
+    /// </summary>
+    private Task SyncSlotsAsync(string poNumber, CancellationToken cancellationToken) =>
+        _slots?.SyncPoAsync(poNumber, cancellationToken) ?? Task.CompletedTask;
 
     public WorkOrderProperty MapPropertyEnfath(
         WorkOrderPropertyDto dto,

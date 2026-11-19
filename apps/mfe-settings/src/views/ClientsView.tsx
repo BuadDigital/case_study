@@ -11,6 +11,7 @@ import {
   updateClient,
   type ClientDto,
   type UpsertClientRequest,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
 import { Badge, cn, confirmAction, EmptyState, MobileRecordCard, MobileRecordList, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, OpsIcon, PageLoadingHint, PageShell, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast, ICON_PATHS } from "@platform/ui-kit";
@@ -143,9 +144,9 @@ export function ClientsView() {
     setLoading(false);
     if (!res.ok) {
       setError(
-        res.kind === "auth"
+        res.kind === ApiErrorKinds.Auth
           ? "يلزم تسجيل الدخول"
-          : res.kind === "forbidden"
+          : res.kind === ApiErrorKinds.Forbidden
             ? "لا تملك صلاحية عرض العملاء"
             : "تعذّر تحميل سجل العملاء",
       );

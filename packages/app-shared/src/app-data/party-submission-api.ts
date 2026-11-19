@@ -14,6 +14,7 @@ import {
   type ReturnImpactDto,
   type ReturnInspectionRequest,
   type ReturnInspectionResultDto,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { savePrefetch } from "@platform/offline-client";
 import {
@@ -33,6 +34,7 @@ import {
   workOrdersApiConfig,
   type MutationResult,
 } from "@platform/app-shared/app-data/work-orders-api-config";
+import { SubmissionStatuses } from "../workflow/task-types";
 
 /** In-memory cache keyed by workflow task id — queue filters read synchronously. */
 const submissionCache = new Map<string, PartyTaskSubmissionDto>();
@@ -67,7 +69,7 @@ export function queuedSubmissionStatus(payload: unknown): "draft" | "reopened" {
     payload && typeof payload === "object"
       ? (payload as { status?: unknown }).status
       : undefined;
-  return status === "reopened" ? "reopened" : "draft";
+  return status === "reopened" ? SubmissionStatuses.Reopened : SubmissionStatuses.Draft;
 }
 
 /** Cache and return the stand-in for a package that sits in the device queue. */
@@ -136,11 +138,11 @@ export async function fetchPartySubmission(
     setCachedPartySubmission(result.data, taskId);
     return result.data;
   }
-  if (result.kind === "not_found" || result.kind === "network") {
+  if (result.kind === ApiErrorKinds.NotFound || result.kind === ApiErrorKinds.Network) {
     const onDevice = await loadDeviceSubmission(taskId);
     if (onDevice) return onDevice;
   }
-  if (result.kind === "not_found") {
+  if (result.kind === ApiErrorKinds.NotFound) {
     setCachedPartySubmission(null, taskId);
     return null;
   }

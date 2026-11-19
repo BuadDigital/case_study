@@ -38,6 +38,7 @@ import {
   formatInvoiceDate,
 } from "./FinancePartyBillingParts";
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
+import { PartyBillingPayeeTypes, PartyBillingStatementStatuses } from "@platform/api-client";
 
 /**
  * One statement in full: its lines, the amount summary, and whichever action
@@ -107,7 +108,7 @@ export function FinancePartyBillingStatementDetail({
             <StatusPill
               label={selectedStatement.payeeTypeLabel}
               style={finStatusStyle(
-                selectedStatement.payeeType === "individual"
+                selectedStatement.payeeType === PartyBillingPayeeTypes.Individual
                   ? "individual"
                   : "default",
               )}
@@ -124,7 +125,7 @@ export function FinancePartyBillingStatementDetail({
         <div className={opsLetterCard}>
           <div className="border-b border-border bg-surface-2 px-3.5 py-2.5 text-xs font-bold text-heading">
             معاملات{" "}
-            {selectedStatement.payeeType === "individual"
+            {selectedStatement.payeeType === PartyBillingPayeeTypes.Individual
               ? "أمر الصرف"
               : "مسير الصرف"}
           </div>
@@ -180,7 +181,7 @@ export function FinancePartyBillingStatementDetail({
           </TableFrame>
         </div>
 
-        {selectedStatement.payeeType === "vendor" &&
+        {selectedStatement.payeeType === PartyBillingPayeeTypes.Vendor &&
         selectedStatement.totalNetSar > 0 ? (
           <div className={opsLetterCard}>
             <div className="border-b border-border bg-surface-2 px-3.5 py-2 text-[11.5px] font-bold text-heading">
@@ -190,7 +191,7 @@ export function FinancePartyBillingStatementDetail({
               ["صافي الأتعاب", selectedStatement.totalNetSar, false],
               [
                 "ضريبة القيمة المضافة (15٪)",
-                costTaxSar(selectedStatement.totalNetSar, "vendor"),
+                costTaxSar(selectedStatement.totalNetSar, PartyBillingPayeeTypes.Vendor),
                 false,
               ],
               [
@@ -226,7 +227,7 @@ export function FinancePartyBillingStatementDetail({
           </div>
         ) : null}
 
-        {selectedStatement.status === "draft" ? (
+        {selectedStatement.status === PartyBillingStatementStatuses.Draft ? (
           <div className={cn(opsPanelCard, "p-4")}>
             <button
               type="button"
@@ -234,11 +235,11 @@ export function FinancePartyBillingStatementDetail({
               disabled={busy}
               onClick={() => void issueStatement(selectedStatement)}
             >
-              {selectedStatement.payeeType === "vendor"
+              {selectedStatement.payeeType === PartyBillingPayeeTypes.Vendor
                 ? "تحويل المسير للمكتب لإصدار الفاتورة"
                 : "اعتماد وإصدار أمر الصرف"}
             </button>
-            {selectedStatement.payeeType === "vendor" ? (
+            {selectedStatement.payeeType === PartyBillingPayeeTypes.Vendor ? (
               <p className="m-0 mt-2.5 text-center text-[10.5px] leading-[1.7] text-text-3">
                 يُرسل مسير الصرف للمورّد ليُصدر فاتورة ضريبية مطابقة
                 لقيمته وبنوده.
@@ -270,8 +271,8 @@ export function FinancePartyBillingStatementDetail({
           </div>
         ) : null}
 
-        {selectedStatement.status === "issued" &&
-        selectedStatement.payeeType === "vendor" ? (
+        {selectedStatement.status === PartyBillingStatementStatuses.Issued &&
+        selectedStatement.payeeType === PartyBillingPayeeTypes.Vendor ? (
           <div className={cn(opsInsetPanel, "px-4 py-3.5")}>
             <div className="flex gap-2.5">
               <svg
@@ -300,7 +301,7 @@ export function FinancePartyBillingStatementDetail({
           </div>
         ) : null}
 
-        {selectedStatement.status === "invoice_received" ? (
+        {selectedStatement.status === PartyBillingStatementStatuses.InvoiceReceived ? (
           <div className={opsLetterCard}>
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-2 px-3.5 py-2.5">
               <div className="min-w-0">
@@ -413,10 +414,10 @@ export function FinancePartyBillingStatementDetail({
           </div>
         ) : null}
 
-        {(selectedStatement.payeeType === "individual" &&
-          selectedStatement.status === "issued") ||
-        (selectedStatement.payeeType === "vendor" &&
-          selectedStatement.status === "invoice_received" &&
+        {(selectedStatement.payeeType === PartyBillingPayeeTypes.Individual &&
+          selectedStatement.status === PartyBillingStatementStatuses.Issued) ||
+        (selectedStatement.payeeType === PartyBillingPayeeTypes.Vendor &&
+          selectedStatement.status === PartyBillingStatementStatuses.InvoiceReceived &&
           selectedStatement.vendorInvoiceMatched) ? (
           <div className={opsLetterCard}>
             <div className="border-b border-border bg-surface-2 px-3.5 py-2.5">
@@ -513,7 +514,7 @@ export function FinancePartyBillingStatementDetail({
               </button>
             </div>
 
-            {selectedStatement.payeeType === "individual" ||
+            {selectedStatement.payeeType === PartyBillingPayeeTypes.Individual ||
             !selectedStatement.vendorInvoiceMatched ? (
               <div className="border-t border-dashed border-border-md px-3.5 py-3">
                 <div className={opsFld}>
@@ -541,7 +542,7 @@ export function FinancePartyBillingStatementDetail({
           </div>
         ) : null}
 
-        {selectedStatement.status === "closed" ? (
+        {selectedStatement.status === PartyBillingStatementStatuses.Closed ? (
           <div className="rounded-[11px] border border-[#a9dfbf] bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] px-[15px] py-3.5 text-[12.5px] leading-[1.9] text-[#2f7a4d]">
             <div className="mb-1 font-extrabold">✓ مدفوع</div>
             سند صرف{" "}
@@ -573,7 +574,7 @@ export function FinancePartyBillingStatementDetail({
           </div>
         ) : null}
 
-        {selectedStatement.status === "cancelled" ? (
+        {selectedStatement.status === PartyBillingStatementStatuses.Cancelled ? (
           <div className="rounded-[11px] border border-border-md bg-surface-2 px-[15px] py-3.5 text-[12.5px] leading-[1.9] text-text-2">
             <div className="mb-1 font-extrabold text-heading">
               مستند ملغى

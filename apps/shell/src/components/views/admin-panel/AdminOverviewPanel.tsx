@@ -46,6 +46,7 @@ import {
   buildActorNameMap,
 } from "@/lib/audit-log-labels";
 import { formatAt } from "../AuditLogView";
+import { FailureStatuses } from "@platform/app-shared/failures/failures-types";
 
 const LATEST_AUDIT = 8;
 const NO_COUNT_PARAMS = {};
@@ -103,7 +104,7 @@ export function AdminOverviewPanel() {
     staleTime: 30_000,
   });
 
-  const openFailures = failures.data?.filter((f) => f.status !== "resolved").length;
+  const openFailures = failures.data?.filter((f) => f.status !== FailureStatuses.Resolved).length;
   const lockedAccounts = users.data?.users.filter((u) => u.status === "Locked").length;
   const staleDevices = staleSync.data?.length;
   const overdue = counts.data?.overdue;

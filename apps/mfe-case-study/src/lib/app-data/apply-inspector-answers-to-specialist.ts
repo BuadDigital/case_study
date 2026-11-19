@@ -1,6 +1,7 @@
 import type { CaseStudyReportAnswer } from "./case-study-report-data";
 import type { PartyQuestionContribution } from "./case-study-party-answers";
 import type { PoPropertyIntake } from "./po-intake-data";
+import { CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 
 /**
  * Pick the field inspector's answer for a question (party id `insp`).
@@ -11,7 +12,7 @@ export function inspectorAnswerFromContributions(
   if (!contributions?.length) return null;
   const insp = contributions.find((c) => c.partyId === "insp");
   if (!insp) return null;
-  if (insp.answer === "A" || insp.answer === "B" || insp.answer === "NA") {
+  if (insp.answer === CaseStudyReportAnswers.A || insp.answer === CaseStudyReportAnswers.B || insp.answer === "NA") {
     return insp.answer;
   }
   return null;
@@ -38,16 +39,16 @@ export function bourseAnswersForStudy(
   if (!property) return {};
   const out: SpecialistAnswersMap = {};
   const status = property.deedStatus.trim();
-  if (status === "فعال") out.deed_0 = "A";
-  else if (status === "غير فعال") out.deed_0 = "B";
+  if (status === "فعال") out.deed_0 = CaseStudyReportAnswers.A;
+  else if (status === "غير فعال") out.deed_0 = CaseStudyReportAnswers.B;
   const ownership = property.ownershipType.trim();
-  if (ownership === "shared") out.deed_9 = "A";
-  else if (ownership === "absolute") out.deed_9 = "B";
+  if (ownership === "shared") out.deed_9 = CaseStudyReportAnswers.A;
+  else if (ownership === "absolute") out.deed_9 = CaseStudyReportAnswers.B;
   const restrictions = property.restrictionsPresent.trim();
   if (restrictions === "yes") {
-    out.deed_6 = property.restrictionType.split(/[,،\s]+/).includes("suspended") ? "A" : "B";
+    out.deed_6 = property.restrictionType.split(/[,،\s]+/).includes("suspended") ? CaseStudyReportAnswers.A : CaseStudyReportAnswers.B;
   } else if (restrictions === "no") {
-    out.deed_6 = "B";
+    out.deed_6 = CaseStudyReportAnswers.B;
   }
   return out;
 }
@@ -61,7 +62,7 @@ export function fillEmptySpecialistAnswers(
   const changedKeys: string[] = [];
   for (const [key, value] of Object.entries(defaults)) {
     const current = answers[key] ?? null;
-    if (!value || current === "A" || current === "B" || current === "NA") continue;
+    if (!value || current === CaseStudyReportAnswers.A || current === CaseStudyReportAnswers.B || current === "NA") continue;
     answers[key] = value;
     changedKeys.push(key);
   }
@@ -97,7 +98,7 @@ export function applyInspectorAnswersToSpecialist(
 
     const current = answers[key] ?? null;
     const previous = previousInspector[key] ?? null;
-    const empty = current !== "A" && current !== "B" && current !== "NA";
+    const empty = current !== CaseStudyReportAnswers.A && current !== CaseStudyReportAnswers.B && current !== "NA";
     const stillMirroring = previous != null && current === previous;
 
     if (empty || stillMirroring) {

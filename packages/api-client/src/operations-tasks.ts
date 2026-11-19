@@ -7,6 +7,7 @@ import {
   type ListPageQuery,
   type PagedResultDto,
 } from "./pagination";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type OperationsTaskLetterRowDto = {
   po: string;
@@ -156,15 +157,15 @@ async function serverErrorFromBody(res: Response): Promise<ApiErr> {
   const payload = (await readJson<{ error?: string }>(res).catch(
     () => ({ error: undefined }),
   ));
-  return { ok: false, kind: "server", message: payload.error };
+  return { ok: false, kind: ApiErrorKinds.Server, message: payload.error };
 }
 
 /** An operations-task write's answer: 401 → auth, 404 → not_found, other failures → server. */
 async function readOperationsTaskWrite(
   res: Response,
 ): Promise<ApiOk<OperationsTaskDto> | ApiErr> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 404) return { ok: false, kind: "not_found" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
   if (!res.ok) return serverErrorFromBody(res);
   return { ok: true, data: await readJson<OperationsTaskDto>(res) };
 }
@@ -244,12 +245,12 @@ export async function listOperationsTasks(
       )}`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await readJson<OperationsTaskDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -277,12 +278,12 @@ export async function listCourtVisitFees(
       })}`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await readJson<CourtVisitFeeReportRowDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -297,11 +298,11 @@ export async function createOperationsTask(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) return await serverErrorFromBody(res);
     return { ok: true, data: await readJson<OperationsTaskDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -319,7 +320,7 @@ export async function patchOperationsTask(
     });
     return await readOperationsTaskWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -340,7 +341,7 @@ export async function addOperationsTaskComment(
     });
     return await readOperationsTaskWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -361,7 +362,7 @@ export async function reassignOperationsTask(
     );
     return await readOperationsTaskWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -381,7 +382,7 @@ export async function acceptOperationsTaskOutputs(
     );
     return await readOperationsTaskWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -402,6 +403,6 @@ export async function remindOperationsTask(
     );
     return await readOperationsTaskWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

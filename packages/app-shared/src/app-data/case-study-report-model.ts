@@ -5,15 +5,38 @@ import {
   PARTY_CASE_STUDY_REPORT_CHANGED_EVENT,
 } from "../events/app-events";
 
-export type CaseStudyReportAnswer = "A" | "B" | "NA";
+export const CaseStudyReportAnswers = {
+  A: "A",
+  B: "B",
+  NA: "NA",
+} as const;
+export type CaseStudyReportAnswer = (typeof CaseStudyReportAnswers)[keyof typeof CaseStudyReportAnswers];
 
 export type SaveCaseStudyReportDraftResult =
   | { ok: true; draft: CaseStudyReportDraft }
   | { ok: false; error: string };
 
-export type CaseStudyReportStatus = "new" | "draft" | "issued";
+export const CaseStudyReportStatuses = {
+  New: "new",
+  Draft: "draft",
+  Issued: "issued",
+} as const;
+export type CaseStudyReportStatus = (typeof CaseStudyReportStatuses)[keyof typeof CaseStudyReportStatuses];
 
-export type CaseStudyMeterType = "" | "electronic" | "analog" | "none";
+export const CaseStudyMeterTypes = {
+  Electronic: "electronic",
+  Analog: "analog",
+  None: "none",
+} as const;
+/** "" until the specialist picks one. */
+export type CaseStudyMeterType = "" | (typeof CaseStudyMeterTypes)[keyof typeof CaseStudyMeterTypes];
+
+/** The electricity meter choices, in the form's order — the form and the report document. */
+export const CASE_STUDY_METER_TYPE_OPTIONS = [
+  { value: CaseStudyMeterTypes.Electronic, label: "إلكتروني" },
+  { value: CaseStudyMeterTypes.Analog, label: "مؤرشف" },
+  { value: CaseStudyMeterTypes.None, label: "لا يوجد" },
+] as const;
 
 export type CaseStudyAnswerProvenanceEntry = {
   value?: string | null;
@@ -210,7 +233,7 @@ export function emptyCaseStudyReportDraft(
     taskId,
     propertyId: seed?.propertyId,
     poNumber: seed?.poNumber,
-    status: "new",
+    status: CaseStudyReportStatuses.New,
     currentStep: 0,
     requestNumber: seed?.requestNumber ?? "",
     requestDate: seed?.requestDate ?? today,

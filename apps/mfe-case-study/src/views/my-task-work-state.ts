@@ -17,7 +17,13 @@ import { canAdvanceIntake, type StaffAccess } from "../lib/app-data/po-roles";
 import { taskDisplayPropertyLabel } from "../lib/app-data/tasks-model";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 
-export type TaskWorkLayout = "page" | "panel";
+import { CaseStudyTaskPhases, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
+export const TaskWorkLayouts = {
+  Page: "page",
+  Panel: "panel",
+} as const;
+export type TaskWorkLayout = (typeof TaskWorkLayouts)[keyof typeof TaskWorkLayouts];
 
 export const REMOVED_PROPERTY_SAVE_ERROR =
   "هذه المعاملة مرتبطة بعقار محذوف — لا يمكن الحفظ.";
@@ -44,10 +50,10 @@ export function resolveTaskWorkSteps(
   effectivePhase: WorkflowTask["phase"],
 ): TaskWorkSteps {
   return {
-    showEnfathStep: effectivePhase === "enfath",
-    showBourseStep: effectivePhase === "bourse",
-    showDistribution: effectivePhase === "distribution",
-    showCaseStudy: effectivePhase === "case-study",
+    showEnfathStep: effectivePhase === CaseStudyTaskPhases.Enfath,
+    showBourseStep: effectivePhase === CaseStudyTaskPhases.Bourse,
+    showDistribution: effectivePhase === CaseStudyTaskPhases.Distribution,
+    showCaseStudy: effectivePhase === CaseStudyTaskPhases.CaseStudy,
   };
 }
 
@@ -55,9 +61,9 @@ type TaskWorkStep = "enfath" | "bourse" | "distribution";
 
 /** The step the primary save button acts on — first visible card wins. */
 export function activeTaskWorkStep(steps: TaskWorkSteps): TaskWorkStep | null {
-  if (steps.showEnfathStep) return "enfath";
-  if (steps.showBourseStep) return "bourse";
-  if (steps.showDistribution) return "distribution";
+  if (steps.showEnfathStep) return CaseStudyTaskPhases.Enfath;
+  if (steps.showBourseStep) return CaseStudyTaskPhases.Bourse;
+  if (steps.showDistribution) return CaseStudyTaskPhases.Distribution;
   return null;
 }
 
@@ -85,11 +91,11 @@ export function deedVitalityFromStatus(status: string | null | undefined): Bours
 /** An inactive deed no longer forces a تعذّر: the bourse save is the same either way. */
 export function taskWorkSaveLabel(steps: TaskWorkSteps): string {
   switch (activeTaskWorkStep(steps)) {
-    case "enfath":
+    case CaseStudyTaskPhases.Enfath:
       return ENFATH_SAVE_ACTION;
-    case "bourse":
+    case CaseStudyTaskPhases.Bourse:
       return BOURSE_SAVE_ACTION;
-    case "distribution":
+    case CaseStudyTaskPhases.Distribution:
       return DISTRIBUTION_CONFIRM_ACTION;
     default:
       return ENFATH_SAVE_ACTION;
@@ -98,11 +104,11 @@ export function taskWorkSaveLabel(steps: TaskWorkSteps): string {
 
 export function taskWorkPanelStepTitle(steps: TaskWorkSteps): string {
   switch (activeTaskWorkStep(steps)) {
-    case "enfath":
+    case CaseStudyTaskPhases.Enfath:
       return "البيانات الأولية";
-    case "bourse":
+    case CaseStudyTaskPhases.Bourse:
       return "استعلام البورصة";
-    case "distribution":
+    case CaseStudyTaskPhases.Distribution:
       return "توزيع المعاملة";
     default:
       return "تنفيذ المعاملة";
@@ -115,7 +121,7 @@ export function taskWorkChromeTitle(
   layout: TaskWorkLayout,
   deedTitle: string,
 ): string {
-  return layout === "panel"
+  return layout === TaskWorkLayouts.Panel
     ? taskWorkPanelStepTitle(steps)
     : `تعديل عقار — ${deedTitle}`;
 }
@@ -145,9 +151,9 @@ export function resolveTaskWorkScreen({
 }): TaskWorkScreen {
   if (loading) return "loading";
   if (linkedPropertyRemoved) return "removed";
-  if (task.phase === "obstruction") return "obstruction";
+  if (task.phase === CaseStudyTaskPhases.Obstruction) return "obstruction";
   if (showCaseStudy) return "case-study";
-  if (task.phase === "done" || task.status === "completed") return "done";
+  if (task.phase === CaseStudyTaskPhases.Done || task.status === WorkflowTaskStatuses.Completed) return "done";
   if (!isSpecialist) return "not-specialist";
   return "work";
 }
@@ -161,9 +167,9 @@ export function canShowPrimarySave(
   return (
     isSpecialist &&
     !showCaseStudy &&
-    task.phase !== "obstruction" &&
-    task.phase !== "done" &&
-    task.status !== "completed"
+    task.phase !== CaseStudyTaskPhases.Obstruction &&
+    task.phase !== CaseStudyTaskPhases.Done &&
+    task.status !== WorkflowTaskStatuses.Completed
   );
 }
 
@@ -218,8 +224,8 @@ export function taskWorkRoleFlags(access: StaffAccess): {
   const { role } = access;
   return {
     // The supervisor, the general manager and the CDO resolve an obstruction (hand the task back to the specialist).
-    isSupervisor: role === "section-supervisor" || role === "cdo" || role === "general-manager",
-    isSpecialist: role === "case-specialist" || role === "cdo",
+    isSupervisor: role === Roles.SectionSupervisor || role === Roles.Cdo || role === Roles.GeneralManager,
+    isSpecialist: role === Roles.CaseSpecialist || role === Roles.Cdo,
     canEditProperty: canAdvanceIntake(access),
     failureSpecialist: ROLES[role]?.name ?? "أخصائي",
   };

@@ -12,7 +12,7 @@ import {
   filterTasksForCaseStudy,
   filterTasksForReceipt,
 } from "@platform/app-shared/app-data/active-transactions";
-import { isFoldedAppraisalTask, isFoldedCaseStudyTask } from "@platform/app-shared/workflow/task-types";
+import { isFoldedAppraisalTask, isFoldedCaseStudyTask, WorkflowTaskStatuses, WorkflowTaskKinds, CaseStudyTaskPhases, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 import { isValuationDepositedForTask } from "@platform/app-shared/workflow/task-done";
 import {
   appraisalStageLabel,
@@ -34,6 +34,7 @@ import { isTaskOnSuspendedProperty } from "./suspended-transactions-model";
 import { findPropertyForTask, resolveRemainingTime } from "./my-task-row";
 import { areaText } from "./appraiser-summary-model";
 import { caseStudyWorkspacePath, activeInspectionWorkspacePath } from "../my-task-routes";
+import { ValuationReportDraftStatuses } from "@platform/api-client";
 
 /** Where the intake of a deed stands — the «إدخال المعاملة» row's line (Omar 2026-11-08). */
 const INTAKE_PROGRESS = {
@@ -277,14 +278,14 @@ export function appraiserStep(
   task: Pick<WorkflowTask, "appraisalPackageStatus" | "studyReportIssued">,
   draft: ReportDraftState | undefined,
 ): AppraiserStep {
-  if (task.appraisalPackageStatus === "reopened") {
+  if (task.appraisalPackageStatus === SubmissionStatuses.Reopened) {
     return {
       stage: "correction",
       action: "تصحيح التقييم",
       reason: "أُعيد إليك التقييم للتصحيح — عدّله ثم سلّمه من جديد",
     };
   }
-  if (task.appraisalPackageStatus === "submitted") {
+  if (task.appraisalPackageStatus === SubmissionStatuses.Submitted) {
     const label = appraisalStageLabel(draft);
     return label?.group === "draft_sent"
       ? {
@@ -355,7 +356,7 @@ export function inspectorStep(
   task: Pick<WorkflowTask, "status" | "packageAccepted">,
   pkg: InspectionPackageState | undefined,
 ): InspectorStep {
-  if (task.status === "completed" || pkg?.status === "submitted") {
+  if (task.status === WorkflowTaskStatuses.Completed || pkg?.status === "submitted") {
     return {
       stage: "inspection-sent",
       action: "تم الإرسال",
@@ -478,7 +479,7 @@ function placeOf(task: Pick<WorkflowTask, "city" | "district">): string {
   );
 }
 
-const open = (t: WorkflowTask) => t.status === "open" || t.status === "blocked";
+const open = (t: WorkflowTask) => t.status === WorkflowTaskStatuses.Open || t.status === WorkflowTaskStatuses.Blocked;
 
 /** The latest live appraisal task of a property (the valuation lives on the holder deed). */
 function latestAppraisal(
@@ -488,8 +489,8 @@ function latestAppraisal(
   let latest: WorkflowTask | undefined;
   for (const t of allTasks) {
     if (
-      t.kind !== "property-appraisal" ||
-      t.status === "cancelled" ||
+      t.kind !== WorkflowTaskKinds.PropertyAppraisal ||
+      t.status === WorkflowTaskStatuses.Cancelled ||
       t.propertyId !== propertyId
     )
       continue;
@@ -517,13 +518,13 @@ function undeliveredFieldParties(
   const parties = allTasks.filter(
     (t) =>
       t.parentTaskId === parent.id &&
-      t.status !== "cancelled" &&
-      (t.kind === "field-inspection" || t.kind === "engineering-survey"),
+      t.status !== WorkflowTaskStatuses.Cancelled &&
+      (t.kind === WorkflowTaskKinds.FieldInspection || t.kind === WorkflowTaskKinds.EngineeringSurvey),
   );
   if (parties.length === 0) return null;
   // Fixed order (inspector, then office) so «بانتظار» reads the same on every row.
   const kinds = new Set(
-    parties.filter((p) => p.status !== "completed").map((p) => p.kind),
+    parties.filter((p) => p.status !== WorkflowTaskStatuses.Completed).map((p) => p.kind),
   );
   return (["field-inspection", "engineering-survey"] as const)
     .filter((k) => kinds.has(k))
@@ -585,21 +586,21 @@ export function reviewPipeline(
   if (isFoldedCaseStudyTask(task) && !deposited) return null;
   const draft = draftState(task.propertyId);
   const draftApproved =
-    deposited || draft?.status === "approved" || (draft != null && draft.reportStage !== "draft");
-  const draftOut = draftApproved || draft?.status === "sent";
+    deposited || draft?.status === ValuationReportDraftStatuses.Approved || (draft != null && draft.reportStage !== "draft");
+  const draftOut = draftApproved || draft?.status === ValuationReportDraftStatuses.Sent;
   const appraisal = latestAppraisal(task.propertyId, allTasks);
 
   const study: ReviewStepState = draftOut || task.reviewState === "approved" ? "done" : "now";
   const value: ReviewStepState = draftOut
     ? "done"
-    : appraisal?.appraisalPackageStatus !== "submitted"
+    : appraisal?.appraisalPackageStatus !== SubmissionStatuses.Submitted
       ? "wait"
       : task.appraisalValueAccepted || appraisal.appraisalValueAccepted
         ? "done"
         : "now";
   const draftStep: ReviewStepState = draftApproved
     ? "done"
-    : draft?.status === "sent"
+    : draft?.status === ValuationReportDraftStatuses.Sent
       ? "wait"
       : study === "done" && value === "done"
         ? "now"
@@ -666,9 +667,9 @@ function deliveredAwaitingAcceptance(
       .filter(
         (t) =>
           t.parentTaskId === parent.id &&
-          t.status === "completed" &&
+          t.status === WorkflowTaskStatuses.Completed &&
           t.packageAccepted === false &&
-          (t.kind === "field-inspection" || t.kind === "engineering-survey"),
+          (t.kind === WorkflowTaskKinds.FieldInspection || t.kind === WorkflowTaskKinds.EngineeringSurvey),
       )
       .map((t) => t.kind),
   );
@@ -753,26 +754,26 @@ export function transactionProgress(
   draftState: (propertyId: string) => ReportDraftState | undefined,
 ): TransactionProgress | null {
   if (
-    task.kind !== "case-study-property" ||
-    task.status === "cancelled" ||
+    task.kind !== WorkflowTaskKinds.CaseStudyProperty ||
+    task.status === WorkflowTaskStatuses.Cancelled ||
     task.propertyHandedOverToEnfaz
   ) {
     return null;
   }
   const coordination = ["co"] as const;
   switch (task.phase) {
-    case "enfath":
+    case CaseStudyTaskPhases.Enfath:
       return { stage: "البيانات الأولية", waitingOn: "التنسيق", parties: coordination };
-    case "bourse":
+    case CaseStudyTaskPhases.Bourse:
       return { stage: "استعلام البورصة", waitingOn: "التنسيق", parties: coordination };
-    case "distribution":
+    case CaseStudyTaskPhases.Distribution:
       return { stage: "التوزيع", waitingOn: "التنسيق", parties: coordination };
-    case "obstruction":
+    case CaseStudyTaskPhases.Obstruction:
       return { stage: "تعذّر", waitingOn: "معالجة التعذّر", parties: [] };
     default:
       break;
   }
-  if (task.phase === "case-study" && task.transactionReceived !== true) {
+  if (task.phase === CaseStudyTaskPhases.CaseStudy && task.transactionReceived !== true) {
     const pending = followUpWaitingOn(task, allTasks);
     if (pending === null) return { stage: "التوزيع", waitingOn: "التنسيق", parties: coordination };
     return pending.length > 0
@@ -785,7 +786,7 @@ export function transactionProgress(
       : { stage: "متابعة الأطراف", waitingOn: "التنسيق", parties: coordination };
   }
   if (!task.studyReportIssued) {
-    return task.status === "completed"
+    return task.status === WorkflowTaskStatuses.Completed
       ? null
       : { stage: "دراسة العقار", waitingOn: "دارس العقار", parties: ["st"] };
   }
@@ -929,7 +930,7 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
       // The bourse item carries no place or type — the deed's case-study task does.
       const deedTask = allTasks.find(
         (x) =>
-          x.kind === "case-study-property" && x.propertyId === b.propertyId,
+          x.kind === WorkflowTaskKinds.CaseStudyProperty && x.propertyId === b.propertyId,
       );
       items.push({
         key: deedTask ? `intake:${deedTask.id}` : `intake:${b.poNumber}:${b.propertyId}`,
@@ -1007,7 +1008,7 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
 
   if (groups.includes("rv")) {
     for (const t of mineList) {
-      if (t.kind !== "case-study-property") continue;
+      if (t.kind !== WorkflowTaskKinds.CaseStudyProperty) continue;
       const pipeline = reviewPipeline(t, allTasks, input.draftState);
       if (!pipeline || pipeline.actions.length === 0) continue;
       const { stage, section } = reviewPlaceOf(pipeline);
@@ -1030,7 +1031,7 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
   // else is not listed.
   if (groups.includes("ap")) {
     for (const t of mineList) {
-      if (t.kind !== "property-appraisal" || !open(t) || isFoldedAppraisalTask(t)) continue;
+      if (t.kind !== WorkflowTaskKinds.PropertyAppraisal || !open(t) || isFoldedAppraisalTask(t)) continue;
       const step = appraiserStep(t, t.propertyId ? input.draftState(t.propertyId) : undefined);
       const row = fromTask(
         t,
@@ -1052,7 +1053,7 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
   // (to inspect, to correct) and what he sent; a cancelled inspection has none.
   if (groups.includes("fi")) {
     for (const t of mineList) {
-      if (t.kind !== "field-inspection" || t.status === "cancelled") continue;
+      if (t.kind !== WorkflowTaskKinds.FieldInspection || t.status === WorkflowTaskStatuses.Cancelled) continue;
       const step = inspectorStep(t, input.inspectionPackage?.(t.id));
       // Sent, and the transaction is over: not listed — «المرسلة» is what is still in the works.
       if (

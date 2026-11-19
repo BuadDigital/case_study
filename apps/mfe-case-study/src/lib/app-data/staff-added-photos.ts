@@ -9,8 +9,10 @@ import {
   inspectorFreePhotoUploader,
   type InspectorFreePhoto,
   type InspectorWorkspaceDraft,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { InspectorPhotoAttachment } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 /** Why photos cannot be added to this inspection now, or null when they can. */
 export function staffPhotoAddRefusal(
@@ -18,7 +20,7 @@ export function staffPhotoAddRefusal(
 ): string | null {
   if (!draft) return "لا توجد معاينة لهذا الصك بعد — تُضاف الصور بعد إرسال المعاين معاينته.";
   // A draft or a returned inspection is on the inspector's device: his next save would drop the photo.
-  if (draft.status !== "submitted") {
+  if (draft.status !== SubmissionStatuses.Submitted) {
     return "المعاينة لدى المعاين الآن — تُضاف الصور بعد إرساله لها.";
   }
   return null;
@@ -42,7 +44,7 @@ export function staffAddedPhoto(input: {
     id: input.id,
     category: INSPECTOR_FREE_PHOTO_CATEGORY_OTHER,
     approved: true,
-    uploadedBy: "specialist",
+    uploadedBy: WorkspaceActors.Specialist,
     ...(name ? { uploadedByName: name } : {}),
     uploadedAtUtc: input.nowIso,
     ...input.attachment,
@@ -57,6 +59,6 @@ export function staffAddedPhoto(input: {
  */
 export function withoutStaffPhoto(photos: readonly InspectorFreePhoto[], id: number): InspectorFreePhoto[] {
   return photos.filter(
-    (photo) => !(photo.id === id && inspectorFreePhotoUploader(photo) === "specialist"),
+    (photo) => !(photo.id === id && inspectorFreePhotoUploader(photo) === WorkspaceActors.Specialist),
   );
 }

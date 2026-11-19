@@ -24,6 +24,7 @@ import { useTransactionQuery } from "../../query/use-transaction-query";
 import { DetailBadge } from "./PropertyDetailFields";
 import { PropertyValuationFiguresCard } from "./PropertyValuationFiguresCard";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 export type PropertyPartyStatusRow = ReturnType<typeof buildPropertyDetailTimelinePartyRows>[number];
 
 /**
@@ -151,7 +152,7 @@ export function usePropertyPartyRows(
         row.propertyId === propertyId && row.poNumber.trim() === poNumber,
     );
     const inspection = onProperty.find(
-      (row) => row.kind === "field-inspection" && row.status !== "cancelled",
+      (row) => row.kind === WorkflowTaskKinds.FieldInspection && row.status !== WorkflowTaskStatuses.Cancelled,
     );
     if (inspection) return inspection.id;
     return (
@@ -175,7 +176,7 @@ export function usePropertyPartyRows(
     void loadInspectorWorkspaceSnapshot(taskId).then((draft) => {
       if (cancelled) return;
       setInspectionSubmitted(
-        draft?.status === "submitted" ||
+        draft?.status === SubmissionStatuses.Submitted ||
           Boolean(draft?.acceptedAtUtc?.trim()),
       );
     });
@@ -188,10 +189,10 @@ export function usePropertyPartyRows(
     () =>
       tasks.some(
         (row) =>
-          row.kind === "property-appraisal" &&
+          row.kind === WorkflowTaskKinds.PropertyAppraisal &&
           row.propertyId === propertyId &&
           row.poNumber.trim() === poNumber &&
-          row.appraisalPackageStatus === "submitted",
+          row.appraisalPackageStatus === SubmissionStatuses.Submitted,
       ),
     [tasks, propertyId, poNumber],
   );

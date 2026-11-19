@@ -64,6 +64,7 @@ import {
   StatementLinesDetail,
 } from "./PartyIndividualFeesParts";
 import { CardIcon, CurrencyIcon } from "./FeeKpiIcons";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 export type { IndividualFeesVariant };
 
@@ -365,7 +366,7 @@ export function PartyIndividualFeesHtmlScreen({
                               s={s}
                               meta={meta}
                               payout={
-                                s.status === "closed" && s.paidAtUtc
+                                s.status === PartyBillingStatementStatuses.Closed && s.paidAtUtc
                                   ? `صُرف ${formatYmd(s.paidAtUtc)}`
                                   : "بانتظار الصرف"
                               }

@@ -3,6 +3,7 @@ import type {
 } from "@platform/types";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type UsersApiConfig = {
   baseUrl?: string;
@@ -24,12 +25,12 @@ async function fetchUserList(
       headers: authHeaders(config.token),
     });
     if (!res.ok) {
-      return { ok: false, kind: "server" };
+      return { ok: false, kind: ApiErrorKinds.Server };
     }
     const users = (await res.json()) as UserListItem[];
     return { ok: true, users: Array.isArray(users) ? users : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -88,15 +89,15 @@ export async function createStaffUser(
       const payload = (await res.json()) as { errors?: Record<string, string> };
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: payload.errors ?? {},
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const result = (await res.json()) as CreateStaffUserResponse;
     return { ok: true, result };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -143,12 +144,12 @@ export async function updateStaffUser(
     });
     if (res.status === 400) {
       const payload = (await res.json()) as { errors?: Record<string, string> };
-      return { ok: false, kind: "validation", errors: payload.errors ?? {} };
+      return { ok: false, kind: ApiErrorKinds.Validation, errors: payload.errors ?? {} };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, user: (await res.json()) as UserListItem };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -170,14 +171,14 @@ export async function unlockStaffUser(
       const payload = (await res.json()) as { errors?: Record<string, string> };
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message: payload.errors?._form ?? "تعذّر فك قفل الحساب.",
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -199,13 +200,13 @@ export async function deleteStaffUser(
       const payload = (await res.json()) as { errors?: Record<string, string> };
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message: payload.errors?._form ?? "تعذّر حذف المستخدم.",
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

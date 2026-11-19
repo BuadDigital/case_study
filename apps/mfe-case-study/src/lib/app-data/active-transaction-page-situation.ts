@@ -31,6 +31,9 @@ import {
 import type { WorkflowTask } from "./tasks";
 import { isListedQueueTask, isTaskOnSuspendedProperty } from "./suspended-transactions-model";
 
+import { WorkflowTaskStatuses, WorkflowTaskKinds, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+import { Pages } from "@platform/types";
+import { InspectorFeeBillingStatuses } from "@platform/api-client";
 export type SituationTone = "blue" | "warn" | "green" | "red";
 
 export type SituationIconKind =
@@ -251,14 +254,14 @@ export function listedTasksForPage(
 ): WorkflowTask[] {
   const filtered = filterTasksForPage(pageId, tasks, poByNumber, allTasks);
   // System upload: study issued + valuation deposited (include closed statuses).
-  if (pageId === "system-upload") {
+  if (pageId === Pages.SystemUpload) {
     return filtered.filter((t) => !isTaskOnSuspendedProperty(t));
   }
   return filtered.filter((t) => isListedQueueTask(t));
 }
 
 function openWorkflowTasks(tasks: WorkflowTask[]): WorkflowTask[] {
-  return tasks.filter((t) => t.status === "open" || t.status === "blocked");
+  return tasks.filter((t) => t.status === WorkflowTaskStatuses.Open || t.status === WorkflowTaskStatuses.Blocked);
 }
 
 function computeWorkflowPageSituation(
@@ -274,7 +277,7 @@ function computeWorkflowPageSituation(
   for (const task of tasks) {
     if (isInstantTodayInRiyadh(task.createdAt, now)) arrivedToday += 1;
     if (
-      task.status === "completed" &&
+      task.status === WorkflowTaskStatuses.Completed &&
       isInstantTodayInRiyadh(task.updatedAt, now)
     ) {
       doneToday += 1;
@@ -332,9 +335,9 @@ function classifyPartyTask(
   task: WorkflowTask,
   inspectionWorkspaces?: Map<string, FieldInspectionWorkspaceListItemDto>,
 ): "waiting" | "in_progress" | "submitted" | "returned" {
-  if (task.kind === "field-inspection") {
+  if (task.kind === WorkflowTaskKinds.FieldInspection) {
     const workspace = inspectionWorkspaces?.get(task.id);
-    if (task.status === "completed" || workspace?.status === "submitted") {
+    if (task.status === WorkflowTaskStatuses.Completed || workspace?.status === "submitted") {
       return "submitted";
     }
     if (workspace?.status === "reopened") return "returned";
@@ -344,11 +347,11 @@ function classifyPartyTask(
 
   const dto = getCachedPartySubmission(task.id);
   const status = dto?.status;
-  if (status === "submitted" || task.status === "completed") return "submitted";
+  if (status === "submitted" || task.status === WorkflowTaskStatuses.Completed) return "submitted";
   if (status === "reopened") return "returned";
   if (!dto || status === "draft") {
     // Engineering survey: treat empty/new drafts as waiting to start.
-    if (task.kind === "engineering-survey") {
+    if (task.kind === WorkflowTaskKinds.EngineeringSurvey) {
       const payload = dto?.payload as
         | { latitude?: string; surveyReportFileName?: string }
         | undefined;
@@ -383,7 +386,7 @@ function computeBourseSituation(input: {
     input.poByNumber,
   ).filter(
     (t) =>
-      t.status === "completed" && isInstantTodayInRiyadh(t.updatedAt, now),
+      t.status === WorkflowTaskStatuses.Completed && isInstantTodayInRiyadh(t.updatedAt, now),
   ).length;
 
   return {
@@ -406,16 +409,16 @@ export function computeFeesPageSituation(
 
   for (const row of rows) {
     // With the supervisor: awaiting approval, or a proposed discount awaiting a decision.
-    if (row.billingStatus === "sup-review") toSupervisor += 1;
+    if (row.billingStatus === InspectorFeeBillingStatuses.SupReview) toSupervisor += 1;
     if (
-      row.billingStatus === "at-finance" ||
-      row.billingStatus === "deferred" ||
-      row.billingStatus === "in-statement" ||
-      row.billingStatus === "disb-req"
+      row.billingStatus === InspectorFeeBillingStatuses.AtFinance ||
+      row.billingStatus === InspectorFeeBillingStatuses.Deferred ||
+      row.billingStatus === InspectorFeeBillingStatuses.InStatement ||
+      row.billingStatus === InspectorFeeBillingStatuses.DisbReq
     ) {
       atFinance += 1;
     }
-    if (row.billingStatus === "disbursed") disbursed += 1;
+    if (row.billingStatus === InspectorFeeBillingStatuses.Disbursed) disbursed += 1;
   }
 
   return {
@@ -450,16 +453,16 @@ export function computeEngineeringFeesSituation(
 
   for (const row of rows) {
     const net = Number(row.netFeeSar) || 0;
-    if (row.billingStatus !== "disbursed") outstanding += net;
-    if (row.billingStatus === "sup-review") {
+    if (row.billingStatus !== InspectorFeeBillingStatuses.Disbursed) outstanding += net;
+    if (row.billingStatus === InspectorFeeBillingStatuses.SupReview) {
       pending += net;
     } else if (
-      row.billingStatus === "at-finance" ||
-      row.billingStatus === "deferred" ||
-      row.billingStatus === "disb-req"
+      row.billingStatus === InspectorFeeBillingStatuses.AtFinance ||
+      row.billingStatus === InspectorFeeBillingStatuses.Deferred ||
+      row.billingStatus === InspectorFeeBillingStatuses.DisbReq
     ) {
       ready += net;
-    } else if (row.billingStatus === "disbursed") {
+    } else if (row.billingStatus === InspectorFeeBillingStatuses.Disbursed) {
       paidFromLedgers += net;
     }
   }
@@ -511,7 +514,7 @@ export const ENGINEERING_FEES_SITUATION_CARDS: PageSituationCardDef[] = [
 export function computeUnbilledFeeCount(rows: InspectorFeeRowDto[]): number {
   return rows.filter(
     (r) =>
-      r.billingStatus !== "disbursed" &&
+      r.billingStatus !== InspectorFeeBillingStatuses.Disbursed &&
       r.taskKind === "engineering-survey",
   ).length;
 }
@@ -523,27 +526,27 @@ function filterTasksForPage(
   allTasks: readonly WorkflowTask[] = tasks,
 ): WorkflowTask[] {
   switch (pageId) {
-    case "active-primary-data":
+    case Pages.ActivePrimaryData:
       return filterTasksForPrimaryData(tasks, poByNumber);
-    case "active-distribution":
+    case Pages.ActiveDistribution:
       return filterTasksForDistribution(tasks, poByNumber);
-    case "active-receipt":
+    case Pages.ActiveReceipt:
       return filterTasksForReceipt(tasks);
-    case "active-case-study":
+    case Pages.ActiveCaseStudy:
       return filterTasksForCaseStudy(tasks);
-    case "system-upload":
+    case Pages.SystemUpload:
       return filterTasksForSystemUpload(tasks, allTasks);
-    case "bourse-inquiry":
+    case Pages.BourseInquiry:
       return filterTasksForBourseInquiry(tasks, poByNumber);
-    case "active-inspection":
-      return filterTasksForPartyKind(tasks, "field-inspection");
-    case "property-appraisal":
+    case Pages.ActiveInspection:
+      return filterTasksForPartyKind(tasks, WorkflowTaskKinds.FieldInspection);
+    case Pages.PropertyAppraisal:
       return filterAppraiserListedTasks(
-        filterTasksForPartyKind(tasks, "property-appraisal"),
+        filterTasksForPartyKind(tasks, WorkflowTaskKinds.PropertyAppraisal),
       );
-    case "active-survey":
+    case Pages.ActiveSurvey:
       return filterEngineeringSurveyListedTasks(
-        filterTasksForPartyKind(tasks, "engineering-survey"),
+        filterTasksForPartyKind(tasks, WorkflowTaskKinds.EngineeringSurvey),
       );
     default:
       return tasks;
@@ -576,7 +579,7 @@ export function computePageSituationValues(
     allTasks,
   ).filter((t) => !isTaskOnSuspendedProperty(t));
 
-  if (pageId === "bourse-inquiry") {
+  if (pageId === Pages.BourseInquiry) {
     return computeBourseSituation({
       pending: input.pendingBourse ?? [],
       tasks: input.tasks,
@@ -586,10 +589,10 @@ export function computePageSituationValues(
     });
   }
 
-  if (pageId === "active-survey") {
+  if (pageId === Pages.ActiveSurvey) {
     const allSurvey = filterTasksForPartyKind(
       input.tasks,
-      "engineering-survey",
+      WorkflowTaskKinds.EngineeringSurvey,
     ).filter((t) => !isTaskOnSuspendedProperty(t));
     const open = new Set(openWorkflowTasks(allSurvey));
     let waiting = 0;
@@ -598,7 +601,7 @@ export function computePageSituationValues(
     let returned = 0;
     for (const task of allSurvey) {
       const bucket = classifyPartyTask(task);
-      if (bucket === "submitted" || task.status === "completed") {
+      if (bucket === "submitted" || task.status === WorkflowTaskStatuses.Completed) {
         submitted += 1;
         continue;
       }
@@ -616,10 +619,10 @@ export function computePageSituationValues(
     };
   }
 
-  if (pageId === "property-appraisal") {
+  if (pageId === Pages.PropertyAppraisal) {
     const allAppraisal = filterTasksForPartyKind(
       input.tasks,
-      "property-appraisal",
+      WorkflowTaskKinds.PropertyAppraisal,
     ).filter((t) => !isTaskOnSuspendedProperty(t));
     return computeAppraisalSituation(
       allAppraisal,
@@ -627,7 +630,7 @@ export function computePageSituationValues(
     );
   }
 
-  if (pageId === "system-upload") {
+  if (pageId === Pages.SystemUpload) {
     const ready = scoped;
     const now = input.now ?? new Date();
     let arrivedToday = 0;
@@ -645,7 +648,7 @@ export function computePageSituationValues(
     };
   }
 
-  if (pageId === "active-inspection") {
+  if (pageId === Pages.ActiveInspection) {
     return computePartySubmissionSituation(scoped, {
       inspectionWorkspaces: input.inspectionWorkspaces,
     });
@@ -679,8 +682,8 @@ function computeAppraisalSituation(
     const st = sub?.status ?? "draft";
     if (
       st === "submitted" ||
-      task.appraisalPackageStatus === "submitted" ||
-      task.status === "completed"
+      task.appraisalPackageStatus === SubmissionStatuses.Submitted ||
+      task.status === WorkflowTaskStatuses.Completed
     ) {
       submitted += 1;
       continue;

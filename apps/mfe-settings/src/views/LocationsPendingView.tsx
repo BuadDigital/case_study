@@ -11,6 +11,7 @@ import {
   reviewPropertyUsage,
   type PendingLocationDto,
   type ValuationListsDto,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   Badge,
@@ -95,9 +96,9 @@ export function LocationsPendingView() {
     if (!result.ok) {
       setItems([]);
       setLoadError(
-        result.kind === "auth"
+        result.kind === ApiErrorKinds.Auth
           ? "يلزم تسجيل الدخول"
-          : result.kind === "forbidden"
+          : result.kind === ApiErrorKinds.Forbidden
             ? "لا تملك صلاحية مراجعة المسميات"
             : "تعذّر تحميل طابور المراجعة",
       );
@@ -133,7 +134,7 @@ export function LocationsPendingView() {
     if (!result.ok) {
       showToast(
         result.message ??
-          (result.kind === "forbidden"
+          (result.kind === ApiErrorKinds.Forbidden
             ? "لا تملك صلاحية المراجعة"
             : "تعذّر تنفيذ المراجعة"),
         "error",

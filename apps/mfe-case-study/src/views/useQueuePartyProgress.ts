@@ -27,6 +27,7 @@ import { useCaseStudyReportBatchQuery } from "../query/case-study-queries";
 import type { PartyProgressByTask } from "./active-transaction-queue-tables-state";
 import { PARTY_CASE_STUDY_REPORT_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 type InfoRolesMatrix = Parameters<typeof computePartyCaseStudyProgress>[0];
 
 /* Stable empty ref — a fresh `new Map()` per render invalidated every consumer memo. */
@@ -53,13 +54,13 @@ function foldPartyProgressForQueue(
     for (const row of rows) progress[row.partyId] = row.pct;
     // The appraiser's bar is his valuation ladder, not the share of study questions he answered.
     const appraisal = tasks.find(
-      (t) => t.kind === "property-appraisal" && t.parentTaskId === parent.id && t.status !== "cancelled",
+      (t) => t.kind === WorkflowTaskKinds.PropertyAppraisal && t.parentTaskId === parent.id && t.status !== WorkflowTaskStatuses.Cancelled,
     );
     if (appraisal) {
       progress.val = appraiserProgressPct({
         state: getReportDraftState(appraisal.propertyId ?? parent.propertyId),
-        packageSubmitted: appraisal.appraisalPackageStatus === "submitted",
-        completed: appraisal.status === "completed",
+        packageSubmitted: appraisal.appraisalPackageStatus === SubmissionStatuses.Submitted,
+        completed: appraisal.status === WorkflowTaskStatuses.Completed,
       });
     }
     result.set(parent.id, progress);

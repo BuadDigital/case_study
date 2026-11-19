@@ -12,6 +12,7 @@ import type { FinanceNavArea } from "@platform/app-shared/app-data/financial-nav
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { buildFinanceMyTasks } from "@financial/mfe/lib/finance-my-tasks";
 import { bucketRevenueRows } from "@financial/mfe/lib/finance-revenue-stages";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 /**
  * Sidebar badges (actionable only) — My Tasks · Revenue · Costs.
@@ -69,9 +70,9 @@ export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
     // Costs: dues + payrolls/orders needing work (draft, issued, inbound invoice)
     const openStmts = statements.filter(
       (s) =>
-        s.status === "draft" ||
-        s.status === "issued" ||
-        s.status === "invoice_received",
+        s.status === PartyBillingStatementStatuses.Draft ||
+        s.status === PartyBillingStatementStatuses.Issued ||
+        s.status === PartyBillingStatementStatuses.InvoiceReceived,
     ).length;
     const costs = ready.length + openStmts;
 

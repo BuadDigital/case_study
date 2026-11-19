@@ -21,6 +21,7 @@ import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
 } from "./work-orders-api-config";
+import { FailureStatuses } from "../failures/failures-types";
 
 function listItemToPoRow(item: WorkOrderListItemDto): PoRow {
   const expected = item.expectedPropertyCount || item.propertyCount || 0;
@@ -57,7 +58,7 @@ function apiPropertyListItemToPropertyListItem(
   const failure = getPropertyFailure(item.poNumber, item.propertyId);
   const row = item.row;
   const status =
-    failure?.status === "approved" && row.status !== PropertyListRowStatuses.Fail
+    failure?.status === FailureStatuses.Approved && row.status !== PropertyListRowStatuses.Fail
       ? PropertyListRowStatuses.Fail
       : (row.status as PropertyRow["status"]);
 

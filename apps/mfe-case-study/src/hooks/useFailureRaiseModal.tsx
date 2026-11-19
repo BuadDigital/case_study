@@ -11,6 +11,7 @@ import {
   FAILURE_RAISER_SUPERVISOR,
 } from "@failures/mfe/lib/failure-party-roles";
 import { FailureRaiseModal } from "../components/failures/FailureRaiseModal";
+import { Roles } from "@platform/types";
 
 type FailureRaiseTarget = {
   poNumber: string;
@@ -37,7 +38,7 @@ function raisedByRoleFor(
   }
   const fromRole = PARTY_FAILURE_RAISER_BY_ROLE[role];
   if (fromRole) return fromRole;
-  if (role === "section-supervisor") return FAILURE_RAISER_SUPERVISOR;
+  if (role === Roles.SectionSupervisor) return FAILURE_RAISER_SUPERVISOR;
   return FAILURE_RAISER_SPECIALIST;
 }
 

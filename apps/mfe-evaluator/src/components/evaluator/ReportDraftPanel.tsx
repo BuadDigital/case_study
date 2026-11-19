@@ -18,6 +18,7 @@ import {
   sendReportDraft,
   withdrawReportDraft,
   type ValuationReportDraftDto,
+  ValuationReportDraftStatuses,
 } from "@platform/api-client";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import { TASKS_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
@@ -108,8 +109,8 @@ export function ReportDraftPanel({
   const submissionQuery = useEvaluatorSubmissionQuery(appraisalTask.id);
 
   // Every specialist edits the choices while the draft is prepared (a legacy draft «in review» too).
-  const preparing = draft != null && (draft.status === "preparing" || (draft.status === "none" && draft.canPrepare));
-  const inReview = draft?.status === "in_review";
+  const preparing = draft != null && (draft.status === ValuationReportDraftStatuses.Preparing || (draft.status === ValuationReportDraftStatuses.None && draft.canPrepare));
+  const inReview = draft?.status === ValuationReportDraftStatuses.InReview;
   const editable = (canEdit || canReview) && (preparing || inReview);
 
   // Round 2: the documents only he uploads must be in place before the draft goes out.
@@ -372,22 +373,22 @@ export function ReportDraftPanel({
   if (!draft) return null;
 
   const status = draft.status;
-  const waitingForHandOver = status === "none" && !draft.canPrepare;
+  const waitingForHandOver = status === ValuationReportDraftStatuses.None && !draft.canPrepare;
   const finalIssued = draft.reportStage === "final_issued";
-  const deposited = finalIssued || (status === "approved" && Boolean(draft.depositCode));
+  const deposited = finalIssued || (status === ValuationReportDraftStatuses.Approved && Boolean(draft.depositCode));
 
   return (
     <ValCard title="مسودة تقرير التقييم">
       <p className="mb-3 mt-0 text-[12px] leading-relaxed text-text-3" data-testid="report-draft-status">
         الحالة: <strong>{STATUS_LABEL[status] ?? status}</strong>
-        {status === "sent" && draft.sentAtUtc ? ` — أُرسلت ${formatDate(draft.sentAtUtc)}` : null}
-        {status === "approved" && draft.approvedAtUtc
+        {status === ValuationReportDraftStatuses.Sent && draft.sentAtUtc ? ` — أُرسلت ${formatDate(draft.sentAtUtc)}` : null}
+        {status === ValuationReportDraftStatuses.Approved && draft.approvedAtUtc
           ? ` — اعتُمدت ${formatDate(draft.approvedAtUtc)} (تاريخ التقرير ${draft.reportDate ?? "—"})`
           : null}
         {draft.version > 1 ? ` · نسخة ${draft.version}` : null}
       </p>
 
-      {status === "approved" ? (
+      {status === ValuationReportDraftStatuses.Approved ? (
         <p className="mb-3 mt-0 text-[12.5px] text-text-2" data-testid="report-draft-deposit-status">
           {finalIssued
             ? `صدر التقرير النهائي — رمز الإيداع ${draft.depositCode ?? "—"}${draft.certificateFileName ? ` · الشهادة: ${draft.certificateFileName}` : ""}.`
@@ -403,7 +404,7 @@ export function ReportDraftPanel({
         </div>
       ) : null}
 
-      {canDeposit && status === "approved" ? <ReportDepositStep propertyId={propertyId} draft={draft} /> : null}
+      {canDeposit && status === ValuationReportDraftStatuses.Approved ? <ReportDepositStep propertyId={propertyId} draft={draft} /> : null}
 
       {canDeposit && deposited ? (
         <div className="mb-3 flex justify-end">
@@ -426,7 +427,7 @@ export function ReportDraftPanel({
         </p>
       ) : null}
 
-      {draft.reviewNote && status === "preparing" ? (
+      {draft.reviewNote && status === ValuationReportDraftStatuses.Preparing ? (
         <p
           className="mb-3 mt-0 rounded-[var(--radius)] border border-amber-border bg-amber-bg px-3 py-2 text-[12.5px] text-amber-text"
           data-testid="report-draft-review-note"
@@ -550,7 +551,7 @@ export function ReportDraftPanel({
             </div>
           ) : null}
 
-          {canReview && status === "sent" ? (
+          {canReview && status === ValuationReportDraftStatuses.Sent ? (
             <div className="flex justify-end border-t border-border pt-3">
               <Button
                 type="button"

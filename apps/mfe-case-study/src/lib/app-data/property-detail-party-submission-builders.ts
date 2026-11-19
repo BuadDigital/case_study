@@ -13,6 +13,8 @@ import {
 import {
   type CaseStudyReportDraft,
   type CaseStudyReportStatus,
+  CaseStudyReportStatuses,
+  CaseStudyReportAnswers,
 } from "@platform/app-shared/app-data/case-study-report-model";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
@@ -54,6 +56,8 @@ import type {
   PartyAnswerRow,
   PropertyDetailPartySubmission,
 } from "./property-detail-party-submission-types";
+import { WorkflowTaskStatuses, SubmissionStatuses, WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 /** Must match `ENGINEERING_SURVEY_CHECKLIST_ITEMS` in engineering-survey-data (no circular import). */
 const ENGINEERING_SURVEY_CHECKLIST_LABELS = [
@@ -75,14 +79,14 @@ const ENGINEERING_SURVEY_CHECKLIST_LABELS = [
 const ROLE_CHILD_KIND: Partial<
   Record<PropertyDetailPartyRoleKey, WorkflowTaskKind>
 > = {
-  inspection: "field-inspection",
-  survey: "engineering-survey",
-  appraisal: "property-appraisal",
+  inspection: WorkflowTaskKinds.FieldInspection,
+  survey: WorkflowTaskKinds.EngineeringSurvey,
+  appraisal: WorkflowTaskKinds.PropertyAppraisal,
 };
 
 function formStatusLabel(status: CaseStudyReportStatus): string {
-  if (status === "issued") return "صادر";
-  if (status === "draft") return "مسودة";
+  if (status === CaseStudyReportStatuses.Issued) return "صادر";
+  if (status === CaseStudyReportStatuses.Draft) return "مسودة";
   return "جديد";
 }
 
@@ -90,9 +94,9 @@ function workflowStatusLabel(
   status: WorkflowTaskStatus,
   failureObstructed = false,
 ): string {
-  if (status === "completed") return "مكتمل";
+  if (status === WorkflowTaskStatuses.Completed) return "مكتمل";
   if (failureObstructed) return FAILURE_OBSTRUCTED_LABEL;
-  if (status === "blocked") return "معلّق";
+  if (status === WorkflowTaskStatuses.Blocked) return "معلّق";
   return "قيد التنفيذ";
 }
 
@@ -101,7 +105,7 @@ function answerDisplay(
   value: CaseStudyReportAnswer,
 ): string {
   const headers = CASE_STUDY_TABLE_HEADERS[section];
-  return value === "A" ? headers.colA : headers.colB;
+  return value === CaseStudyReportAnswers.A ? headers.colA : headers.colB;
 }
 
 function questionLabelFromKey(key: string): string | null {
@@ -120,7 +124,7 @@ export function answeredRows(
 ): PartyAnswerRow[] {
   const rows: PartyAnswerRow[] = [];
   for (const [key, value] of Object.entries(answers)) {
-    if (value !== "A" && value !== "B") continue;
+    if (value !== CaseStudyReportAnswers.A && value !== CaseStudyReportAnswers.B) continue;
     const match = /^([a-z]+)_(\d+)$/.exec(key);
     if (!match) continue;
     const section = match[1] as CaseStudyQuestionSection;
@@ -182,16 +186,16 @@ export function engineeringSurveyStatusLabel(
   status: EngineeringSurveySubmissionSnapshot["status"],
   options?: { accepted?: boolean },
 ): string {
-  if (status === "submitted" && options?.accepted) return "معتمد";
-  if (status === "submitted") return "مُرسَل — بانتظار الاعتماد";
-  if (status === "reopened") return "معادة للتصحيح";
+  if (status === SubmissionStatuses.Submitted && options?.accepted) return "معتمد";
+  if (status === SubmissionStatuses.Submitted) return "مُرسَل — بانتظار الاعتماد";
+  if (status === SubmissionStatuses.Reopened) return "معادة للتصحيح";
   return "قيد العمل";
 }
 
 function engineeringSurveyAnswerLabel(
   value: EngineeringSurveyChecklistAnswer,
 ): string {
-  if (value === "yes") return "نعم";
+  if (value === ChecklistAnswers.Yes) return "نعم";
   if (value === "no") return "لا";
   return "—";
 }
@@ -300,7 +304,7 @@ function engineeringSurveyChecklistRows(
   checklist.forEach((row, index) => {
     const label =
       ENGINEERING_SURVEY_CHECKLIST_LABELS[index] ?? `بند ${index + 1}`;
-    if (row.answer === "yes" || row.answer === "no") {
+    if (row.answer === ChecklistAnswers.Yes || row.answer === "no") {
       rows.push({
         question: label,
         answer: engineeringSurveyAnswerLabel(row.answer),
@@ -408,7 +412,7 @@ export function buildFromEngineeringSurvey(
   }
 
   const answeredCount = submission.checklist.filter(
-    (row) => row.answer === "yes" || row.answer === "no",
+    (row) => row.answer === ChecklistAnswers.Yes || row.answer === "no",
   ).length;
   if (answeredCount > 0) {
     fields.splice(1, 0, {
@@ -448,7 +452,7 @@ export function buildFromEngineeringSurvey(
   }
 
   const hasData =
-    submission.status !== "draft" ||
+    submission.status !== SubmissionStatuses.Draft ||
     Boolean(coords) ||
     Boolean(submission.surveyReportFileName.trim()) ||
     Boolean(submission.siteLetterFileName.trim()) ||
@@ -518,7 +522,7 @@ export function buildFromFormDraft(
     if (draft.infathLinkedAssets) {
       fields.push({
         label: INFATH_FIELD_LABELS.linkedAssets,
-        value: draft.infathLinkedAssets === "yes" ? "نعم" : "لا",
+        value: draft.infathLinkedAssets === ChecklistAnswers.Yes ? "نعم" : "لا",
       });
     }
     if (draft.infathLinkedDeedNumbers?.trim()) {
@@ -557,7 +561,7 @@ export function buildFromFormDraft(
   const hasData =
     answers.length > 0 ||
     remarks.length > 0 ||
-    draft.status !== "new" ||
+    draft.status !== CaseStudyReportStatuses.New ||
     summary.answered > 0;
 
   return {
@@ -569,7 +573,7 @@ export function buildFromFormDraft(
       ? workflowStatusLabel(childTask.status, isTaskFailureObstructed(childTask))
       : undefined,
     submittedAtUtc:
-      draft.status === "issued" ? draft.savedAtUtc?.trim() || null : null,
+      draft.status === CaseStudyReportStatuses.Issued ? draft.savedAtUtc?.trim() || null : null,
     fields,
     answers,
     remarks,
@@ -930,7 +934,7 @@ export function buildFromFieldInspection(
   }
 
   const hasData =
-    submission.status !== "draft" ||
+    submission.status !== SubmissionStatuses.Draft ||
     fields.length > 1 ||
     remarks.length > 0;
 

@@ -64,6 +64,7 @@ import {
 import { tasksForPartyAssignee } from "../lib/app-data/tasks";
 import { usePoRecordsQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import { useSuspendedTransactionsQuery } from "../query/suspended-transactions-queries";
+import { Roles } from "@platform/types";
 
 const PARTY_ASSIGNMENT_ROLE_IDS = new Set(
   Object.values(PARTY_TASK_PAGES).map((def) => def.roleId),
@@ -74,9 +75,9 @@ const ROW = queueTableRowClassName;
 function isCaseStudyStaff(role: RoleId) {
   return (
     isSuperAdmin(role) ||
-    role === "case-specialist" ||
-    role === "section-supervisor" ||
-    role === "general-manager"
+    role === Roles.CaseSpecialist ||
+    role === Roles.SectionSupervisor ||
+    role === Roles.GeneralManager
   );
 }
 

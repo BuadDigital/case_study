@@ -2,6 +2,7 @@ import {
   decideEvaluatorRecallApi,
   requestEvaluatorRecallApi,
   type EvaluatorRecallDecision,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   apiErrorMessage,
@@ -85,14 +86,14 @@ async function decidePartyTaskRecall(
 
   const result = await decideEvaluatorRecallApi(config, taskId, decision, note);
   if (!result.ok) {
-    if (result.kind === "forbidden") {
+    if (result.kind === ApiErrorKinds.Forbidden) {
       return {
         ok: false,
         error: result.message?.trim() || RECALL_DECISION_FORBIDDEN,
       };
     }
     // A refused decision (the appraiser already deposited) carries its own Arabic text.
-    if (result.kind === "validation") {
+    if (result.kind === ApiErrorKinds.Validation) {
       return {
         ok: false,
         error:

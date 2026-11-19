@@ -16,6 +16,7 @@ import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   caseStudyAnswerKey,
+  CaseStudyQuestionSections,
 } from "@platform/app-shared/domain/case-study/question-catalog";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
@@ -30,20 +31,22 @@ import { loadPartyCaseStudyReportDraft } from "../../lib/app-data/case-study-rep
 import { savePartyCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
+import { CaseStudyReportStatuses, CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 
 const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
 
 /** All case-study sections — filtered per party via info-roles matrix. */
 const GROUPS: { title: string; section: CaseStudyQuestionSection }[] = [
-  { title: "بيانات الصك والعقار", section: "deed" },
-  { title: "الرفع المساحي والطبيعة", section: "survey" },
-  { title: "مكونات العقار على الطبيعة", section: "comp" },
-  { title: "الإشغال والعقود", section: "occ" },
-  { title: "ملاحظات إضافية", section: "extra" },
+  { title: "بيانات الصك والعقار", section: CaseStudyQuestionSections.Deed },
+  { title: "الرفع المساحي والطبيعة", section: CaseStudyQuestionSections.Survey },
+  { title: "مكونات العقار على الطبيعة", section: CaseStudyQuestionSections.Comp },
+  { title: "الإشغال والعقود", section: CaseStudyQuestionSections.Occ },
+  { title: "ملاحظات إضافية", section: CaseStudyQuestionSections.Extra },
 ];
 
 /** Inspector chips: one binary scale for every section (no NA / section-specific wording). */
-const OPTS: Array<Extract<CaseStudyReportAnswer, "A" | "B">> = ["A", "B"];
+const OPTS: Array<Extract<CaseStudyReportAnswer, "A" | "B">> = [CaseStudyReportAnswers.A, CaseStudyReportAnswers.B];
 const OPT_LABELS: Record<(typeof OPTS)[number], string> = {
   A: CASE_STUDY_ANSWER_LABEL_A,
   B: CASE_STUDY_ANSWER_LABEL_B,
@@ -53,12 +56,12 @@ function resolveParentId(
   task: WorkflowTask,
   all: WorkflowTask[],
 ): string | null {
-  if (task.kind === "case-study-property") return task.id;
+  if (task.kind === WorkflowTaskKinds.CaseStudyProperty) return task.id;
   if (task.parentTaskId) return task.parentTaskId;
   return (
     all.find(
       (t) =>
-        t.kind === "case-study-property" &&
+        t.kind === WorkflowTaskKinds.CaseStudyProperty &&
         t.poNumber === task.poNumber &&
         t.propertyId === task.propertyId,
     )?.id ?? null
@@ -162,7 +165,7 @@ export function InspectorCaseStudyChips({
       n +
       g.questions.filter((q) => {
         const v = answers[q.key];
-        return v === "A" || v === "B";
+        return v === CaseStudyReportAnswers.A || v === CaseStudyReportAnswers.B;
       }).length,
     0,
   );
@@ -174,7 +177,7 @@ export function InspectorCaseStudyChips({
       draft ??
       ({
         taskId: childTask.id,
-        status: "draft",
+        status: CaseStudyReportStatuses.Draft,
         currentStep: 1,
         requestNumber: "",
         requestDate: "",
@@ -190,7 +193,7 @@ export function InspectorCaseStudyChips({
     const next: CaseStudyReportDraft = {
       ...base,
       answers: { ...base.answers, [key]: value },
-      status: base.status === "new" ? "draft" : base.status,
+      status: base.status === CaseStudyReportStatuses.New ? CaseStudyReportStatuses.Draft : base.status,
     };
     const gen = ++saveGen.current;
     setDraft(next);
@@ -230,7 +233,7 @@ export function InspectorCaseStudyChips({
                     {forceReadOnly ? (
                       current ? (
                         <span className="rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-[11px] py-[5px] text-[11.5px] font-semibold text-heading">
-                          {current === "A" || current === "B" ? OPT_LABELS[current] : current}
+                          {current === CaseStudyReportAnswers.A || current === CaseStudyReportAnswers.B ? OPT_LABELS[current] : current}
                         </span>
                       ) : (
                         <span className="text-[11.5px] text-text-3">لم تُجب</span>

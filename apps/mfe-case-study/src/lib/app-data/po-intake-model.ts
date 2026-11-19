@@ -12,6 +12,7 @@ import { resolveAssignmentValuationKeys } from "@platform/app-shared/app-data/as
 import { EMPTY_PROPERTY_PHOTO_MARKS } from "@platform/app-shared/app-data/property-detail-document-types";
 import { hydrateSpecialistReportExtrasFromApi } from "@platform/app-shared/storage/specialist-report-extras-sync";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import { WorkflowTaskKinds, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 const PROPERTY_DEFAULTS = emptyProperty();
 
@@ -398,7 +399,7 @@ export function buildCopyPriorTargetOptions(
   const emptySlots = tasks
     .filter(
       (t) =>
-        t.kind === "case-study-property" &&
+        t.kind === WorkflowTaskKinds.CaseStudyProperty &&
         t.poNumber.trim() === po &&
         !t.propertyId?.trim(),
     )
@@ -437,7 +438,7 @@ export function buildPropertyFromPriorDeed(
     existing.deedNumber.trim() ||
     (prior.deedNumber ?? "").trim() ||
     "";
-  const filled = priorDeedToPropertyIntake(prior, deed, "bourse");
+  const filled = priorDeedToPropertyIntake(prior, deed, CaseStudyTaskPhases.Bourse);
   const priorMandate = (prior.assignmentMandateNumber ?? "").trim();
   const priorRequest = (prior.requestNumber ?? "").trim();
   return {
@@ -566,7 +567,7 @@ export function priorDeedToPropertyIntake(
     bourseDataCompleted: false,
   };
 
-  if (scope === "enfath") return enfath;
+  if (scope === CaseStudyTaskPhases.Enfath) return enfath;
 
   return {
     ...enfath,
@@ -616,7 +617,7 @@ export function mergePriorOntoExisting(
   draft: PoPropertyIntake,
   scope: CopyPriorScope,
 ): PoPropertyIntake {
-  if (scope === "enfath") {
+  if (scope === CaseStudyTaskPhases.Enfath) {
     return {
       ...existing,
       identifierType: draft.identifierType,
@@ -669,7 +670,7 @@ export function shouldCompleteBourseAfterPriorCopy(
   draft: PoPropertyIntake,
   prior: PriorDeedRegistrationDto,
 ): boolean {
-  if (scope !== "bourse") return false;
+  if (scope !== CaseStudyTaskPhases.Bourse) return false;
   if (skipsBourseForIdentifier(draft.identifierType)) return false;
   return hasBourseDetailFields(draft) || Boolean(prior.bourseDataCompleted);
 }

@@ -10,6 +10,7 @@
 import { cn } from "@platform/ui-kit";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { MobileFieldLabel, MobilePills } from "./InspectMobileControls";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 const LAND_STRUCTURES_QUESTION =
   "هل في الأرض مبانٍ أو ملاحق تستحق التقييم (سور، غرفة حارس، سكن عمال…)؟";
@@ -42,7 +43,7 @@ export function InspectorLandStructuresQuestion({
             options={[ANSWER_LABELS.yes, ANSWER_LABELS.no]}
             value={value ? ANSWER_LABELS[value] : ""}
             disabled={disabled}
-            onChange={(next) => onChange(next === ANSWER_LABELS.yes ? "yes" : "no")}
+            onChange={(next) => onChange(next === ANSWER_LABELS.yes ? ChecklistAnswers.Yes : ChecklistAnswers.No)}
           />
         </>
       ) : (

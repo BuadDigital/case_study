@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import type { PageId } from "@platform/types";
 import { PARTY_TASK_PAGE_IDS } from "@platform/app-shared/app-data/party-task-pages";
 import { PanelSkeleton } from "@platform/ui-kit";
+import { Pages } from "@platform/types";
 
 /**
  * next/dynamic renders its `loading` component (default: null) while the MFE
@@ -251,7 +252,7 @@ export function AppPageView({ page }: { page: PageId }) {
 
   return (
     <Suspense fallback={<PanelSkeleton className="p-4" />}>
-      {page === "property-map" ? (
+      {page === Pages.PropertyMap ? (
         <div className="flex h-full min-h-0 flex-1 flex-col">
           <View />
         </div>

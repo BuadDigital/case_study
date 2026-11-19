@@ -4,13 +4,14 @@
  * role lands afterward. No React, no I/O.
  */
 import type { PageId, RoleId } from "@platform/types";
+import { Pages } from "@platform/types";
 
 /** The party's own queue — «تعديل إسناد الأطراف» redistributes only these
  * three kinds, so only these three roles can ever be walked off a task. */
 const ROLE_HOME_PAGE_ID: Partial<Record<RoleId, PageId>> = {
-  "field-inspector": "active-inspection",
-  "engineering-office": "active-survey",
-  "real-estate-appraiser": "property-appraisal",
+  "field-inspector": Pages.ActiveInspection,
+  "engineering-office": Pages.ActiveSurvey,
+  "real-estate-appraiser": Pages.PropertyAppraisal,
 };
 
 export function homePageIdForRole(roleId: RoleId): PageId | null {

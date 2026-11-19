@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  adoptedDeedMatchNotes,
   DeedNatureMatchOutcomes,
   deedNatureMatchAllowsDownstreamWork,
   deedNatureMatchRequiresNotes,
@@ -63,5 +64,22 @@ describe("deed-nature-match-outcomes", () => {
         DeedNatureMatchOutcomes.Matched,
       ),
     ).toBe(true);
+  });
+});
+
+describe("adoptedDeedMatchNotes", () => {
+  it("clears the notes when «مطابق» is adopted", () => {
+    expect(adoptedDeedMatchNotes(DeedNatureMatchOutcomes.Matched, "ملاحظة", "الشرقي: 28 م")).toBe("");
+  });
+
+  it("adds the inspector's notes under the specialist's, once", () => {
+    const once = adoptedDeedMatchNotes(DeedNatureMatchOutcomes.Differences, "رأيي", "الشرقي: 28 م");
+    expect(once).toBe("رأيي\nالشرقي: 28 م");
+    expect(adoptedDeedMatchNotes(DeedNatureMatchOutcomes.Differences, once, "الشرقي: 28 م")).toBe(once);
+  });
+
+  it("keeps the specialist's notes when the inspector wrote none", () => {
+    expect(adoptedDeedMatchNotes(DeedNatureMatchOutcomes.Differences, "رأيي", "")).toBe("رأيي");
+    expect(adoptedDeedMatchNotes(DeedNatureMatchOutcomes.Differences, undefined, "الشرقي")).toBe("الشرقي");
   });
 });

@@ -1,11 +1,11 @@
 import type { PoRow } from "@platform/app-shared/app-data/constants";
-import { normalizePoListStatus } from "@platform/app-shared/app-data/po-list-status";
+import { normalizePoListStatus, PoListStatuses } from "@platform/app-shared/app-data/po-list-status";
 import type { OperationsTaskDto } from "@platform/api-client";
 
 /** HTML DONE_ST — completed / fully billed / cancelled. */
 function isDashPoDone(status: string): boolean {
   const s = normalizePoListStatus(status);
-  return s === "completed" || s === "fully_billed" || s === "cancelled";
+  return s === PoListStatuses.Completed || s === PoListStatuses.FullyBilled || s === PoListStatuses.Cancelled;
 }
 
 const DMY_DATE_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
@@ -158,7 +158,7 @@ export function buildDashKpis(
   let stopped = 0;
   for (const o of poRows) {
     totalProps += o.count;
-    if (normalizePoListStatus(o.status) === "stopped") stopped += 1;
+    if (normalizePoListStatus(o.status) === PoListStatuses.Stopped) stopped += 1;
   }
   const overdueTasks = openTasks.filter((t) => {
     const due = parseDashDate(t.dueAt);

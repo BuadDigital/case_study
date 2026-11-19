@@ -1,6 +1,7 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { ApiAuthError } from "./permissions";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type FieldSyncApiConfig = {
   baseUrl?: string;
@@ -43,13 +44,13 @@ export async function upsertFieldSyncStatus(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: null };
   } catch (err) {
-    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
-    return { ok: false, kind: "network" };
+    if (err instanceof ApiAuthError) return { ok: false, kind: ApiErrorKinds.Auth };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -61,9 +62,9 @@ export async function listStaleFieldSyncStatuses(
     const res = await fetch(`${base}/api/field-sync-status/stale`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Array<Record<string, unknown>>;
     const data = raw.map((row) => ({
       id: String(row.id ?? row.Id ?? ""),
@@ -83,7 +84,7 @@ export async function listStaleFieldSyncStatuses(
     }));
     return { ok: true, data };
   } catch (err) {
-    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
-    return { ok: false, kind: "network" };
+    if (err instanceof ApiAuthError) return { ok: false, kind: ApiErrorKinds.Auth };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

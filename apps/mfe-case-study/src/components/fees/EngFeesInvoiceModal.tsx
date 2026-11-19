@@ -22,6 +22,7 @@ import { openPartyBillingAttachment } from "@platform/app-shared/app-data/party-
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
 import { statementMeta } from "./eng-fees-state";
+import { PartyBillingStatementStatuses, PartyBillingPayeeTypes } from "@platform/api-client";
 
 export function EngFeesInvoiceModal({
   openStatement,
@@ -165,8 +166,8 @@ export function EngFeesInvoiceModal({
                 ))}
               </div>
 
-              {openStatement.status === "issued" &&
-              openStatement.payeeType !== "individual" ? (
+              {openStatement.status === PartyBillingStatementStatuses.Issued &&
+              openStatement.payeeType !== PartyBillingPayeeTypes.Individual ? (
                 <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3.5 text-start">
                   <div className="text-center text-[12.5px] font-semibold text-heading">
                     رفع فاتورة مطابقة للمسير
@@ -216,7 +217,7 @@ export function EngFeesInvoiceModal({
                 </div>
               ) : null}
 
-              {openStatement.status === "closed" ? (
+              {openStatement.status === PartyBillingStatementStatuses.Closed ? (
                 <div className="rounded-xl border border-[color-mix(in_srgb,#3f8f5f_28%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] px-3.5 py-3 text-center">
                   <div className="text-[13px] font-bold text-heading">
                     تم صرف هذا الكشف
@@ -244,7 +245,7 @@ export function EngFeesInvoiceModal({
                     </div>
                   ) : null}
                 </div>
-              ) : openStatement.status === "invoice_received" ? (
+              ) : openStatement.status === PartyBillingStatementStatuses.InvoiceReceived ? (
                 <div className="rounded-xl border border-[color-mix(in_srgb,#4a7ab5_30%,transparent)] bg-[color-mix(in_srgb,#4a7ab5_10%,transparent)] px-3.5 py-3 text-center text-[12.5px] text-text-2">
                   وُجدت فاتورة واردة — بانتظار صرف المالية.
                   {openStatement.vendorInvoiceNumber ? (

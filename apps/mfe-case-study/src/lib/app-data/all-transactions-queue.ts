@@ -19,21 +19,23 @@ import { transactionNumberOf } from "./transaction-number";
 import { areaText } from "./appraiser-summary-model";
 import type { TransactionProgress, TransactionParty } from "./my-work-model";
 
+import { WorkflowTaskStatuses, WorkflowTaskKinds, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
 export function allTransactionsPhaseLabel(task: WorkflowTask): string {
   // «إلغاء المعاملة»: a cancelled task reads «ملغاة» — also the status-filter option for them.
-  if (task.status === "cancelled") return "ملغاة";
+  if (task.status === WorkflowTaskStatuses.Cancelled) return "ملغاة";
   if (isPartyTaskDone(task)) return "مكتمل";
   if (isTaskFailureObstructed(task)) return "تعذّر";
-  if (task.kind === "government-review") return "المراجعة الحكومية";
-  if (task.kind === "field-inspection") return "معاينة العقار";
-  if (task.kind === "property-appraisal") return "تقييم العقار";
-  if (task.kind === "engineering-survey") return "الرفع المساحي";
-  if (task.phase === "enfath") return "البيانات الأولية";
-  if (task.phase === "bourse") return "البورصة";
-  if (task.phase === "distribution") return "التوزيع";
-  if (task.phase === "case-study") return "دراسة الحالة";
-  if (task.phase === "obstruction") return "تعذّر";
+  if (task.kind === WorkflowTaskKinds.GovernmentReview) return "المراجعة الحكومية";
+  if (task.kind === WorkflowTaskKinds.FieldInspection) return "معاينة العقار";
+  if (task.kind === WorkflowTaskKinds.PropertyAppraisal) return "تقييم العقار";
+  if (task.kind === WorkflowTaskKinds.EngineeringSurvey) return "الرفع المساحي";
+  if (task.phase === CaseStudyTaskPhases.Enfath) return "البيانات الأولية";
+  if (task.phase === CaseStudyTaskPhases.Bourse) return "البورصة";
+  if (task.phase === CaseStudyTaskPhases.Distribution) return "التوزيع";
+  if (task.phase === CaseStudyTaskPhases.CaseStudy) return "دراسة الحالة";
+  if (task.phase === CaseStudyTaskPhases.Obstruction) return "تعذّر";
   return taskKindLabel(task.kind);
 }
 
@@ -121,21 +123,21 @@ function allTransactionsPropertyGroupKey(
 function allTransactionsStageProgress(task: WorkflowTask): number {
   const completed = isPartyTaskDone(task);
 
-  if (task.kind === "field-inspection") return completed ? 51 : 50.5;
-  if (task.kind === "engineering-survey") return completed ? 56 : 55.5;
-  if (task.kind === "property-appraisal") return completed ? 61 : 60.5;
-  if (task.kind === "government-review") return completed ? 71 : 70.5;
+  if (task.kind === WorkflowTaskKinds.FieldInspection) return completed ? 51 : 50.5;
+  if (task.kind === WorkflowTaskKinds.EngineeringSurvey) return completed ? 56 : 55.5;
+  if (task.kind === WorkflowTaskKinds.PropertyAppraisal) return completed ? 61 : 60.5;
+  if (task.kind === WorkflowTaskKinds.GovernmentReview) return completed ? 71 : 70.5;
 
   const phaseBase =
-    task.phase === "enfath"
+    task.phase === CaseStudyTaskPhases.Enfath
       ? 10
-      : task.phase === "bourse"
+      : task.phase === CaseStudyTaskPhases.Bourse
         ? 20
-        : task.phase === "obstruction"
+        : task.phase === CaseStudyTaskPhases.Obstruction
           ? 25
-          : task.phase === "distribution"
+          : task.phase === CaseStudyTaskPhases.Distribution
             ? 30
-            : task.phase === "case-study"
+            : task.phase === CaseStudyTaskPhases.CaseStudy
               ? 40
               : task.phase === "done"
                 ? 100
@@ -143,7 +145,7 @@ function allTransactionsStageProgress(task: WorkflowTask): number {
 
   // Fully finished track only when phase is done — intermediate completed rows
   // still rank at the phase they finished so live party work can outrank them.
-  if (task.phase === "done") return 100;
+  if (task.phase === CaseStudyTaskPhases.Done) return 100;
   if (completed) return phaseBase + 0.25;
   return phaseBase;
 }
@@ -197,7 +199,7 @@ export function collapseAllTransactionsToLatestPhase(
 
     const live = group.filter(
       (row) =>
-        row.task.status === "open" || row.task.status === "blocked",
+        row.task.status === WorkflowTaskStatuses.Open || row.task.status === WorkflowTaskStatuses.Blocked,
     );
     const pool = live.length > 0 ? live : group;
     const winner = pickFarthestRow(pool);
@@ -307,10 +309,10 @@ export function buildAllTransactionsQueueRowMeta(
 export function closedTransactionProgress(
   task: WorkflowTask,
 ): (TransactionProgress & { closed: true }) | null {
-  if (task.kind !== "case-study-property") return null;
+  if (task.kind !== WorkflowTaskKinds.CaseStudyProperty) return null;
   const done = { waitingOn: "", parties: [], closed: true } as const;
-  if (task.status === "cancelled") return { stage: "ملغاة", ...done };
-  if (task.propertyHandedOverToEnfaz || task.status === "completed") return { stage: "مكتملة", ...done };
+  if (task.status === WorkflowTaskStatuses.Cancelled) return { stage: "ملغاة", ...done };
+  if (task.propertyHandedOverToEnfaz || task.status === WorkflowTaskStatuses.Completed) return { stage: "مكتملة", ...done };
   return null;
 }
 
@@ -386,8 +388,8 @@ export function filterAllTransactionsQueueRows(
 export function canReopenCompletedTransaction(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||
-    role === "section-supervisor" ||
-    role === "general-manager"
+    role === Roles.SectionSupervisor ||
+    role === Roles.GeneralManager
   );
 }
 
@@ -422,11 +424,11 @@ export function buildAllTransactionsRowMoreItems(options: {
   ];
 
   if (
-    options.task.status === "completed" &&
+    options.task.status === WorkflowTaskStatuses.Completed &&
     options.onReopenCompleted &&
     options.viewerRole
   ) {
-    if (options.task.kind === "case-study-property") {
+    if (options.task.kind === WorkflowTaskKinds.CaseStudyProperty) {
       // The server refuses the generic reopen for a case-study parent — it reopens through the
       // issued report, and only the case specialist may.
       if (options.viewerAccess && canReopenCaseStudyReport(options.viewerAccess)) {

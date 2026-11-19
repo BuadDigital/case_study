@@ -5,7 +5,8 @@ const getEvaluatorRecallApi = vi.fn();
 const listEvaluatorRecallsApi = vi.fn();
 const requestEvaluatorRecallApi = vi.fn();
 
-vi.mock("@platform/api-client", () => ({
+vi.mock("@platform/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@platform/api-client")>()),
   decideEvaluatorRecallApi: (...args: unknown[]) =>
     decideEvaluatorRecallApi(...args),
   getEvaluatorRecallApi: (...args: unknown[]) =>

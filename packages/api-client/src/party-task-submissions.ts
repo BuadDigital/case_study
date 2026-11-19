@@ -6,6 +6,7 @@ import { parseFieldErrorsFromResponse } from "./field-errors";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 /** Who wrote / last edited one payload field (server-stamped from the caller's identity). */
 export type PartyFieldProvenanceEntry = {
@@ -75,13 +76,13 @@ async function parseSaveFailure(
 ): Promise<ApiErr & { errors?: Record<string, string> }> {
   if (res.status === 403) {
     const errors = await parseFieldErrorsFromResponse(res);
-    return { ok: false, kind: "forbidden", errors, message: errors._ };
+    return { ok: false, kind: ApiErrorKinds.Forbidden, errors, message: errors._ };
   }
   if (res.status === 400) {
     const errors = await parseFieldErrorsFromResponse(res);
-    return { ok: false, kind: "validation", errors };
+    return { ok: false, kind: ApiErrorKinds.Validation, errors };
   }
-  return { ok: false, kind: "server" };
+  return { ok: false, kind: ApiErrorKinds.Server };
 }
 
 export type ReopenPartyTaskSubmissionRequest = {
@@ -205,9 +206,9 @@ async function readSubmissionWrite(
   | ApiOk<PartyTaskSubmissionDto>
   | (ApiErr & { errors?: Record<string, string> })
 > {
-  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
   if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
   return { ok: true, data: normalizeSubmissionDto(await res.json()) };
 }
 
@@ -220,12 +221,12 @@ export async function getPartyTaskSubmission(
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: normalizeSubmissionDto(await res.json()) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -256,11 +257,11 @@ export async function listPriorInspections(
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/prior-inspections`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as PriorInspectionOption[] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -276,12 +277,12 @@ export async function copyPriorInspection(
       `${base}/api/party-task-submissions/${taskId}/prior-inspections/${sourceTaskId}/copy`,
       { method: "POST", headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as PriorInspectionCopy };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -302,7 +303,7 @@ export async function savePartyTaskSubmission(
     });
     return await readSubmissionWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -322,7 +323,7 @@ export async function submitPartyTaskSubmission(
     });
     return await readSubmissionWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -347,7 +348,7 @@ export async function reopenPartyTaskSubmission(
     });
     return await readSubmissionWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -385,7 +386,7 @@ export async function acceptPartyTaskSubmission(
     });
     return await readSubmissionWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -417,7 +418,7 @@ export async function correctInspectedType(
     });
     return await readSubmissionWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -437,15 +438,15 @@ export async function listPartyTaskSubmissions(
     const res = await fetch(`${base}/api/party-task-submissions?${params}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as unknown[];
     return {
       ok: true,
       data: Array.isArray(raw) ? raw.map(normalizeSubmissionDto) : [],
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -576,13 +577,13 @@ export async function getReturnImpact(
       `${base}/api/party-task-submissions/${inspectionTaskId}/return-impact?${query}`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: normalizeReturnImpact(await res.json()) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -606,15 +607,15 @@ export async function returnInspectionPackage(
         body: JSON.stringify(request),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
     if (res.status === 409) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
+      return { ok: false, kind: ApiErrorKinds.Validation, errors };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: normalizeReturnInspectionResult(await res.json()) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

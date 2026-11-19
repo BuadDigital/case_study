@@ -23,6 +23,7 @@ import {
   type SidebarInsert,
   type SidebarNavPlan,
 } from "./app-shell-nav-state";
+import { Pages } from "@platform/types";
 
 /** Everything the sidebar needs to render the plan — built once in `AppShell`. */
 export type SidebarNavModel = {
@@ -170,9 +171,9 @@ export function AppShellSidebar({
                     active={isNavRowActive(item.id, nav.currentPage, nav.inPoSection)}
                     onPrefetch={nav.prefetchPage}
                     badgeCount={
-                      item.id === "failures"
+                      item.id === Pages.Failures
                         ? nav.failuresNavBadge
-                        : item.id === "favorites"
+                        : item.id === Pages.Favorites
                           ? nav.favoritesNavBadge
                           : undefined
                     }

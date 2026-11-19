@@ -9,6 +9,7 @@ import type {
 } from "@platform/api-client";
 
 import { daysSinceIsoCost } from "./finance-cost-parties";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 export type PartyBillingMode = "all" | "dues" | "statements" | "paid";
 
@@ -17,14 +18,14 @@ function statementsForMode(
   statements: PartyBillingStatementDto[],
   mode: PartyBillingMode,
 ): PartyBillingStatementDto[] {
-  if (mode === "paid") return statements.filter((s) => s.status === "closed");
+  if (mode === "paid") return statements.filter((s) => s.status === PartyBillingStatementStatuses.Closed);
   if (mode === "statements")
     return statements.filter(
       (s) =>
-        s.status === "draft" ||
-        s.status === "issued" ||
-        s.status === "invoice_received" ||
-        s.status === "cancelled",
+        s.status === PartyBillingStatementStatuses.Draft ||
+        s.status === PartyBillingStatementStatuses.Issued ||
+        s.status === PartyBillingStatementStatuses.InvoiceReceived ||
+        s.status === PartyBillingStatementStatuses.Cancelled,
     );
   if (mode === "dues") return [];
   return statements;
@@ -39,9 +40,9 @@ function statementsForMode(
 export function statementStatusesForMode(
   mode: PartyBillingMode,
 ): readonly PartyBillingStatementDto["status"][] | undefined {
-  if (mode === "paid") return ["closed"];
+  if (mode === "paid") return [PartyBillingStatementStatuses.Closed];
   if (mode === "statements")
-    return ["draft", "issued", "invoice_received", "cancelled"];
+    return [PartyBillingStatementStatuses.Draft, PartyBillingStatementStatuses.Issued, PartyBillingStatementStatuses.InvoiceReceived, PartyBillingStatementStatuses.Cancelled];
   return undefined;
 }
 

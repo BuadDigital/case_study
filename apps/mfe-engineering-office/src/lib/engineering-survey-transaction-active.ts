@@ -1,4 +1,5 @@
 import type { EngineeringSurveySubmissionStatus } from "./engineering-survey-data";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 /**
  * Transaction is «active» for the engineering office = still in its turn (survey not yet sent).
@@ -9,5 +10,5 @@ export function isEngineeringSurveyTransactionActive(
   submissionStatus: EngineeringSurveySubmissionStatus | null | undefined,
 ): boolean {
   if (taskStatus === "completed") return false;
-  return submissionStatus !== "submitted";
+  return submissionStatus !== SubmissionStatuses.Submitted;
 }

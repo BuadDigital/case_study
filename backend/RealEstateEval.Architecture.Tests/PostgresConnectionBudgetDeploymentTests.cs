@@ -25,7 +25,7 @@ public class PostgresConnectionBudgetDeploymentTests
             "command: [\"postgres\", \"-c\", \"max_connections=500\"]",
             compose,
             StringComparison.Ordinal);
-        Assert.Contains("Database__MaxPoolSize: \"6\"", compose, StringComparison.Ordinal);
+        Assert.Contains("Database__MaxPoolSize: \"16\"", compose, StringComparison.Ordinal);
         Assert.Contains(
             "Database__ServerMaxConnections: \"500\"",
             compose,

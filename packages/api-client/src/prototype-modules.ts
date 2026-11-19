@@ -5,6 +5,7 @@ import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { parseJson } from "./parse-json";
 import { fetchAllListPages } from "./pagination";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type PrototypeModulesApiConfig = {
   baseUrl?: string;
@@ -59,11 +60,11 @@ export async function getFieldDictionary(
     const res = await fetch(`${base}/api/field-dictionary`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<FieldDictionaryStateDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -97,11 +98,11 @@ export async function getFailureTypesCatalog(
     const res = await fetch(`${base}/api/failure-types-catalog`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<FailureTypesCatalogDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -116,11 +117,11 @@ export async function saveFailureTypesCatalog(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<FailureTypesCatalogDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -394,26 +395,26 @@ async function keyEnvelopeMutation(
         init?.headers,
       ),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
     if (res.status === 404) {
       return {
         ok: false,
-        kind: "not_found",
+        kind: ApiErrorKinds.NotFound,
         message: await readPrototypeErrorMessage(res),
       };
     }
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message: await readPrototypeErrorMessage(res),
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<KeyEnvelopeDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -425,12 +426,12 @@ export async function listKeyEnvelopes(
     const res = await fetch(`${base}/api/key-envelopes`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<KeyEnvelopeDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -451,13 +452,13 @@ export async function deleteKeyEnvelope(
       method: "DELETE",
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: true };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -472,19 +473,19 @@ export async function listKeyEnvelopeLinkedProperties(
       `${base}/api/key-envelopes/linked-properties?${qs}`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message: await readPrototypeErrorMessage(res),
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<KeyEnvelopeLinkedPropertyDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -496,12 +497,12 @@ export async function listKeyEnvelopeFeeReport(
     const res = await fetch(`${base}/api/key-envelopes/fee-report`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<KeyEnvelopeFeeReportRowDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -524,11 +525,11 @@ export async function getPropertyKeyGate(
     const res = await fetch(`${base}/api/key-envelopes/gate?${qs}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<PropertyKeyGateDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -547,26 +548,26 @@ export async function markKeyReceiptFeeCollected(
         body: JSON.stringify(body ?? {}),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
     if (res.status === 404) {
       return {
         ok: false,
-        kind: "not_found",
+        kind: ApiErrorKinds.NotFound,
         message: await readPrototypeErrorMessage(res),
       };
     }
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message: await readPrototypeErrorMessage(res),
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<KeyEnvelopeFeeReportRowDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -582,12 +583,12 @@ export async function listPropertyCourtAccess(
     const res = await fetch(`${base}/api/key-envelopes/court-access${qs}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<PropertyCourtAccessDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -701,26 +702,26 @@ export async function upsertPropertyCourtAccess(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
     if (res.status === 404) {
       return {
         ok: false,
-        kind: "not_found",
+        kind: ApiErrorKinds.NotFound,
         message: await readPrototypeErrorMessage(res),
       };
     }
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message: await readPrototypeErrorMessage(res),
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<PropertyCourtAccessDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -795,22 +796,22 @@ async function sendAttachmentDocumentChange(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (res.status === 400 || res.status === 403) {
       const problem = (await res.json().catch(() => null)) as
         | { detail?: string; error?: string }
         | null;
       return {
         ok: false,
-        kind: res.status === 403 ? "forbidden" : "validation",
+        kind: res.status === 403 ? ApiErrorKinds.Forbidden : ApiErrorKinds.Validation,
         message: problem?.detail ?? problem?.error,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -868,12 +869,12 @@ async function readAttachmentList(
 ): Promise<PrototypeModulesResult<FileAttachmentMetaDto[]>> {
   try {
     const res = await fetch(url, { headers: authHeaders(token) });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<FileAttachmentMetaDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -909,7 +910,7 @@ export async function uploadAttachment(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400 || res.status === 403) {
       // The server rejects on content, document type or role — pass the reason through
       // so the user learns which rule fired instead of seeing a generic failure.
@@ -918,14 +919,14 @@ export async function uploadAttachment(
         | null;
       return {
         ok: false,
-        kind: res.status === 403 ? "forbidden" : "validation",
+        kind: res.status === 403 ? ApiErrorKinds.Forbidden : ApiErrorKinds.Validation,
         message: problem?.detail ?? problem?.error,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -938,12 +939,12 @@ export async function getAttachmentMeta(
     const res = await fetch(`${base}/api/attachments/${id}/meta`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "server" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.Server };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -957,11 +958,11 @@ export async function deleteAttachment(
       method: "DELETE",
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: null };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -990,12 +991,12 @@ export async function listSuspendedTransactions(
     const res = await fetch(`${base}/api/suspended-transactions`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<SuspendedTransactionDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1008,12 +1009,12 @@ export async function downloadAttachmentBlob(
     const res = await fetch(`${base}/api/attachments/${id}`, {
       headers: { Authorization: `Bearer ${config.token}` },
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await res.blob() };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1055,12 +1056,12 @@ export async function listEvaluatorRecallsApi(
     const res = await fetch(`${base}/api/evaluator-recalls`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<EvaluatorRecallDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1073,13 +1074,13 @@ export async function getEvaluatorRecallApi(
     const res = await fetch(`${base}/api/evaluator-recalls/${taskId}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<EvaluatorRecallDto | null>(res);
     return { ok: true, data: data?.taskId ? data : null };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1099,18 +1100,18 @@ export async function requestEvaluatorRecallApi(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: await parseFieldErrorsFromResponse(res),
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<EvaluatorRecallDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1135,20 +1136,20 @@ export async function decideEvaluatorRecallApi(
       headers: authHeaders(config.token),
       body: JSON.stringify({ decision, ...(note?.trim() ? { note: note.trim() } : {}) }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (res.status === 403 || res.status === 400 || res.status === 409) {
       const errors = await parseFieldErrorsFromResponse(res);
       return {
         ok: false,
-        kind: res.status === 403 ? "forbidden" : "validation",
+        kind: res.status === 403 ? ApiErrorKinds.Forbidden : ApiErrorKinds.Validation,
         errors,
         message: errors._,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<EvaluatorRecallDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

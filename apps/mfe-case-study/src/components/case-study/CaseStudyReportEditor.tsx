@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Button,
   FormGroup,
@@ -25,7 +25,10 @@ import {
   partyById,
   type CaseStudyInfoPartyId,
 } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
-import type { CaseStudyMeterType } from "@platform/app-shared/app-data/case-study-report-model";
+import {
+  CASE_STUDY_METER_TYPE_OPTIONS,
+  CaseStudyMeterTypes,
+} from "@platform/app-shared/app-data/case-study-report-model";
 import { canReopenCaseStudyReport, canReviewTransaction } from "../../lib/app-data/po-roles";
 import { approveCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { enfazCardState } from "../../lib/app-data/enfaz-handover-state";
@@ -51,15 +54,17 @@ import {
 import { openCaseStudyAppraisalTab } from "../../lib/case-study-workspace-events";
 import { useCaseStudyReportCommands } from "./useCaseStudyReportCommands";
 import { useCaseStudyReportData } from "./useCaseStudyReportData";
+import { CaseStudyReportStatuses } from "@platform/app-shared/app-data/case-study-report-model";
+import {
+  CaseStudyQuestionSections,
+  type CaseStudyQuestionSection,
+} from "@platform/app-shared/domain/case-study/question-catalog";
 
 type Props = {
   taskId: string;
   task: WorkflowTask;
   property: PoPropertyIntake | null;
-  poRecord?: Pick<
-    PoIntakeRecord,
-    "assignmentSpecialist" | "receivedFromEnfathAt" | "promulgationDate"
-  > | null;
+  poRecord?: Pick< PoIntakeRecord, "assignmentSpecialist" | "receivedFromEnfathAt" | "promulgationDate" > | null;
   requestDateSeed?: string;
   /** Specialist — full form; party — matrix-assigned questions only */
   variant?: "specialist" | "party";
@@ -140,7 +145,6 @@ export function CaseStudyReportEditor({
     setReloadKey,
     parentFormSubmitted,
     saving,
-    submittingForm,
     missingAnswerKeys,
     formFieldErrors,
     partyAnswersByKey,
@@ -152,6 +156,9 @@ export function CaseStudyReportEditor({
     visibleStepIndices,
     summary,
     reportModel,
+  } = data;
+  const {
+    submittingForm,
     goStep,
     patch,
     setAnswer,
@@ -159,7 +166,7 @@ export function CaseStudyReportEditor({
     saveDraft,
     submitForm,
     reopenReport,
-  } = { ...data, ...commands };
+  } = commands;
 
   if (loadError) {
     return (
@@ -200,13 +207,126 @@ export function CaseStudyReportEditor({
   const step = draft.currentStep;
   const navSteps = visibleStepIndices;
   const isLastVisibleStep = navSteps[navSteps.length - 1] === step;
+  const currentStep = CASE_STUDY_REPORT_STEPS[step];
+
+  /** The specialist's fields under each section's questions — parties answer the questions only. */
+  const sectionFooter = (section: CaseStudyQuestionSection): ReactNode => {
+    if (isParty) return undefined;
+    switch (section) {
+      case CaseStudyQuestionSections.Deed:
+        return (
+          <RemarksBlock
+            id={CASE_STUDY_DEED_REMARKS_ID}
+            label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
+            value={draft.deedRemarks}
+            disabled={isFormReadOnly}
+            invalid={Boolean(formFieldErrors.deedRemarks)}
+            onChange={(v) => patch("deedRemarks", v)}
+          />
+        );
+      case CaseStudyQuestionSections.Survey:
+        return (
+          <RemarksBlock
+            label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
+            value={draft.surveyRemarks}
+            disabled={isFormReadOnly}
+            onChange={(v) => patch("surveyRemarks", v)}
+          />
+        );
+      case CaseStudyQuestionSections.Comp:
+        return (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-text">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-text-2">
+                <span className="whitespace-nowrap">عداد الكهرباء رقم</span>
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <span aria-hidden="true">(</span>
+                  <Input
+                    className="w-[5.5rem] rounded-none border-0 border-b border-border-md bg-transparent px-0.5 shadow-none focus:ring-0"
+                    placeholder="رقم"
+                    aria-label="رقم العداد"
+                    value={draft.meterNumber}
+                    disabled={isFormReadOnly}
+                    onChange={(e) => patch("meterNumber", e.target.value)}
+                  />
+                  <span aria-hidden="true">)</span>
+                </span>
+              </span>
+              <span className="inline-flex flex-wrap items-center gap-2">
+                {CASE_STUDY_METER_TYPE_OPTIONS.map(({ value: val, label }) => {
+                  const on = draft.meterType === val;
+                  return (
+                    <label
+                      key={val}
+                      className={cn(
+                        "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors",
+                        on
+                          ? "border-ink bg-ink text-white"
+                          : "border-border-md bg-surface text-text-2 hover:text-heading",
+                        isFormReadOnly && "cursor-not-allowed opacity-50",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name={`meter-${taskId}`}
+                        className="sr-only"
+                        checked={on}
+                        disabled={isFormReadOnly}
+                        onChange={() => {
+                          patch("meterType", val);
+                          if (val === CaseStudyMeterTypes.None) patch("meterNumber", "");
+                        }}
+                      />
+                      {label}
+                    </label>
+                  );
+                })}
+              </span>
+            </div>
+            <RemarksBlock
+              label="ملاحظات"
+              value={draft.componentsRemarks}
+              disabled={isFormReadOnly}
+              onChange={(v) => patch("componentsRemarks", v)}
+              rows={2}
+            />
+          </div>
+        );
+      case CaseStudyQuestionSections.Occ:
+        return (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-end gap-2">
+              <RegField
+                id="cs-hoa"
+                label="قيمة اشتراك اتحاد الملاك"
+                type="number"
+                placeholder="القيمة"
+                value={draft.hoaFee}
+                onChange={(v) => patch("hoaFee", v)}
+                className="inline-block max-w-[200px]"
+              />
+              <span className="pb-2 text-xs text-text-2">ر.س</span>
+            </div>
+            <RemarksBlock
+              label="ملاحظات"
+              value={draft.occupancyRemarks}
+              disabled={isFormReadOnly}
+              onChange={(v) => patch("occupancyRemarks", v)}
+              rows={2}
+            />
+          </div>
+        );
+      default:
+        return undefined;
+    }
+  };
   const showStepFooterActions = !partyAdvisory;
   const isPartyVariant = variant === "party";
   const showFormStepChrome = !partyAdvisory && !isPartyVariant;
   const isFormReadOnly = Boolean(
     forceReadOnly ||
-      (!isParty && draft.status === "issued") ||
-      (isParty && (draft.status === "issued" || parentFormSubmitted)),
+      (!isParty && draft.status === CaseStudyReportStatuses.Issued) ||
+      (isParty && (draft.status === CaseStudyReportStatuses.Issued || parentFormSubmitted)),
   );
   // A traditional deed's report is issued only once the deed ↔ nature outcome is chosen.
   const deedMatchBlock = isParty
@@ -274,8 +394,7 @@ export function CaseStudyReportEditor({
     </div>
   );
 
-  const showIssuedBar =
-    !isParty && !partyAdvisory && !forceReadOnly && draft.status === "issued";
+  const showIssuedBar = !isParty && !partyAdvisory && !forceReadOnly && draft.status === CaseStudyReportStatuses.Issued;
   // Omar 2026-11-08: the sent study is review's to approve or return; the study may take it back until
   // review approves it. The server is the judge (it refuses the study after the approval).
   const studyApproved = approvedHere || task.reviewState === "approved";
@@ -373,7 +492,7 @@ export function CaseStudyReportEditor({
             <div className="flex shrink-0 items-center border-s border-border/60 px-3 py-1.5">
               <FormProgressRings
                 summary={summary}
-                submitted={draft.status === "issued" || parentFormSubmitted}
+                submitted={draft.status === CaseStudyReportStatuses.Issued || parentFormSubmitted}
               />
             </div>
           </div>
@@ -411,196 +530,22 @@ export function CaseStudyReportEditor({
           )}
         >
           <div ref={stepPanelRef} className="flex flex-col gap-3.5">
-            {step === 0 && sectionHasVisibleQuestions("deed") ? (
-              <div className="flex flex-col gap-3.5">
+            {currentStep && sectionHasVisibleQuestions(currentStep.section) ? (
+              // Keyed by the step: another step is a new table, as when each step was its own block.
+              <div key={currentStep.id} className="flex flex-col gap-3.5">
                 {/* Phase 4: the specialist's form lists every deed of the transaction above the deed questions. */}
-                {!isParty && deeds ? <CaseStudyDeedsTable deeds={deeds} /> : null}
-                <CaseStudyMatrixTable
-                  section="deed"
-                  sectionTitle="بيانات الصك والعقار"
-                  questions={sectionQuestions.deed}
-                  answers={draft.answers}
-                  onAnswer={setAnswer}
-                  {...matrixTableProps}
-                  footer={
-                    !isParty ? (
-                      <RemarksBlock
-                        id={CASE_STUDY_DEED_REMARKS_ID}
-                        label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
-                        value={draft.deedRemarks}
-                        disabled={isFormReadOnly}
-                        invalid={Boolean(formFieldErrors.deedRemarks)}
-                        onChange={(v) => patch("deedRemarks", v)}
-                      />
-                    ) : undefined
-                  }
-                />
-                {!isParty && isLastVisibleStep ? (
-                  <SpecialistClosingCards reportModel={reportModel} />
+                {currentStep.section === CaseStudyQuestionSections.Deed && !isParty && deeds ? (
+                  <CaseStudyDeedsTable deeds={deeds} />
                 ) : null}
-              </div>
-            ) : null}
-
-            {step === 1 && sectionHasVisibleQuestions("survey") ? (
-              <div className="flex flex-col gap-3.5">
                 <CaseStudyMatrixTable
-                  section="survey"
-                  sectionTitle="الرفع المساحي والطبيعة"
-                  questions={sectionQuestions.survey}
+                  section={currentStep.section}
+                  sectionTitle={currentStep.label}
+                  questions={sectionQuestions[currentStep.section]}
                   answers={draft.answers}
                   onAnswer={setAnswer}
                   {...matrixTableProps}
-                  footer={
-                    !isParty ? (
-                      <RemarksBlock
-                        label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
-                        value={draft.surveyRemarks}
-                        disabled={isFormReadOnly}
-                        onChange={(v) => patch("surveyRemarks", v)}
-                      />
-                    ) : undefined
-                  }
+                  footer={sectionFooter(currentStep.section)}
                 />
-                {!isParty && isLastVisibleStep ? (
-                  <SpecialistClosingCards reportModel={reportModel} />
-                ) : null}
-              </div>
-            ) : null}
-
-            {step === 2 && sectionHasVisibleQuestions("comp") ? (
-              <div className="flex flex-col gap-3.5">
-                <CaseStudyMatrixTable
-                  section="comp"
-                  sectionTitle="مكونات العقار"
-                  questions={sectionQuestions.comp}
-                  answers={draft.answers}
-                  onAnswer={setAnswer}
-                  {...matrixTableProps}
-                  footer={
-                    !isParty ? (
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-text">
-                          <span className="inline-flex items-center gap-1.5 font-semibold text-text-2">
-                            <span className="whitespace-nowrap">عداد الكهرباء رقم</span>
-                            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                              <span aria-hidden="true">(</span>
-                              <Input
-                                className="w-[5.5rem] rounded-none border-0 border-b border-border-md bg-transparent px-0.5 shadow-none focus:ring-0"
-                                placeholder="رقم"
-                                aria-label="رقم العداد"
-                                value={draft.meterNumber}
-                                disabled={isFormReadOnly}
-                                onChange={(e) => patch("meterNumber", e.target.value)}
-                              />
-                              <span aria-hidden="true">)</span>
-                            </span>
-                          </span>
-                          <span className="inline-flex flex-wrap items-center gap-2">
-                            {(
-                              [
-                                ["electronic", "إلكتروني"],
-                                ["analog", "مؤرشف"],
-                                ["none", "لا يوجد"],
-                              ] as const
-                            ).map(([val, label]) => {
-                              const on = draft.meterType === val;
-                              return (
-                                <label
-                                  key={val}
-                                  className={cn(
-                                    "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors",
-                                    on
-                                      ? "border-ink bg-ink text-white"
-                                      : "border-border-md bg-surface text-text-2 hover:text-heading",
-                                    isFormReadOnly && "cursor-not-allowed opacity-50",
-                                  )}
-                                >
-                                  <input
-                                    type="radio"
-                                    name={`meter-${taskId}`}
-                                    className="sr-only"
-                                    checked={on}
-                                    disabled={isFormReadOnly}
-                                    onChange={() => {
-                                      patch("meterType", val as CaseStudyMeterType);
-                                      if (val === "none") patch("meterNumber", "");
-                                    }}
-                                  />
-                                  {label}
-                                </label>
-                              );
-                            })}
-                          </span>
-                        </div>
-                        <RemarksBlock
-                          label="ملاحظات"
-                          value={draft.componentsRemarks}
-                          disabled={isFormReadOnly}
-                          onChange={(v) => patch("componentsRemarks", v)}
-                          rows={2}
-                        />
-                      </div>
-                    ) : undefined
-                  }
-                />
-                {!isParty && isLastVisibleStep ? (
-                  <SpecialistClosingCards reportModel={reportModel} />
-                ) : null}
-              </div>
-            ) : null}
-
-            {step === 3 && sectionHasVisibleQuestions("occ") ? (
-              <div className="flex flex-col gap-3.5">
-                <CaseStudyMatrixTable
-                  section="occ"
-                  sectionTitle="الإشغال والإيجار"
-                  questions={sectionQuestions.occ}
-                  answers={draft.answers}
-                  onAnswer={setAnswer}
-                  {...matrixTableProps}
-                  footer={
-                    !isParty ? (
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-wrap items-end gap-2">
-                          <RegField
-                            id="cs-hoa"
-                            label="قيمة اشتراك اتحاد الملاك"
-                            type="number"
-                            placeholder="القيمة"
-                            value={draft.hoaFee}
-                            onChange={(v) => patch("hoaFee", v)}
-                            className="inline-block max-w-[200px]"
-                          />
-                          <span className="pb-2 text-xs text-text-2">ر.س</span>
-                        </div>
-                        <RemarksBlock
-                          label="ملاحظات"
-                          value={draft.occupancyRemarks}
-                          disabled={isFormReadOnly}
-                          onChange={(v) => patch("occupancyRemarks", v)}
-                          rows={2}
-                        />
-                      </div>
-                    ) : undefined
-                  }
-                />
-                {!isParty && isLastVisibleStep ? (
-                  <SpecialistClosingCards reportModel={reportModel} />
-                ) : null}
-              </div>
-            ) : null}
-
-            {step === 4 && sectionHasVisibleQuestions("extra") ? (
-              <div className="flex flex-col gap-3.5">
-                <CaseStudyMatrixTable
-                  section="extra"
-                  sectionTitle="ملاحظات إضافية"
-                  questions={sectionQuestions.extra}
-                  answers={draft.answers}
-                  onAnswer={setAnswer}
-                  {...matrixTableProps}
-                />
-
                 {!isParty && isLastVisibleStep ? (
                   <SpecialistClosingCards reportModel={reportModel} />
                 ) : null}

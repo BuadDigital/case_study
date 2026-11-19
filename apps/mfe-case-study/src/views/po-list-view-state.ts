@@ -9,6 +9,7 @@ import {
   poProgressPct,
   type PoListStatus,
   type PoListStatusBucket,
+  PoListStatuses,
 } from "@platform/app-shared/app-data/po-list-status";
 import type { RoleId } from "@platform/types";
 import { isCaseStudySpecialist } from "../lib/app-data/po-roles";
@@ -81,18 +82,18 @@ export function poStatusStyle(status: PoRow["status"]): {
   live: boolean;
 } {
   switch (status) {
-    case "under_study":
+    case PoListStatuses.UnderStudy:
       return { base: "var(--gold)", fg: "var(--gold-d)", live: true };
-    case "ready_for_enfaz":
+    case PoListStatuses.ReadyForEnfaz:
       return { base: "#d9a441", fg: "#b8791a", live: true };
-    case "completed":
-    case "fully_billed":
+    case PoListStatuses.Completed:
+    case PoListStatuses.FullyBilled:
       return { base: "#3f8f5f", fg: "#2f7a4d", live: false };
-    case "partially_billed":
+    case PoListStatuses.PartiallyBilled:
       return { base: "#d9a441", fg: "#b8791a", live: false };
-    case "stopped":
+    case PoListStatuses.Stopped:
       return { base: "#8a8d96", fg: "#696c75", live: false };
-    case "cancelled":
+    case PoListStatuses.Cancelled:
       return { base: "var(--red)", fg: "var(--red-text)", live: false };
     default:
       return { base: "var(--heading)", fg: "var(--heading)", live: false };

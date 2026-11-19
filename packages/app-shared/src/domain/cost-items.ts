@@ -139,15 +139,21 @@ const AREA_STRUCTURE_KINDS = new Set(["floor", "annex", "basement"]);
  * (saved as «other») and custom annexes / basements went to the extras and demanded a rationale.
  * Mirrors `CostLineItemKeys.IsAreaGroup` on the server.
  */
+export const CostGroups = {
+  Area: "area",
+  Extra: "extra",
+} as const;
+export type CostGroup = (typeof CostGroups)[keyof typeof CostGroups];
+
 export function costGroupOf(line: {
   itemKey?: string | null;
   structureKind?: string | null;
   label?: string | null;
-}): "area" | "extra" {
+}): CostGroup {
   if (line.itemKey === "custom") {
-    return AREA_STRUCTURE_KINDS.has(effectiveStructureKind(line)) ? "area" : "extra";
+    return AREA_STRUCTURE_KINDS.has(effectiveStructureKind(line)) ? CostGroups.Area : CostGroups.Extra;
   }
-  return COST_GROUP1_KEYS.has(line.itemKey ?? "") ? "area" : "extra";
+  return COST_GROUP1_KEYS.has(line.itemKey ?? "") ? CostGroups.Area : CostGroups.Extra;
 }
 
 export function costItemLabel(key: string | null | undefined): string {

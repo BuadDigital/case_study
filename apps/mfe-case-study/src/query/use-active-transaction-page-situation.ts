@@ -42,12 +42,14 @@ import {
   PARTY_TASK_RECALL_CHANGED_EVENT,
   PARTY_TASK_RECALL_HYDRATED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { Roles, Pages } from "@platform/types";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 function feesTaskKindForRole(role: RoleId): string | undefined {
-  if (role === "field-inspector") return "field-inspection";
-  if (role === "engineering-office") return "engineering-survey";
+  if (role === Roles.FieldInspector) return "field-inspection";
+  if (role === Roles.EngineeringOffice) return "engineering-survey";
   // Court-visit charges (no workflow task kind) — reviewer fees use visit ledger.
-  if (role === "government-reviewer") return "court-visit";
+  if (role === Roles.GovernmentReviewer) return "court-visit";
   return undefined;
 }
 
@@ -69,25 +71,25 @@ export function useActiveTransactionPageSituation(
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   const cardsBase = pageId ? pageSituationCards(pageId) : null;
   const cards =
-    pageId === "party-fees" && role === "engineering-office"
+    pageId === Pages.PartyFees && role === Roles.EngineeringOffice
       ? ENGINEERING_FEES_SITUATION_CARDS
       : cardsBase;
 
-  const isFeesPage = pageId === "party-fees";
-  const isSurveyPage = pageId === "active-survey";
+  const isFeesPage = pageId === Pages.PartyFees;
+  const isSurveyPage = pageId === Pages.ActiveSurvey;
   const needsTasks = Boolean(cards && !isFeesPage);
-  const needsPo = Boolean(cards && pageId !== "bourse-inquiry" && !isFeesPage);
-  const needsBourse = pageId === "bourse-inquiry";
-  const needsFailures = pageId === "bourse-inquiry";
-  const needsInspectionWorkspaces = pageId === "active-inspection";
+  const needsPo = Boolean(cards && pageId !== Pages.BourseInquiry && !isFeesPage);
+  const needsBourse = pageId === Pages.BourseInquiry;
+  const needsFailures = pageId === Pages.BourseInquiry;
+  const needsInspectionWorkspaces = pageId === Pages.ActiveInspection;
   const needsPartyPrefetch = Boolean(pageId && PARTY_PAGE_IDS.has(pageId));
 
   const isSupervisorFees =
     isFeesPage &&
-    (role === "section-supervisor" ||
-      role === "case-specialist" ||
-      role === "cdo" ||
-      role === "general-manager");
+    (role === Roles.SectionSupervisor ||
+      role === Roles.CaseSpecialist ||
+      role === Roles.Cdo ||
+      role === Roles.GeneralManager);
   const feesTaskKind =
     isFeesPage && !isSupervisorFees
       ? feesTaskKindForRole(role)
@@ -117,7 +119,7 @@ export function useActiveTransactionPageSituation(
   );
 
   const engFeesStatementsEnabled =
-    isFeesPage && role === "engineering-office" && Boolean(feesAssigneeId);
+    isFeesPage && role === Roles.EngineeringOffice && Boolean(feesAssigneeId);
   const { data: engFeeStatements = [], isFetched: engFeeStatementsFetched } =
     useQuery({
       queryKey: [
@@ -224,10 +226,10 @@ export function useActiveTransactionPageSituation(
 
     if (isFeesPage) {
       const closedStatementsPaidSar = engFeeStatements
-        .filter((s) => s.status === "closed")
+        .filter((s) => s.status === PartyBillingStatementStatuses.Closed)
         .reduce((sum, s) => sum + (Number(s.totalNetSar) || 0), 0);
       const values = ready
-        ? role === "engineering-office"
+        ? role === Roles.EngineeringOffice
           ? computeEngineeringFeesSituation(feesSummary?.rows ?? [], {
               closedStatementsPaidSar,
             })
@@ -253,13 +255,13 @@ export function useActiveTransactionPageSituation(
     });
 
     const obstructedCount =
-      pageId === "bourse-inquiry"
+      pageId === Pages.BourseInquiry
         ? pendingBourse.length -
           filterActionablePendingBourseItems(pendingBourse, failures).length
         : 0;
 
     const visiblePendingBourse =
-      pageId === "bourse-inquiry"
+      pageId === Pages.BourseInquiry
         ? filterActionablePendingBourseItems(pendingBourse, failures)
         : pendingBourse;
 

@@ -2,6 +2,7 @@ import { loadPartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case
 import { savePartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-commands";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 import { submitEngineeringSurveySubmission } from "./engineering-survey-submission-commands";
+import { CaseStudyReportStatuses } from "@platform/app-shared/app-data/case-study-report-model";
 
 type FinalizeEngineeringSurveyResult = {
   submission: EngineeringSurveySubmission;
@@ -32,10 +33,10 @@ export async function finalizeEngineeringSurveySubmission(
   const partyDraft = await loadPartyCaseStudyReportDraft(surveyTaskId);
   // Already locked on a previous attempt — leave alone; success UI is the
   // single host toast ("survey completed…"), not this side-effect.
-  if (partyDraft && partyDraft.status !== "issued") {
+  if (partyDraft && partyDraft.status !== CaseStudyReportStatuses.Issued) {
     const saved = await savePartyCaseStudyReportDraft({
       ...partyDraft,
-      status: "issued",
+      status: CaseStudyReportStatuses.Issued,
       savedAtUtc: new Date().toISOString(),
     });
     if (!saved.ok && !isPartyContributionAlreadyClosedError(saved.error)) {

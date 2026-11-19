@@ -32,6 +32,7 @@ import {
   trackingFeeRows,
   type IndividualFeesVariant,
   type TabId,
+  FeeUiStatuses,
 } from "./party-individual-fees-state";
 import { useFeeLedgerWrites } from "./useFeeLedgerWrites";
 
@@ -199,7 +200,7 @@ export function usePartyIndividualFeesWorkflow(
           label: "لدى المالية",
           count: readyRows.filter((r) => {
             const st = individualFeeUiStatus(r);
-            return st === "at_finance" || st === "listed";
+            return st === FeeUiStatuses.AtFinance || st === FeeUiStatuses.Listed;
           }).length,
         },
         {

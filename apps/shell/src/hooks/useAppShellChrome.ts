@@ -31,6 +31,7 @@ import {
   resolvePropertyWorkspaceBreadcrumb,
   type PageChrome,
 } from "@/components/views/app-shell-chrome-state";
+import { Pages } from "@platform/types";
 
 type AppShellChrome = PageChrome & {
   poChrome: ReturnType<typeof resolvePoChrome>;
@@ -100,7 +101,7 @@ export function useAppShellChrome({
 
   useEffect(() => {
     if (caseStudyTask?.poNumber) {
-      prefetchPrototypePage(queryClient, "active-case-study");
+      prefetchPrototypePage(queryClient, Pages.ActiveCaseStudy);
       prefetchPoRecord(queryClient, caseStudyTask.poNumber);
     }
   }, [queryClient, caseStudyTask?.poNumber]);
@@ -128,7 +129,7 @@ export function useAppShellChrome({
 
   const taskQuery = searchParams.get("task");
   const opsTaskDeepLink =
-    currentPage === "operations-tasks" ? taskQuery?.trim() || null : null;
+    currentPage === Pages.OperationsTasks ? taskQuery?.trim() || null : null;
   const { data: operationsTasks } = useQuery({
     queryKey: appDataKeys.operationsTasks(),
     queryFn: () => loadOperationsTasks(),

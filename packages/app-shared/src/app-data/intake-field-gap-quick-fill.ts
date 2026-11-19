@@ -15,6 +15,7 @@ import {
   type ApiOk,
   type WorkOrderPropertyDto,
   type WorkOrdersApiConfig,
+  ApiErrorKinds,
 } from "@platform/api-client";
 
 /** The only WorkOrderPropertyDto fields the quick-fill dialog is allowed to write —
@@ -135,7 +136,7 @@ export async function saveIntakeQuickFill(
   if (!order.ok) return order;
 
   const property = order.data.properties.find((p) => p.id === propertyId);
-  if (!property) return { ok: false, kind: "not_found" };
+  if (!property) return { ok: false, kind: ApiErrorKinds.NotFound };
 
   const merged: WorkOrderPropertyDto = { ...property, ...patch };
   return updateWorkOrderProperty(config, poNumber, propertyId, merged, { draft: true });

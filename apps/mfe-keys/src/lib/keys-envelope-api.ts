@@ -21,6 +21,7 @@ import {
   type PrototypeModulesResult,
   type SetKeyLocationRequest,
   type UpsertPropertyCourtAccessRequest,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { apiErrorMessage, resolveApiError, type MutationResult, } from "@platform/app-shared/app-data/work-orders-api-config";
 import {
@@ -204,7 +205,7 @@ async function writeOrQueue<TDto, TRow>({
   try {
     const result = await call(config);
     if (!result.ok) {
-      if (result.kind === "network" && userId && isOfflineFieldSession()) {
+      if (result.kind === ApiErrorKinds.Network && userId && isOfflineFieldSession()) {
         // Awaited inside the try: a failed outbox write falls through to the catch below.
         return await queue(userId);
       }
@@ -298,7 +299,7 @@ export async function loadKeyEnvelopes(): Promise<KeyEnvelopeRow[]> {
   if (config && !isBrowserOffline()) {
     const result = await listKeyEnvelopes(config);
     if (result.ok) return [...pending, ...result.data.map(mapEnvelope)];
-    if (result.kind !== "network") return pending;
+    if (result.kind !== ApiErrorKinds.Network) return pending;
   }
   const snapshot = await readKeysSnapshot();
   return [...pending, ...(snapshot?.envelopes.map(mapEnvelope) ?? [])];
@@ -317,7 +318,7 @@ export async function loadKeyEnvelope(
   if (config && !isBrowserOffline()) {
     const result = await getKeyEnvelope(config, id);
     if (result.ok) return { ok: true, data: mapEnvelope(result.data) };
-    if (result.kind !== "network") return fail(result, "تعذّر تحميل الظرف");
+    if (result.kind !== ApiErrorKinds.Network) return fail(result, "تعذّر تحميل الظرف");
   } else if (!config && !isBrowserOffline()) {
     return { ok: false, error: apiErrorMessage("auth") };
   }
@@ -352,7 +353,7 @@ export async function loadPropertyCourtAccess(
   if (config && !isBrowserOffline()) {
     const result = await listPropertyCourtAccess(config, requestNumber);
     if (result.ok) return result.data.map(mapAccess);
-    if (result.kind !== "network") return [];
+    if (result.kind !== ApiErrorKinds.Network) return [];
   }
   const key = requestNumber?.trim();
   if (!key) return [];

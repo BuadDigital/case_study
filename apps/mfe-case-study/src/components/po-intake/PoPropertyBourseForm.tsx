@@ -37,6 +37,7 @@ import type { FieldErrors } from "@platform/app-shared/registration/registration
 import { cn, FormRow, InfathSection, Label, Note, useToast } from "@platform/ui-kit";
 import { useEffect, useMemo } from "react";
 import { DISTRIBUTION_LOCKED_HINT } from "../../lib/app-data/property-distribution-lock";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 type Props = {
   property: PoPropertyIntake;
@@ -296,7 +297,7 @@ export function PoPropertyBourseForm({
                   className={pillClass(property.restrictionsPresent === opt.value)}
                   onClick={() => {
                     onPatch("restrictionsPresent", opt.value);
-                    if (opt.value !== "yes") {
+                    if (opt.value !== ChecklistAnswers.Yes) {
                       onPatch("restrictionType", "");
                       onPatch("restrictionOtherReason", "");
                     }

@@ -1,5 +1,6 @@
 import type { ValuationCostLineDto } from "@platform/api-client";
 import { costGroupOf } from "@platform/app-shared/domain/cost-items";
+import { CostGroups } from "@platform/app-shared/domain/cost-items";
 
 export const INDIRECT_COST_ITEMS: { key: string; label: string }[] = [
   { key: "design_supervision", label: "التصميم والإشراف الهندسي" },
@@ -23,7 +24,7 @@ export {
 export function buildRatioApplies(
   line: Pick<ValuationCostLineDto, "itemKey" | "structureKind" | "unit">,
 ): boolean {
-  return costGroupOf(line) === "area" && (line.unit || "sqm") === "sqm";
+  return costGroupOf(line) === CostGroups.Area && (line.unit || "sqm") === "sqm";
 }
 
 /**
@@ -62,7 +63,7 @@ export function costLineComputed(
   const base = isRepeated
     ? (firstFloor?.areaSqm ?? 0) * Math.max(0, line.repeatedFloorCount ?? 0)
     : line.areaSqm;
-  const inArea = costGroupOf(line) === "area";
+  const inArea = costGroupOf(line) === CostGroups.Area;
   const bp = line.buildRatioPct;
   const usesPct = buildRatioApplies(line);
   const qty =

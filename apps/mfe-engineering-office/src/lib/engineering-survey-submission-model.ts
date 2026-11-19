@@ -12,6 +12,8 @@ import {
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 export function notifyChanged(): void {
   dispatchPartySubmissionChanged(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT);
@@ -52,8 +54,8 @@ export function dtoToSubmission(
     deedMatchesNature: (() => {
       // Legacy payloads may still store a boolean; model is "yes" | "no" | null.
       const raw = payload.deedMatchesNature as unknown;
-      if (raw === "yes" || raw === true) return "yes";
-      if (raw === "no" || raw === false) return "no";
+      if (raw === "yes" || raw === true) return ChecklistAnswers.Yes;
+      if (raw === "no" || raw === false) return ChecklistAnswers.No;
       return null;
     })(),
     natureOnSiteAreaSqm:
@@ -126,7 +128,7 @@ export function isVisibleInEngineeringSurveyQueue(
   if (options?.showCompleted) return true;
   if (taskStatus === "completed") return false;
   const sub = loadEngineeringSurveySubmission(taskId);
-  return sub?.status !== "submitted";
+  return sub?.status !== SubmissionStatuses.Submitted;
 }
 
 export function patchChecklistRow(
@@ -141,8 +143,8 @@ export function patchChecklistRow(
 export function engineeringSurveyStatusLabel(
   status: EngineeringSurveySubmissionStatus,
 ): string {
-  if (status === "submitted") return "مُرسَل";
-  if (status === "reopened") return "معادة للتصحيح";
+  if (status === SubmissionStatuses.Submitted) return "مُرسَل";
+  if (status === SubmissionStatuses.Reopened) return "معادة للتصحيح";
   return "قيد العمل";
 }
 

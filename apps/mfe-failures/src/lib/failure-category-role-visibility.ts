@@ -1,5 +1,6 @@
 import type { RoleId } from "@platform/types";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
+import { Roles } from "@platform/types";
 
 /**
  * Visibility of failure-type categories when raising a failure.
@@ -30,8 +31,8 @@ const CATEGORY_AUDIENCE: Record<string, CategoryAudience> = {
 function roleSeesAllFailureCategories(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||
-    role === "section-supervisor" ||
-    role === "case-specialist"
+    role === Roles.SectionSupervisor ||
+    role === Roles.CaseSpecialist
   );
 }
 

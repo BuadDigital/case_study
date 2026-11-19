@@ -10,7 +10,7 @@ import type {
   ValuationCostApproachDto,
   ValuationReconciliationDto,
 } from "@platform/api-client";
-import { comparableKindFromType } from "../app-data/comparable-entry";
+import { comparableKindFromType, ComparableKinds } from "../app-data/comparable-entry";
 
 /** A figure not known yet (nothing valued, nothing recorded) is null — the card shows «—». */
 export type ValuationFigures = {
@@ -122,7 +122,7 @@ export function districtLandRates(
     if (c.isActive === false || c.isExcludedFromSuggestions) continue;
     if (norm(c.district) !== district) continue;
     if (city && norm(c.city) && norm(c.city) !== city) continue;
-    if (comparableKindFromType(c.comparablePropertyType) !== "land") continue;
+    if (comparableKindFromType(c.comparablePropertyType) !== ComparableKinds.Land) continue;
     const rate = positive(c.pricePerSqm);
     const use = comparableUse(c);
     if (!rate || (use !== RESIDENTIAL && use !== COMMERCIAL)) continue;

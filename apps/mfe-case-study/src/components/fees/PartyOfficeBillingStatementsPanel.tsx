@@ -37,31 +37,32 @@ import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
 import { statementCardFields } from "./FeeLedgerParts";
 import { todayIso, ymd as formatYmd } from "@platform/app-shared/format/date";
 import { opsLetterCard } from "../../lib/app-data/ops-tasks-tw";
+import { PartyBillingStatementStatuses, PartyBillingPayeeTypes } from "@platform/api-client";
 
 
 function statementStatusMeta(s: PartyBillingStatementDto): {
   label: string;
   style: StatusPillStyle;
 } {
-  if (s.status === "closed") {
+  if (s.status === PartyBillingStatementStatuses.Closed) {
     return {
       label: s.statusLabel || "مدفوع",
       style: { base: "#3f8f5f", fg: "#2f7a4d" },
     };
   }
-  if (s.status === "invoice_received") {
+  if (s.status === PartyBillingStatementStatuses.InvoiceReceived) {
     return {
       label: s.statusLabel || "فاتورة واردة",
       style: { base: "#d9a441", fg: "#8a5e14" },
     };
   }
-  if (s.status === "issued") {
+  if (s.status === PartyBillingStatementStatuses.Issued) {
     return {
       label: s.statusLabel || "أُرسل",
       style: { base: "#22406e", fg: "#102B4E" },
     };
   }
-  if (s.status === "cancelled") {
+  if (s.status === PartyBillingStatementStatuses.Cancelled) {
     return {
       label: s.statusLabel || "ملغى",
       style: { base: "#9ca3af", fg: "#6b7280" },
@@ -178,7 +179,7 @@ export function PartyOfficeBillingStatementsPanel({
 
   // Shared by the table row and the phone card.
   const renderPayout = (s: PartyBillingStatementDto, wrap = false) =>
-    s.status === "closed" && s.paidAtUtc ? (
+    s.status === PartyBillingStatementStatuses.Closed && s.paidAtUtc ? (
       <span className="inline-flex min-w-0 flex-col gap-px">
         <span>
           صُرف {formatYmd(s.paidAtUtc)}
@@ -247,8 +248,8 @@ export function PartyOfficeBillingStatementsPanel({
           </div>
         ))}
       </div>
-      {s.status === "issued" &&
-      s.payeeType !== "individual" ? (
+      {s.status === PartyBillingStatementStatuses.Issued &&
+      s.payeeType !== PartyBillingPayeeTypes.Individual ? (
         <div
           className="mt-3 flex flex-col gap-2 rounded border border-border bg-surface-2 p-3"
           onClick={(e) => e.stopPropagation()}
@@ -300,7 +301,7 @@ export function PartyOfficeBillingStatementsPanel({
           </button>
         </div>
       ) : null}
-      {s.status === "invoice_received" ? (
+      {s.status === PartyBillingStatementStatuses.InvoiceReceived ? (
         <div className="mt-2 text-[12px] text-text-2">
           فاتورة {s.vendorInvoiceNumber} تحت المراجعة من
           المالية
@@ -319,7 +320,7 @@ export function PartyOfficeBillingStatementsPanel({
           }
         </div>
       ) : null}
-      {s.status === "closed" &&
+      {s.status === PartyBillingStatementStatuses.Closed &&
       s.transferReceiptAttachmentId ? (
         <div className="mt-2">
           <Button

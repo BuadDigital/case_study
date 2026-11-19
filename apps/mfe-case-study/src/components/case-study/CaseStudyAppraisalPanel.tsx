@@ -17,12 +17,10 @@ import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
 import {
   CASE_STUDY_SPECIALIST_FEATURE_KEYS,
-  isInspectorWorkspaceAccepted,
   submittedInspectorAssetIsLand,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
-  type InspectorWorkspaceStatus,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
-import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
+import { useInspectionPackage } from "./useInspectionPackage";
 import {
   buildPropertyDetailPartyCards,
   type PropertyDetailPartyCard,
@@ -37,9 +35,9 @@ import {
   saveSpecialistFinishingLevel,
   specialistFinishingLevelForInspection,
 } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 import { InspectorPhotoClassification } from "../coordination/InspectorPhotoClassification";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 function relatedTaskId(
   tasks: WorkflowTask[],
   propertyId: string,
@@ -92,27 +90,14 @@ export function CaseStudyAppraisalPanel({
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   const [returnOpen, setReturnOpen] = useState(false);
-  const [inspectionPackageStatus, setInspectionPackageStatus] =
-    useState<InspectorWorkspaceStatus | null>(null);
-  const [inspectionAssetSubject, setInspectionAssetSubject] = useState("");
-  const [inspectionSnapshotLoaded, setInspectionSnapshotLoaded] =
-    useState(false);
-  const [inspectionSnapshotTaskId, setInspectionSnapshotTaskId] = useState<
-    string | null
-  >(null);
-  const [inspectionAccepted, setInspectionAccepted] = useState(false);
-  const [inspectionReloadKey, setInspectionReloadKey] = useState(0);
 
   const inspectionTask = useMemo(() => {
-    const fromParent = childTasksForCaseStudyParent(
-      caseStudyTask.id,
-      tasks,
-    ).find((t) => t.kind === "field-inspection");
+    const fromParent = childTasksForCaseStudyParent( caseStudyTask.id, tasks ).find((t) => t.kind === WorkflowTaskKinds.FieldInspection);
     if (fromParent) return fromParent;
     return (
       tasks.find(
         (t) =>
-          t.kind === "field-inspection" &&
+          t.kind === WorkflowTaskKinds.FieldInspection &&
           t.poNumber.trim() === poNumber.trim() &&
           t.propertyId === property.id,
       ) ?? null
@@ -143,66 +128,18 @@ export function CaseStudyAppraisalPanel({
     };
   }, [caseStudyTask, tasks, staffUsers, inspectionTask]);
 
-  useEffect(() => {
-    if (!inspectionTask) return;
-    let cancelled = false;
-    let requestVersion = 0;
-    const load = () => {
-      const version = ++requestVersion;
-      void loadInspectorWorkspaceSnapshot(inspectionTask.id)
-        .then((draft) => {
-          if (cancelled || version !== requestVersion) return;
-          setInspectionSnapshotTaskId(inspectionTask.id);
-          setInspectionPackageStatus(draft?.status ?? null);
-          setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
-          setInspectionSnapshotLoaded(true);
-          setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
-        })
-        .catch((error: unknown) => {
-          if (cancelled || version !== requestVersion) return;
-          setInspectionSnapshotTaskId(inspectionTask.id);
-          setInspectionPackageStatus(null);
-          setInspectionAssetSubject("");
-          setInspectionSnapshotLoaded(false);
-          setInspectionAccepted(false);
-          showToast(
-            error instanceof Error
-              ? error.message
-              : "تعذّر تحميل بيانات المعاينة",
-            "error",
-          );
-        });
-    };
-    load();
-    const onChange = () => load();
-    window.addEventListener(
-      FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-      onChange,
-    );
-    return () => {
-      cancelled = true;
-      window.removeEventListener(
-        FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-        onChange,
-      );
-    };
-  }, [inspectionTask, inspectionReloadKey, showToast]);
-
-  const inspectionSnapshotIsCurrent =
-    Boolean(inspectionTask) && inspectionSnapshotTaskId === inspectionTask?.id;
-  const currentInspectionPackageStatus = inspectionSnapshotIsCurrent
-    ? inspectionPackageStatus
-    : null;
-  const currentInspectionAssetSubject = inspectionSnapshotIsCurrent
-    ? inspectionAssetSubject
-    : "";
-  const currentInspectionSnapshotLoaded =
-    inspectionSnapshotIsCurrent && inspectionSnapshotLoaded;
-  const currentInspectionAccepted =
-    inspectionSnapshotIsCurrent && inspectionAccepted;
+  const {
+    status: currentInspectionPackageStatus,
+    assetSubject: currentInspectionAssetSubject,
+    loaded: currentInspectionSnapshotLoaded,
+    accepted: currentInspectionAccepted,
+    reloadKey: inspectionReloadKey,
+    reload: reloadInspection,
+    markAccepted: markInspectionAccepted,
+  } = useInspectionPackage(inspectionTask);
   const inspectionAssetContext = useMemo(
     () => ({
-      status: currentInspectionPackageStatus ?? "draft",
+      status: currentInspectionPackageStatus ?? SubmissionStatuses.Draft,
       assetSubject: currentInspectionAssetSubject,
       initialAssetSubject:
         property.propertyType?.trim() || property.classification?.trim() || "",
@@ -229,14 +166,14 @@ export function CaseStudyAppraisalPanel({
     saveSpecialistFinishingLevel(property.id, "");
   }, [currentInspectionSnapshotLoaded, inspectionAssetContext, property.id]);
 
-  const surveyTaskId = relatedTaskId(tasks, property.id, "engineering-survey");
+  const surveyTaskId = relatedTaskId(tasks, property.id, WorkflowTaskKinds.EngineeringSurvey);
   const engineeringAssigned = migrateDistribution(
     caseStudyTask.distribution,
   ).engineeringOffice;
   const appraisalTaskId = relatedTaskId(
     tasks,
     property.id,
-    "property-appraisal",
+    WorkflowTaskKinds.PropertyAppraisal,
   );
   const inspectionTaskId = inspectionTask?.id ?? null;
   /**
@@ -262,16 +199,16 @@ export function CaseStudyAppraisalPanel({
   const canReturnToInspector =
     mayAccept &&
     Boolean(inspectionTask) &&
-    (currentInspectionPackageStatus === "submitted" ||
-      inspectionTask?.status === "completed");
+    (currentInspectionPackageStatus === SubmissionStatuses.Submitted ||
+      inspectionTask?.status === WorkflowTaskStatuses.Completed);
 
   const studyClosed =
-    caseStudyTask.status === "completed" || Boolean(caseStudyTask.studyReportIssued);
+    caseStudyTask.status === WorkflowTaskStatuses.Completed || Boolean(caseStudyTask.studyReportIssued);
   // The study workspace (no stage) is read-only unless the inspector's inputs have arrived and
   // wait for the review — see `AppraisalReviewStage`. The coordinator's page and the work page
   // keep their own rules.
   const awaitingReview =
-    currentInspectionPackageStatus === "submitted" && !currentInspectionAccepted;
+    currentInspectionPackageStatus === SubmissionStatuses.Submitted && !currentInspectionAccepted;
   const readOnlyPage = !stage && !awaitingReview;
   // Omar 2026-11-16: the study corrects the inspector's inputs itself — before and after the
   // confirmation — until review approves the study (the lock of every other property field).
@@ -280,7 +217,7 @@ export function CaseStudyAppraisalPanel({
     stage === "study" &&
     mayAccept &&
     !studyClosed &&
-    currentInspectionPackageStatus === "submitted" &&
+    currentInspectionPackageStatus === SubmissionStatuses.Submitted &&
     reviewLockOf(caseStudyTask, getReportDraftState(property.id)) === null;
   const reviewEditable = studyCorrects || (mayAccept && stage !== "study" && !readOnlyPage);
 
@@ -296,7 +233,7 @@ export function CaseStudyAppraisalPanel({
           engineeringAssigned={engineeringAssigned}
           readOnly={
             !mayAccept ||
-            caseStudyTask.status === "completed" ||
+            caseStudyTask.status === WorkflowTaskStatuses.Completed ||
             (readOnlyPage && !currentInspectionAccepted)
           }
           readOnlyOnceDecided={readOnlyPage && currentInspectionAccepted}
@@ -333,7 +270,7 @@ export function CaseStudyAppraisalPanel({
             deedLabel={property.deedNumber}
             onClose={() => setReturnOpen(false)}
             onReturned={(result) => {
-              setInspectionReloadKey((n) => n + 1);
+              reloadInspection();
               showToast(returnInspectionSuccessMessage(result), "success");
             }}
           />
@@ -366,7 +303,7 @@ export function CaseStudyAppraisalPanel({
             editMode={reviewEditable}
             lockEditMode={reviewEditable}
             correctionOnly={studyCorrects}
-            onInspectedTypeChanged={() => setInspectionReloadKey((n) => n + 1)}
+            onInspectedTypeChanged={reloadInspection}
             specialistComponents={
               stage === "follow"
                 ? "hidden"
@@ -395,10 +332,7 @@ export function CaseStudyAppraisalPanel({
                 <></>
               )
             }
-            onSubmitted={() => {
-              setInspectionAccepted(true);
-              setInspectionReloadKey((n) => n + 1);
-            }}
+            onSubmitted={markInspectionAccepted}
           />
         ) : (
           <EmptyState

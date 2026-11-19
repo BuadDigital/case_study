@@ -21,6 +21,7 @@ import {
   visibleInspectorFeatureFields,
   type InspectorMapActor,
   type InspectorWorkspaceDraft,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { InspectorStepId } from "./InspectorStepNav";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
@@ -110,7 +111,7 @@ export function InspectorWorkspaceWizard({
   onPin,
   onUnpin,
   mapPinEpoch,
-  mapActor = "inspector",
+  mapActor = WorkspaceActors.Inspector,
   canRestoreInspectorMap = false,
   onRestoreInspectorMap,
   canAdoptEngineeringMap = false,
@@ -197,7 +198,7 @@ export function InspectorWorkspaceWizard({
   // The step reached: read once from the draft at entry, then moved by «حفظ ومتابعة» and by a
   // refused send — never while typing, so a section does not open or scroll under the inspector.
   const [activeStep, setActiveStep] = useState<InspectorStepId>(() =>
-    flat || locked || mapActor !== "inspector"
+    flat || locked || mapActor !== WorkspaceActors.Inspector
       ? 1
       : firstInspectorStepToComplete((step) =>
           inspectorWorkspaceHasBlockingErrors(stepErrorsOf(step)),
@@ -294,7 +295,7 @@ export function InspectorWorkspaceWizard({
    * regardless, so a missing «حالة منطقة العقار» surfaced only at the final «حفظ وإرسال».
    */
   function advance(from: 1 | 2) {
-    if (mapActor === "inspector") {
+    if (mapActor === WorkspaceActors.Inspector) {
       const stepErrors = stepErrorsOf(from);
       if (inspectorWorkspaceHasBlockingErrors(stepErrors)) {
         showToast(firstInspectorWorkspaceError(stepErrors) ?? "أكمل الحقول المطلوبة في هذه الخطوة", "error");

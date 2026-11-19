@@ -3,6 +3,7 @@ import { shareInFlight } from "./in-flight";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type ClientDto = {
   id: string;
@@ -43,11 +44,11 @@ export async function listClients(
   const result = await shareInFlight(`${config.token ?? ""}|${url}`, async (): Promise<ApiOk<ClientDto[]> | ApiErr> => {
     try {
       const res = await fetch(url, { headers: authHeaders(config.token) });
-      if (res.status === 401) return { ok: false, kind: "auth" };
-      if (!res.ok) return { ok: false, kind: "server" };
+      if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+      if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
       return { ok: true, data: (await res.json()) as ClientDto[] };
     } catch {
-      return { ok: false, kind: "network" };
+      return { ok: false, kind: ApiErrorKinds.Network };
     }
   });
   return result.ok ? { ok: true, data: [...result.data] } : result;
@@ -64,14 +65,14 @@ export async function createClient(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "server", errors };
+      return { ok: false, kind: ApiErrorKinds.Server, errors };
     }
     return { ok: true, data: (await res.json()) as ClientDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -87,15 +88,15 @@ export async function updateClient(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (!res.ok) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "server", errors };
+      return { ok: false, kind: ApiErrorKinds.Server, errors };
     }
     return { ok: true, data: (await res.json()) as ClientDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -112,19 +113,19 @@ export async function deactivateClient(
         headers: authHeaders(config.token),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) {
       const payload = (await res.json().catch(() => null)) as {
         message?: string;
       } | null;
       return {
         ok: false,
-        kind: "server",
+        kind: ApiErrorKinds.Server,
         message: payload?.message ?? "تعذّر تعطيل العميل",
       };
     }
     return { ok: true, data: true };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

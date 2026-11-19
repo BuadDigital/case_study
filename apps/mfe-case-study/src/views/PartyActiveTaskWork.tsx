@@ -63,6 +63,8 @@ import { PropertyPartiesRailCard } from "../components/po-intake/PropertyParties
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { AppraiserPageActions, AppraiserStudySummary } from "./AppraiserPageParts";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
+import { TaskWorkLayouts } from "./my-task-work-state";
 const LOADING_TEXT = "text-xs text-text-3";
 const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5";
 
@@ -89,7 +91,7 @@ export function PartyActiveTaskWork({
   def,
   task,
   hostRef,
-  layout = "panel",
+  layout = TaskWorkLayouts.Panel,
   appraisalExtensions,
   engineeringSurveyExtensions,
   engineeringSurveyEntry = false,
@@ -155,9 +157,9 @@ export function PartyActiveTaskWork({
   const workTabPanelRef = useRef<HTMLDivElement>(null);
   useSwapAnimation(workTabPanelRef, workTab);
 
-  const isAppraisal = def.kind === "property-appraisal";
-  const isEngineeringSurvey = def.kind === "engineering-survey";
-  const isFieldInspection = def.kind === "field-inspection";
+  const isAppraisal = def.kind === WorkflowTaskKinds.PropertyAppraisal;
+  const isEngineeringSurvey = def.kind === WorkflowTaskKinds.EngineeringSurvey;
+  const isFieldInspection = def.kind === WorkflowTaskKinds.FieldInspection;
 
   const evaluatorHostRef = useRef<PartyEvaluatorWorkHostRef>({});
   const surveyHostRef = useRef<PartyEngineeringSurveyWorkHostRef>({});
@@ -212,7 +214,7 @@ export function PartyActiveTaskWork({
     />
   );
 
-  const isFieldInspectionPage = def.kind === "field-inspection";
+  const isFieldInspectionPage = def.kind === WorkflowTaskKinds.FieldInspection;
   const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery(
     isFieldInspectionPage,
   );
@@ -385,7 +387,7 @@ export function PartyActiveTaskWork({
   if (isEngineeringSurvey) {
     const surveyLocked =
       Boolean(engineeringSurveyExtensions?.isSurveyLocked(task.id, saving)) ||
-      task.status === "completed" ||
+      task.status === WorkflowTaskStatuses.Completed ||
       submitSuccess;
 
     const surveyWork = engineeringSurveyExtensions ? (
@@ -405,7 +407,7 @@ export function PartyActiveTaskWork({
     );
 
     if (
-      layout === "page" &&
+      layout === TaskWorkLayouts.Page &&
       !engineeringSurveyEntry &&
       record &&
       surveyProperty &&
@@ -457,7 +459,7 @@ export function PartyActiveTaskWork({
   }
 
   if (recordLoading && !record) {
-    if (isAppraisal && layout === "page") {
+    if (isAppraisal && layout === TaskWorkLayouts.Page) {
       return (
         <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
           <PanelSkeleton />
@@ -479,7 +481,7 @@ export function PartyActiveTaskWork({
   }
 
   if (
-    task.status === "completed" &&
+    task.status === WorkflowTaskStatuses.Completed &&
     !isAppraisal &&
     !isFieldInspection
   ) {
@@ -548,7 +550,7 @@ export function PartyActiveTaskWork({
         hostRef={evaluatorHostRef}
         deedLabel={deedLabel}
         onBack={exit}
-        embeddedInPropertyChrome={layout === "page" && Boolean(record && property)}
+        embeddedInPropertyChrome={layout === TaskWorkLayouts.Page && Boolean(record && property)}
         studySummary={
           property ? <AppraiserStudySummary property={property} task={task} /> : undefined
         }
@@ -585,7 +587,7 @@ export function PartyActiveTaskWork({
       <InlineLoadingSkeleton className={LOADING_TEXT} />
     );
 
-    if (layout === "page" && record && property && propertyIndex >= 0) {
+    if (layout === TaskWorkLayouts.Page && record && property && propertyIndex >= 0) {
       // Omar 2026-11-10: the appraiser's page takes the work page's frame — the hero, then the
       // numbered sections with their rail (EvaluatorWindow). The page scrolls on the
       // shell's own scroller, so nothing here is a scroll container (`overflow-clip`), or the rail

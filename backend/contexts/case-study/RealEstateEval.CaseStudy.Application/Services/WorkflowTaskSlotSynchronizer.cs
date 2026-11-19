@@ -27,36 +27,52 @@ public sealed class WorkflowTaskSlotSynchronizer : IWorkflowTaskSlotSynchronizer
         _query = query;
     }
 
+    /// <summary>
+    /// The old endpoint (<c>POST /api/workflow-tasks/sync</c>): every work order, then the whole task
+    /// list. Kept for browser tabs opened before 2026-11-19 — the app no longer calls it.
+    /// </summary>
     public async Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(
         CancellationToken cancellationToken = default)
     {
- // Cache warm-up syncs can race each other on the same slot rows (xmin).
- // The competing sync writes the same derived state, so retry on a fresh
- // load and, if it still conflicts, return the current list instead of 409.
-        const int maxAttempts = 3;
-        for (var attempt = 1; attempt <= maxAttempts; attempt++)
-        {
-            var synced = await SyncOnceAsync(cancellationToken);
-            if (synced is not null) return synced;
-        }
-
+        await SyncAllAsync(cancellationToken);
         return await _query.ListAsync(cancellationToken: cancellationToken);
     }
 
-    /// <summary>Null when a concurrency conflict lost the race and the caller should retry.</summary>
-    private async Task<IReadOnlyList<WorkflowTaskDto>?> SyncOnceAsync(
+    public Task SyncAllAsync(CancellationToken cancellationToken = default) =>
+        SaveWithRetryAsync(
+            async ct =>
+            {
+                var orders = await _caseStudy.ListWorkOrdersWithPropertiesAsync(ct);
+                var poNumbers = orders.Select(o => o.PoNumber).Distinct().ToList();
+                var tracked = await _caseStudy.ListTasksForPoNumbersAsync(poNumbers, ct);
+                foreach (var order in orders)
+                    SyncPoSlots(order, tracked);
+            },
+            cancellationToken);
+
+    public Task SyncPoAsync(string poNumber, CancellationToken cancellationToken = default) =>
+        SaveWithRetryAsync(
+            async ct =>
+            {
+                var order = await _caseStudy.GetWorkOrderWithPropertiesAsync(poNumber, ct);
+                if (order is null) return;
+                SyncPoSlots(order, await _caseStudy.ListTasksForPoNumbersAsync([order.PoNumber], ct));
+            },
+            cancellationToken);
+
+ // Two syncs can race on the same slot rows (xmin). The competing sync writes the same derived
+ // state, so a lost race reloads and tries again; after three it gives up quietly — the next
+ // save of the work order, or the background sweep, aligns it.
+    private async Task SaveWithRetryAsync(
+        Func<CancellationToken, Task> align,
         CancellationToken cancellationToken)
     {
-        var orders = await _caseStudy.ListWorkOrdersWithPropertiesAsync(cancellationToken);
-
-        var poNumbers = orders.Select(o => o.PoNumber).Distinct().ToList();
-        var tracked = await _caseStudy.ListTasksForPoNumbersAsync(poNumbers, cancellationToken);
-
-        foreach (var order in orders)
-            SyncPoSlots(order, tracked);
-
-        if (!await _caseStudy.TrySaveChangesAsync(cancellationToken)) return null;
-        return await _query.ListAsync(cancellationToken: cancellationToken);
+        const int maxAttempts = 3;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            await align(cancellationToken);
+            if (await _caseStudy.TrySaveChangesAsync(cancellationToken)) return;
+        }
     }
 
     public void SyncPoSlots(WorkOrder order, List<WorkflowTask> allTasks)

@@ -10,6 +10,8 @@ import {
   listPendingBourseProperties,
   listPriorDeeds,
   workOrderExists,
+  ApiErrorKinds,
+  type ApiErrorKind,
 } from "@platform/api-client";
 import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
 import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
@@ -69,6 +71,14 @@ export async function poRecordExists(poNumber: string): Promise<boolean> {
   return result.ok ? result.data : false;
 }
 
+/** The prior-deed search failed: the sign-in, permission and connection cases, else `fallback`. */
+function throwPriorDeedError(kind: ApiErrorKind, fallback: string): never {
+  if (kind === ApiErrorKinds.Auth) throw new Error("يلزم تسجيل الدخول للبحث عن المعاملة السابقة");
+  if (kind === ApiErrorKinds.Forbidden) throw new Error("غير مصرح لك بالبحث عن تسجيل سابق لنفس الصك");
+  if (kind === ApiErrorKinds.Network) throw new Error("تعذّر الاتصال — تحقق من تشغيل الـ API");
+  throw new Error(fallback);
+}
+
 export async function findPriorDeedFull(
   deedNumber: string,
   excludePo?: string,
@@ -88,18 +98,7 @@ export async function findPriorDeedFull(
     excludePo,
     safeExcludePropertyId,
   );
-  if (!result.ok) {
-    if (result.kind === "auth") {
-      throw new Error("يلزم تسجيل الدخول للبحث عن المعاملة السابقة");
-    }
-    if (result.kind === "forbidden") {
-      throw new Error("غير مصرح لك بالبحث عن تسجيل سابق لنفس الصك");
-    }
-    if (result.kind === "network") {
-      throw new Error("تعذّر الاتصال — تحقق من تشغيل الـ API");
-    }
-    throw new Error("تعذّر البحث عن المعاملة السابقة لنفس رقم الصك");
-  }
+  if (!result.ok) throwPriorDeedError(result.kind, "تعذّر البحث عن المعاملة السابقة لنفس رقم الصك");
   return result.data;
 }
 
@@ -124,18 +123,7 @@ export async function listPriorDeedsFull(
     safeExcludePropertyId,
     take,
   );
-  if (!result.ok) {
-    if (result.kind === "auth") {
-      throw new Error("يلزم تسجيل الدخول للبحث عن المعاملة السابقة");
-    }
-    if (result.kind === "forbidden") {
-      throw new Error("غير مصرح لك بالبحث عن تسجيل سابق لنفس الصك");
-    }
-    if (result.kind === "network") {
-      throw new Error("تعذّر الاتصال — تحقق من تشغيل الـ API");
-    }
-    throw new Error("تعذّر تحميل سجل الدراسات السابقة لنفس رقم الصك");
-  }
+  if (!result.ok) throwPriorDeedError(result.kind, "تعذّر تحميل سجل الدراسات السابقة لنفس رقم الصك");
   return result.data;
 }
 
@@ -166,7 +154,7 @@ export async function getPoRecord(
   try {
     const result = await getWorkOrder(config, n);
     if (!result.ok) {
-      if (result.kind === "not_found") return null;
+      if (result.kind === ApiErrorKinds.NotFound) return null;
       const cached = await readPrefetchedPoRecord<PoIntakeRecord>(n);
       if (cached) {
         noteSnapshotFallback("po-record");
@@ -229,7 +217,7 @@ export async function hydratePoDraft(): Promise<PoIntakeDraftPayload | null> {
 
     const result = await getPoIntakeDraft(config);
     if (!result.ok) {
-      if (result.kind === "not_found") {
+      if (result.kind === ApiErrorKinds.NotFound) {
         poIntakeDraftCache.memoryDraft = null;
         return null;
       }

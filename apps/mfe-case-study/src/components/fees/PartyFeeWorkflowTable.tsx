@@ -25,6 +25,7 @@ import {
   type DiscountProposalDecision,
   type InspectorFeeAction,
   type InspectorFeeRowDto,
+  InspectorFeeBillingStatuses,
 } from "@platform/api-client";
 import { useFeeTransition } from "./useFeeLedgerWrites";
 import { FeePhoneCards, proposedDiscountText } from "./FeeLedgerParts";
@@ -184,7 +185,7 @@ function FeeRowActions({
         </Button>
       ) : null}
       {role === "supervisor" &&
-      row.billingStatus === "returned" &&
+      row.billingStatus === InspectorFeeBillingStatuses.Returned &&
       row.returnTo === "supervisor" ? (
         <>
           <Button
@@ -233,7 +234,7 @@ function FeeRowActions({
           رفع الإيقاف
         </Button>
       ) : null}
-      {role === "finance" && row.billingStatus === "disb-req" ? (
+      {role === "finance" && row.billingStatus === InspectorFeeBillingStatuses.DisbReq ? (
         <Button
           type="button"
           size="sm"
@@ -246,8 +247,8 @@ function FeeRowActions({
         </Button>
       ) : null}
       {role === "finance" &&
-      (row.billingStatus === "at-finance" ||
-        row.billingStatus === "disb-req") ? (
+      (row.billingStatus === InspectorFeeBillingStatuses.AtFinance ||
+        row.billingStatus === InspectorFeeBillingStatuses.DisbReq) ? (
         <>
           <Button
             type="button"

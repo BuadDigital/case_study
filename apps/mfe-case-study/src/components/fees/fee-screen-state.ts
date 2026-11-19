@@ -8,6 +8,7 @@ import type {
   InspectorFeeRowDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 export function deedParts(row: InspectorFeeRowDto): { deed: string; region: string } {
   const label = (row.propertyLabel || "").trim();
@@ -43,13 +44,13 @@ export function feeStatementMeta(
   label: string;
   style: StatusPillStyle;
 } {
-  if (s.status === "closed") {
+  if (s.status === PartyBillingStatementStatuses.Closed) {
     return {
       label: s.statusLabel || closedLabel,
       style: { base: "#3f8f5f", fg: "#2f7a4d" },
     };
   }
-  if (s.status === "issued" || s.status === "invoice_received") {
+  if (s.status === PartyBillingStatementStatuses.Issued || s.status === PartyBillingStatementStatuses.InvoiceReceived) {
     return {
       label: s.statusLabel || "صادر",
       style: { base: "#22406e", fg: "#102B4E" },

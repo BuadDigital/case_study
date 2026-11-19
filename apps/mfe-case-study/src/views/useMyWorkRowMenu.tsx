@@ -24,6 +24,7 @@ import {
   type PoIntakeRecord,
 } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 /**
  * The ⋮ menu of a «أعمالي» row — the same items its stage queue offers, so the stage queues can
@@ -104,7 +105,7 @@ export function useMyWorkRowMenu({
           refreshQueue: refresh,
           showToast,
           poByNumber,
-          allowPhaseRevert: task.phase !== "enfath",
+          allowPhaseRevert: task.phase !== CaseStudyTaskPhases.Enfath,
           allowDeleteTransaction: true,
           skipsBourse: property
             ? skipsBourseForIdentifier(property.identifierType)

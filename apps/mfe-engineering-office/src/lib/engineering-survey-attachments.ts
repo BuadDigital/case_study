@@ -20,6 +20,7 @@ import {
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 export type CachedEngineeringSurveyFile = {
   fileName: string;
@@ -252,7 +253,7 @@ function writeUploadedFileToDraft(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
     const latest = loadEngineeringSurveySubmission(taskId);
-    if (!latest || latest.status === "submitted") {
+    if (!latest || latest.status === SubmissionStatuses.Submitted) {
       return { ok: false as const, error: "لا يمكن تعديل الرفع بعد الإرسال." };
     }
     const dto = getCachedPartySubmission(taskId);
@@ -278,7 +279,7 @@ export async function addEngineeringSurveyExtraReport(
   if (!isPdfFile(file)) return { ok: false, error: "يُقبل ملف PDF فقط." };
   if (file.size > MAX_SURVEY_REPORT_BYTES) return { ok: false, error: "الحجم الأقصى 20 ميجابايت." };
   const current = loadEngineeringSurveySubmission(taskId);
-  if (!current || current.status === "submitted") {
+  if (!current || current.status === SubmissionStatuses.Submitted) {
     return { ok: false, error: "لا يمكن تعديل الرفع بعد الإرسال." };
   }
   if (!current.surveyReportFileName.trim()) {
@@ -302,7 +303,7 @@ export async function removeEngineeringSurveyExtraReport(
 ): Promise<boolean> {
   if (!taskId || !attachmentId) return false;
   const current = loadEngineeringSurveySubmission(taskId);
-  if (!current || current.status === "submitted") return false;
+  if (!current || current.status === SubmissionStatuses.Submitted) return false;
 
   await deleteTaskScopedAttachment(attachmentId);
   return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
@@ -343,7 +344,7 @@ export async function cacheEngineeringSurveyFile(
   }
 
   const current = loadEngineeringSurveySubmission(taskId);
-  if (!current || current.status === "submitted") {
+  if (!current || current.status === SubmissionStatuses.Submitted) {
     return { ok: false, error: "لا يمكن تعديل الرفع بعد الإرسال." };
   }
 
@@ -364,7 +365,7 @@ export async function clearEngineeringSurveyFile(
 ): Promise<boolean> {
   if (!taskId) return false;
   const current = loadEngineeringSurveySubmission(taskId);
-  if (!current || current.status === "submitted") return false;
+  if (!current || current.status === SubmissionStatuses.Submitted) return false;
 
   const meta = FIELD_META[field];
   const extras = field === "surveyReport" ? listEngineeringSurveyExtraReports(taskId) : [];

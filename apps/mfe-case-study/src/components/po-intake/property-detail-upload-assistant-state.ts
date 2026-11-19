@@ -14,21 +14,23 @@ import type {
   PropertyDetailDocumentSection,
 } from "../../lib/app-data/property-detail-documents";
 
-export type InfazIconName =
-  | "copy"
-  | "check"
-  | "download"
-  | "chevron"
-  | "paperclip"
-  | "expand"
-  | "collapse"
-  | "file"
-  | "appraisal"
-  | "map"
-  | "photo"
-  | "plan"
-  | "deed"
-  | "key";
+export const InfazIcons = {
+  Copy: "copy",
+  Check: "check",
+  Download: "download",
+  Chevron: "chevron",
+  Paperclip: "paperclip",
+  Expand: "expand",
+  Collapse: "collapse",
+  File: "file",
+  Appraisal: "appraisal",
+  Map: "map",
+  Photo: "photo",
+  Plan: "plan",
+  Deed: "deed",
+  Key: "key",
+} as const;
+export type InfazIconName = (typeof InfazIcons)[keyof typeof InfazIcons];
 
 export type CopyKey = string;
 
@@ -44,22 +46,22 @@ const COPY_PREVIEW_LENGTH = 34;
 export function attachmentIcon(item: Pick<InfathUploadAttachment, "id">): InfazIconName {
   switch (item.id) {
     case "case-study":
-      return "file";
+      return InfazIcons.File;
     case "appraisal":
-      return "appraisal";
+      return InfazIcons.Appraisal;
     case "survey":
-      return "map";
+      return InfazIcons.Map;
     case "interior-photos":
     case "exterior-photos":
-      return "photo";
+      return InfazIcons.Photo;
     case "plan":
-      return "plan";
+      return InfazIcons.Plan;
     case "deed":
-      return "deed";
+      return InfazIcons.Deed;
     case "keys-proof":
-      return "key";
+      return InfazIcons.Key;
     default:
-      return "file";
+      return InfazIcons.File;
   }
 }
 

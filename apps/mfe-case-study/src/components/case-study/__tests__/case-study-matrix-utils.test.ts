@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { answerToYn, matrixAgreement, ynToAnswer } from "../case-study-matrix-utils";
+import { ANSWER_YN, matrixAgreement } from "../case-study-matrix-utils";
 
 describe("case-study matrix utils", () => {
-  it("maps the report's answer codes to Y/N/NA and back", () => {
-    expect(answerToYn("A")).toBe("Y");
-    expect(answerToYn("B")).toBe("N");
-    expect(answerToYn("NA")).toBe("NA");
-    expect(answerToYn(null)).toBeNull();
-    expect(ynToAnswer("Y")).toBe("A");
-    expect(ynToAnswer("N")).toBe("B");
-    expect(ynToAnswer("NA")).toBe("NA");
-    expect(ynToAnswer(null)).toBeNull();
+  it("pairs the report's answer codes with Y/N/NA", () => {
+    expect(ANSWER_YN).toEqual([
+      ["A", "Y"],
+      ["B", "N"],
+      ["NA", "NA"],
+    ]);
   });
 
   it("is pending without party answers", () => {
@@ -18,11 +15,11 @@ describe("case-study matrix utils", () => {
   });
 
   it("agrees on the answer every party gave", () => {
-    expect(matrixAgreement({ MA: "Y", EN: "Y", EV: "Y" })).toEqual({ status: "consensus", consensus: "Y" });
-    expect(matrixAgreement({ EV: "NA" })).toEqual({ status: "consensus", consensus: "NA" });
+    expect(matrixAgreement({ insp: "Y", eng: "Y", val: "Y" })).toEqual({ status: "consensus", consensus: "Y" });
+    expect(matrixAgreement({ val: "NA" })).toEqual({ status: "consensus", consensus: "NA" });
   });
 
   it("is a conflict when the parties differ", () => {
-    expect(matrixAgreement({ MA: "Y", EN: "N" })).toEqual({ status: "conflict", consensus: null });
+    expect(matrixAgreement({ insp: "Y", eng: "N" })).toEqual({ status: "conflict", consensus: null });
   });
 });

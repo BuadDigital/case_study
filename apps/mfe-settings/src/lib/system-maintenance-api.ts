@@ -1,4 +1,4 @@
-import { getApiBase, repositoryFetch as fetch } from "@platform/api-client";
+import { getApiBase, repositoryFetch as fetch, ApiErrorKinds } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 
 type SystemResetResult = {
@@ -24,19 +24,19 @@ function mapResetResult(raw: Record<string, unknown>): SystemResetResult {
 
 export async function resetAllOperationalData(): Promise<ApiResult> {
   const session = getAuthSession();
-  if (!session?.token) return { ok: false, kind: "auth" };
+  if (!session?.token) return { ok: false, kind: ApiErrorKinds.Auth };
 
   try {
     const res = await fetch(`${getApiBase()}/api/system/data`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${session.token}` },
     });
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, result: mapResetResult(raw) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

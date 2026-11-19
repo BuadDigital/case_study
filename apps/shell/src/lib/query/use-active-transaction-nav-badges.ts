@@ -34,6 +34,9 @@ import {
 import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/app-data/pending-bourse-queue";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
+import { navBadgeNeeds } from "./nav-badge-needs";
+import { Roles, Pages } from "@platform/types";
+import { InspectorFeeBillingStatuses } from "@platform/api-client";
 
 const EMPTY_FAILURES: FailureRecord[] = [];
 
@@ -52,23 +55,25 @@ type ActiveTransactionNavIndicators = {
 
 /** Red sidebar counts for active transactions. */
 export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators {
-  const { role, viewerUserId, distributionAssigneeId, hasCapability } =
+  const { role, rolePages, viewerUserId, distributionAssigneeId, hasCapability } =
     useAppAccess();
   const resolvedViewerUserId = viewerUserId ?? getAuthSession()?.user.id ?? null;
-  const { data: tasks } = useWorkflowTasksQuery();
-  const { data: poRecords } = usePoRecordsQuery();
-  const { data: pendingBourse } = usePendingBourseItemsQuery();
-  const { data: failures = EMPTY_FAILURES } = useFailuresQuery();
-  const { data: staffResult } = useStaffUsersQuery();
+  const needs = useMemo(() => navBadgeNeeds(rolePages, role), [rolePages, role]);
+  const { data: tasks } = useWorkflowTasksQuery({ enabled: needs.tasks });
+  const { data: poRecords } = usePoRecordsQuery({ enabled: needs.poRecords });
+  const { data: pendingBourse } = usePendingBourseItemsQuery({ enabled: needs.pendingBourse });
+  // The failures only narrow the bourse queue.
+  const { data: failures = EMPTY_FAILURES } = useFailuresQuery({ enabled: needs.pendingBourse });
+  const { data: staffResult } = useStaffUsersQuery({ enabled: needs.staff });
   const staffUsers = useMemo(
     () => staffResult?.users ?? [],
     [staffResult?.users],
   );
 
   const isPartyFeesRole =
-    role === "field-inspector" ||
-    role === "engineering-office" ||
-    role === "government-reviewer";
+    role === Roles.FieldInspector ||
+    role === Roles.EngineeringOffice ||
+    role === Roles.GovernmentReviewer;
   const isFeesSupervisor =
     hasCapability("manage-operations") && !isPartyFeesRole;
 
@@ -81,15 +86,15 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       return isFeesSupervisor
         ? feeRows.filter(
             (r) =>
-              r.billingStatus === "sup-review" ||
-              (r.billingStatus === "returned" && r.returnTo === "supervisor") ||
-              r.billingStatus === "suspended",
+              r.billingStatus === InspectorFeeBillingStatuses.SupReview ||
+              (r.billingStatus === InspectorFeeBillingStatuses.Returned && r.returnTo === "supervisor") ||
+              r.billingStatus === InspectorFeeBillingStatuses.Suspended,
           ).length
         : feeRows.filter(
             (r) =>
               r.canSubmitToSupervisor ||
-              ((r.billingStatus === "returned" ||
-                r.billingStatus === "inquiry") &&
+              ((r.billingStatus === InspectorFeeBillingStatuses.Returned ||
+                r.billingStatus === InspectorFeeBillingStatuses.Inquiry) &&
                 r.returnTo === "office"),
           ).length;
     },
@@ -107,71 +112,59 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       }),
     staleTime: 30_000,
     select: selectFeeCount,
+    enabled: needs.fees,
   });
 
   const badgeSignature = useMemo(() => {
+    const { shown } = needs;
     const poByNumber = poRecordsMap(poRecords);
     const mine = seesAllCaseStudyWorkflowTasks(role)
       ? (tasks ?? [])
       : tasksForRole(role, tasks ?? []);
-    const partyMine = tasksForPartyAssignee(
-      role,
-      tasks ?? [],
-      undefined,
-      resolvedViewerUserId,
-      staffUsers,
-      distributionAssigneeId,
-    );
-
-    const primaryOpen = filterTasksForPrimaryData(mine, poByNumber).filter(
-      (t) =>
-        (t.status === "open" || t.status === "blocked") &&
-        !isTaskOnSuspendedProperty(t),
-    );
-
-    const bourseOpen = filterActionablePendingBourseItems(
-      pendingBourse ?? [],
-      failures,
-    );
-
-    const distributionOpen = filterTasksForDistribution(mine, poByNumber).filter(
-      (t) => t.status === "open" || t.status === "blocked",
-    );
-
-    const caseStudyOpen = filterTasksForCaseStudy(mine).filter(
-      (t) => t.status === "open" || t.status === "blocked",
-    );
-
-    const systemUploadOpen = filterTasksForSystemUpload(mine, tasks ?? []).length;
-    // A→Z 2026-11-09: a cancelled transaction was still counted (the other queues filter open/blocked).
-    const receiptOpen = filterTasksForReceipt(mine).filter(
-      (t) => t.status === "open" || t.status === "blocked",
-    ).length;
+    const openOrBlocked = (t: { status: string }) => t.status === "open" || t.status === "blocked";
 
     const parts: string[] = [];
-    const setPage = (pageId: PageId, count: number) => {
-      if (count > 0) parts.push(`${pageId}:${count}`);
+    // Only a count the sidebar shows is worked out.
+    const setPage = (pageId: PageId, count: () => number) => {
+      if (!shown.has(pageId)) return;
+      const n = count();
+      if (n > 0) parts.push(`${pageId}:${n}`);
     };
 
-    setPage("active-primary-data", primaryOpen.length);
-    setPage("bourse-inquiry", bourseOpen.length);
-    setPage("active-distribution", distributionOpen.length);
-    setPage("active-receipt", receiptOpen);
-    setPage("active-case-study", caseStudyOpen.length);
-    setPage("system-upload", systemUploadOpen);
+    setPage(
+      Pages.ActivePrimaryData,
+      () =>
+        filterTasksForPrimaryData(mine, poByNumber).filter(
+          (t) => openOrBlocked(t) && !isTaskOnSuspendedProperty(t),
+        ).length,
+    );
+    setPage(Pages.BourseInquiry, () => filterActionablePendingBourseItems(pendingBourse ?? [], failures).length);
+    setPage(Pages.ActiveDistribution, () => filterTasksForDistribution(mine, poByNumber).filter(openOrBlocked).length);
+    // A→Z 2026-11-09: a cancelled transaction was still counted (the other queues filter open/blocked).
+    setPage(Pages.ActiveReceipt, () => filterTasksForReceipt(mine).filter(openOrBlocked).length);
+    setPage(Pages.ActiveCaseStudy, () => filterTasksForCaseStudy(mine).filter(openOrBlocked).length);
+    setPage(Pages.SystemUpload, () => filterTasksForSystemUpload(mine, tasks ?? []).length);
 
-    for (const def of Object.values(PARTY_TASK_PAGES)) {
-      if (def.roleId !== role) continue;
-      setPage(
-        def.pageId,
-        listedTasksForPage(def.pageId, partyMine, poByNumber).length,
+    if (needs.staff) {
+      const partyMine = tasksForPartyAssignee(
+        role,
+        tasks ?? [],
+        undefined,
+        resolvedViewerUserId,
+        staffUsers,
+        distributionAssigneeId,
       );
+      for (const def of Object.values(PARTY_TASK_PAGES)) {
+        if (def.roleId !== role) continue;
+        setPage(def.pageId, () => listedTasksForPage(def.pageId, partyMine, poByNumber).length);
+      }
     }
 
-    setPage("party-fees", feeCount ?? 0);
+    setPage(Pages.PartyFees, () => feeCount ?? 0);
 
     return parts.join("|");
   }, [
+    needs,
     role,
     resolvedViewerUserId,
     distributionAssigneeId,

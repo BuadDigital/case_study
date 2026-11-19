@@ -20,7 +20,7 @@ import {
 } from "@platform/app-shared/domain/po-routes";
 import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
 import { reopenPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
-import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
+import { notifyTasksChanged, WorkflowTaskKinds, WorkflowTaskStatuses, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
 import { CaseStudyReportEditor } from "../components/case-study/CaseStudyReportEditor";
 import { CaseStudyAppraisalDeedsPanel } from "../components/case-study/CaseStudyAppraisalDeedsPanel";
@@ -136,9 +136,9 @@ function WorkPageBody({
       studyTask
         ? tasks.find(
             (t) =>
-              t.kind === "property-appraisal" &&
+              t.kind === WorkflowTaskKinds.PropertyAppraisal &&
               t.parentTaskId === studyTask.id &&
-              t.status !== "cancelled",
+              t.status !== WorkflowTaskStatuses.Cancelled,
           )
         : undefined,
     [studyTask, tasks],
@@ -149,7 +149,7 @@ function WorkPageBody({
       studyIssued: studyTask?.studyReportIssued === true,
       hasAppraisal: Boolean(appraisalTask),
       valuationHandedOver:
-        (appraisalTask?.appraisalPackageStatus ?? studyTask?.appraisalPackageStatus) === "submitted",
+        (appraisalTask?.appraisalPackageStatus ?? studyTask?.appraisalPackageStatus) === SubmissionStatuses.Submitted,
       reviewLock,
       draft: getReportDraftState(property.id),
     });
@@ -171,8 +171,8 @@ function WorkPageBody({
       tasks.some(
         (t) =>
           t.parentTaskId === studyTask?.id &&
-          t.kind === "field-inspection" &&
-          t.status !== "cancelled" &&
+          t.kind === WorkflowTaskKinds.FieldInspection &&
+          t.status !== WorkflowTaskStatuses.Cancelled &&
           t.packageAccepted === true,
       ),
     [studyTask, tasks],

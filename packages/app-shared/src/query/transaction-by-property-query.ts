@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getTransactionByProperty,
   type TransactionDetailDto,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { appDataKeys } from "./app-data-keys";
 import {
@@ -23,7 +24,7 @@ export function useTransactionByPropertyQuery(propertyId: string | null | undefi
       const config = requireWorkOrdersApiConfig();
       if (!property) return null;
       const result = await getTransactionByProperty(config, property);
-      if (!result.ok && result.kind === "not_found") return null;
+      if (!result.ok && result.kind === ApiErrorKinds.NotFound) return null;
       return unwrapApiResult(result, "تعذّر تحميل بيانات المعاملة");
     },
     enabled: Boolean(property),

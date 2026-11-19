@@ -60,6 +60,7 @@ import {
   reviewerStaffForAccount,
   visibleOperationsTasks,
 } from "./operations-tasks-view-state";
+import { Roles } from "@platform/types";
 
 export function useOperationsTasksData() {
   const searchParams = useSearchParams();
@@ -355,12 +356,12 @@ export function useOperationsTasksData() {
 
   /** Government reviewer only: raise failures from the task detail (button → modal). */
   const govFailureTargets = useMemo(() => {
-    if (role !== "government-reviewer" || !detail) return [];
+    if (role !== Roles.GovernmentReviewer || !detail) return [];
     return failureTargetsForOperationsTask(detail, poRecords);
   }, [role, detail, poRecords]);
 
   const showGovFailureRaise =
-    role === "government-reviewer" &&
+    role === Roles.GovernmentReviewer &&
     isAssignee &&
     Boolean(detail) &&
     detail?.status !== "cancelled" &&

@@ -4,7 +4,7 @@
  * the documents tab so the case specialist reviews it there. After upload only the specialist,
  * the appraiser and the CDO can see it — the server enforces that.
  */
-import { uploadAttachment } from "@platform/api-client";
+import { uploadAttachment, ApiErrorKinds } from "@platform/api-client";
 import { freshPrototypeModulesApiConfig } from "../../app-data/modules-api-config";
 import { fileToBase64 } from "../../media/file-encoding";
 import { VALUED_DOCUMENT_KEY, VALUED_DOCUMENT_SCOPE } from "./property-document-types";
@@ -63,7 +63,7 @@ export async function uploadValuedDocument(input: {
   });
   if (result.ok) return { ok: true };
   if (result.message) return { ok: false, error: result.message };
-  if (result.kind === "forbidden") return { ok: false, error: "لا تملك صلاحية رفع مستند ذي قيمة" };
-  if (result.kind === "network") return { ok: false, error: "تعذّر الاتصال بالخادم — حاول مجدداً" };
+  if (result.kind === ApiErrorKinds.Forbidden) return { ok: false, error: "لا تملك صلاحية رفع مستند ذي قيمة" };
+  if (result.kind === ApiErrorKinds.Network) return { ok: false, error: "تعذّر الاتصال بالخادم — حاول مجدداً" };
   return { ok: false, error: "تعذّر رفع المستند — حاول مجدداً" };
 }

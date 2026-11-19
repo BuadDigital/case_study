@@ -1,4 +1,5 @@
 import type { WorkflowTask } from "../workflow/task-types";
+import { WorkflowTaskKinds } from "../workflow/task-types";
 
 export function findSurveyChildForParent(
   parentTaskId: string,
@@ -6,7 +7,7 @@ export function findSurveyChildForParent(
   tasks: WorkflowTask[],
 ): WorkflowTask | null {
   const children = tasks.filter(
-    (t) => t.parentTaskId === parentTaskId && t.kind === "engineering-survey",
+    (t) => t.parentTaskId === parentTaskId && t.kind === WorkflowTaskKinds.EngineeringSurvey,
   );
   if (!children.length) return null;
   if (propertyId) {

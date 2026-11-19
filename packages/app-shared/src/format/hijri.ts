@@ -1,6 +1,12 @@
 import { toArabicDigits } from "@platform/ui-kit";
 import { pad2 } from "./date";
 
+export const DualCalendarKinds = {
+  Gregorian: "gregorian",
+  Hijri: "hijri",
+} as const;
+export type DualCalendarKind = (typeof DualCalendarKinds)[keyof typeof DualCalendarKinds];
+
 /**
  * Umm al-Qura Hijri ⇄ Gregorian — the one place the app reads the Hijri calendar.
  * Conversion goes through Intl (`islamic-umalqura`) on a local-noon anchor, so a

@@ -85,6 +85,7 @@ import { canAdvanceIntake } from "../../lib/app-data/po-roles";
 import { bourseDeedStatus, DEED_VITALITY_REQUIRED_ERROR, deedVitalityFromStatus } from "../my-task-work-state";
 import { useConfirmActionDialog } from "../../components/ConfirmActionDialog";
 import { useFailureRaiseModal } from "../../hooks/useFailureRaiseModal";
+import { Roles, Pages } from "@platform/types";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
@@ -613,7 +614,7 @@ export function BourseInquiryView() {
                     deedNumber={property.deedNumber?.trim() || selected.deedNumber}
                     specialist={ROLES[role]?.name ?? "أخصائي دراسة الحالة"}
                     raisedByRole={
-                      role === "section-supervisor"
+                      role === Roles.SectionSupervisor
                         ? FAILURE_RAISER_SUPERVISOR
                         : FAILURE_RAISER_SPECIALIST
                     }
@@ -677,7 +678,7 @@ export function BourseInquiryView() {
   return (
     <>
       <ActiveTransactionPageLayout
-        pageId="bourse-inquiry"
+        pageId={Pages.BourseInquiry}
         hasRail={hasRail}
         panelOpen={panelOpen}
         reserveRail={hasRail}

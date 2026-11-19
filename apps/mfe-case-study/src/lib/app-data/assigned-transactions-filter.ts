@@ -5,6 +5,7 @@ import type { RoleId } from "@platform/types";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { isCaseStudySpecialist } from "./po-roles";
 import type { WorkflowTask } from "./tasks";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 /** POs where the assignment specialist matches the signed-in user (case-study property tasks only). */
 export function filterTasksAssignedToSpecialist(
@@ -16,7 +17,7 @@ export function filterTasksAssignedToSpecialist(
   if (!name) return tasks;
 
   return tasks.filter((task) => {
-    if (task.kind !== "case-study-property") return false;
+    if (task.kind !== WorkflowTaskKinds.CaseStudyProperty) return false;
     const assigned = poByNumber.get(task.poNumber.trim())?.assignmentSpecialist?.trim();
     return assigned === name;
   });

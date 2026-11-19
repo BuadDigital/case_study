@@ -4,6 +4,7 @@ import {
   listWorkflowTasksPage,
   type WorkflowTaskListFilters,
   type WorkflowTaskListQuery,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { apiErrorMessage, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
@@ -27,6 +28,7 @@ import {
   partyAssigneeIdFromDistribution,
 } from "./tasks-model";
 import { filterCachedWorkflowTasks } from "./workflow-task-list-query";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 /**
  * The tasks of one work order only — the server filters by PO.
@@ -83,7 +85,7 @@ export async function loadWorkflowTasksForQuery(
     const result = await listWorkflowTasks(config, filters);
     if (!result.ok) {
       const cached =
-        result.kind === "network" ? await offlineFallback() : await cachedRows();
+        result.kind === ApiErrorKinds.Network ? await offlineFallback() : await cachedRows();
       if (cached) return cached;
       throw new Error(
         apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"),
@@ -134,7 +136,7 @@ export async function loadWorkflowTasksPage(
   const result = await listWorkflowTasksPage(config, query);
   if (!result.ok) {
     const page =
-      result.kind === "network" ? await offlineWorkflowTasksPage(query) : null;
+      result.kind === ApiErrorKinds.Network ? await offlineWorkflowTasksPage(query) : null;
     if (page) return page;
     throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"));
   }
@@ -151,7 +153,7 @@ export async function loadWorkflowTasksPage(
 export function poCaseTasks(list: WorkflowTask[], poNumber: string): WorkflowTask[] {
   const n = poNumber.trim();
   return list.filter(
-    (t) => t.kind === "case-study-property" && t.poNumber.trim() === n,
+    (t) => t.kind === WorkflowTaskKinds.CaseStudyProperty && t.poNumber.trim() === n,
   );
 }
 
@@ -162,16 +164,16 @@ export function caseStudyTaskForProperty(
 ): WorkflowTask | undefined {
   return list.find(
     (t) =>
-      t.kind === "case-study-property" &&
+      t.kind === WorkflowTaskKinds.CaseStudyProperty &&
       t.poNumber.trim() === poNumber.trim() &&
       t.propertyId === propertyId,
   );
 }
 
 const FAMILY_CHILD_KIND_ORDER: WorkflowTaskKind[] = [
-  "property-appraisal",
-  "field-inspection",
-  "engineering-survey",
+  WorkflowTaskKinds.PropertyAppraisal,
+  WorkflowTaskKinds.FieldInspection,
+  WorkflowTaskKinds.EngineeringSurvey,
 ];
 
 /**

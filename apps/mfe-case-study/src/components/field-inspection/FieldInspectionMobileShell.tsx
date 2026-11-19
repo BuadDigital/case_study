@@ -16,6 +16,7 @@ import {
   FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
 } from "./FieldInspectionWorkBody";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 function IconClose() {
   return (
@@ -164,7 +165,7 @@ export function FieldInspectionMobileShell({
           task={task}
           hostRef={hostRef}
           submitting={submitting}
-          layout="mobile"
+          layout={InspectorStepLayouts.Mobile}
           hideSubmitFooter
           onRegisterFailure={
             task.propertyId ? () => setFailureModalOpen(true) : undefined

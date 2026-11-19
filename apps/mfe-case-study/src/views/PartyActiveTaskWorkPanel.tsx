@@ -10,12 +10,13 @@ import type { PartyAppraisalExtensions } from "@platform/app-shared/party-apprai
 import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-survey-extensions";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "../lib/app-data/tasks";
+import { TaskWorkLayouts } from "./my-task-work-state";
 
 /** Thin wrapper at the list boundary — *Action names to satisfy Next.js conventions. */
 export function PartyActiveTaskWorkPanel({
   def,
   task,
-  layout = "panel",
+  layout = TaskWorkLayouts.Panel,
   onRefreshAction,
   onCloseAction,
   appraisalExtensions,

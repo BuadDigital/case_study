@@ -14,6 +14,7 @@ import {
   isPoListStatusTerminal,
   poListStatusMeta,
   poListStatusOptions,
+  PoListStatuses,
 } from "@platform/app-shared/app-data/po-list-status";
 import { canSeeBillingStatuses } from "@platform/app-shared/app-data/role-access";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -236,8 +237,8 @@ export function usePoListWorkflow() {
         ? "done"
         : urgent
           ? "returned"
-          : shownStatus === "under_study" ||
-              shownStatus === "ready_for_enfaz" ||
+          : shownStatus === PoListStatuses.UnderStudy ||
+              shownStatus === PoListStatuses.ReadyForEnfaz ||
               pct > 0
             ? "pending"
             : "new";

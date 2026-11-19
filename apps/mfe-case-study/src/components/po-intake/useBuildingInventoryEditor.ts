@@ -19,6 +19,7 @@ import {
   type ApiErr,
   type BuildingInventoryDto,
   type BuildingInventoryLineDto,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   loadBuildingInventoryWithOffline,
@@ -39,6 +40,7 @@ import {
   componentLinesIssue,
   emptyComponentLine,
 } from "../../lib/app-data/specialist-components";
+import { WorkspaceActors } from "@platform/app-shared/app-data/inspector-workspace-data";
 
 type BuildingInventorySaveOutcome = {
   ok: boolean;
@@ -87,7 +89,7 @@ export function useBuildingInventoryEditor(input: {
   onSaved?: (outcome: BuildingInventorySaveOutcome) => void;
 }): BuildingInventoryEditor {
   const { actor, poNumber, propertyId, taskId, disabled = false, onSaved } = input;
-  const autosave = input.autosave ?? actor === "inspector";
+  const autosave = input.autosave ?? actor === WorkspaceActors.Inspector;
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -145,16 +147,16 @@ export function useBuildingInventoryEditor(input: {
     setLoading(true);
     const config = workOrdersApiConfig();
     const res =
-      actor === "inspector"
+      actor === WorkspaceActors.Inspector
         ? await loadBuildingInventoryWithOffline(config, poNumber, propertyId)
         : config
           ? await getBuildingInventory(config, poNumber, propertyId)
-          : ({ ok: false, kind: "auth" } as ApiErr);
+          : ({ ok: false, kind: ApiErrorKinds.Auth } as ApiErr);
     if (!mountedRef.current) return;
     setLoading(false);
     if (!res.ok) {
       setLoadError(
-        actor === "inspector" ? INSPECTOR_INVENTORY_LOAD_FAILED : SPECIALIST_INVENTORY_LOAD_FAILED,
+        actor === WorkspaceActors.Inspector ? INSPECTOR_INVENTORY_LOAD_FAILED : SPECIALIST_INVENTORY_LOAD_FAILED,
       );
       return;
     }
@@ -197,13 +199,13 @@ export function useBuildingInventoryEditor(input: {
     // The report text is the specialist's: the inspector's save never carries it (omitted =
     // "keep the saved text"), even if an older server would otherwise take it.
     const request =
-      actor === "inspector" ? { lines: body } : { componentsText: sentText, lines: body };
+      actor === WorkspaceActors.Inspector ? { lines: body } : { componentsText: sentText, lines: body };
     const res =
-      actor === "inspector"
+      actor === WorkspaceActors.Inspector
         ? await saveBuildingInventoryWithOffline(config, poNumber, propertyId, request, taskId)
         : config
           ? await saveBuildingInventory(config, poNumber, propertyId, request)
-          : ({ ok: false, kind: "auth" } as ApiErr);
+          : ({ ok: false, kind: ApiErrorKinds.Auth } as ApiErr);
     if (mountedRef.current) setSaving(false);
     if (!res.ok) {
       dirtyRef.current = true;

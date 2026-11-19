@@ -3,6 +3,7 @@ import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import {
   isActiveFailureStatus,
   type FailureRecord,
+  FailureStatuses,
 } from "@platform/app-shared/failures/failures-types";
 import { failureRecordTitle } from "./failures-labels";
 import type { FailuresTab } from "./failures-list-page";
@@ -11,6 +12,7 @@ import {
   holdsSubRole,
   type StaffAccess,
 } from "@platform/app-shared/app-data/case-specialist-sub-roles";
+import { Roles } from "@platform/types";
 
 /**
  * Pure decisions behind the failures queue screen (`FailuresView` and its
@@ -19,7 +21,7 @@ import {
  */
 
 export function isCaseEditor(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "case-specialist";
+  return isSuperAdmin(role) || role === Roles.CaseSpecialist;
 }
 
 /**
@@ -44,18 +46,18 @@ export function canRevertFinalFailure(access: StaffAccess): boolean {
 }
 
 export function isSupervisor(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "section-supervisor";
+  return isSuperAdmin(role) || role === Roles.SectionSupervisor;
 }
 
 export function partyScopedFailuresEmptyLine(role: RoleId): string | null {
   switch (role) {
-    case "engineering-office":
+    case Roles.EngineeringOffice:
       return "لا توجد تعذّرات — سجّل تعذّراً من قائمة الرفع المساحي أو من تبويب التعذّرات في المعاملة.";
-    case "field-inspector":
+    case Roles.FieldInspector:
       return "لا توجد تعذّرات — سجّل تعذّراً من قائمة المعاينة الميدانية أو من تبويب التعذّرات في المعاملة.";
-    case "real-estate-appraiser":
+    case Roles.RealEstateAppraiser:
       return "لا توجد تعذّرات — سجّل تعذّراً من قائمة تقييم العقار أو من تبويب التعذّرات في المعاملة.";
-    case "government-reviewer":
+    case Roles.GovernmentReviewer:
       return "لا توجد تعذّرات — سجّل تعذّراً من تفاصيل المهمة في «المهام»، ثم تظهر هنا.";
     default:
       return null;
@@ -76,7 +78,7 @@ export const FAILURES_DEFAULT_EMPTY_LINE =
  */
 export function failuresEmptyLine(role: RoleId, tab: FailuresTab = "action"): string {
   if (tab === "final") return "لا توجد تعذّرات نهائية.";
-  if (role === "section-supervisor") return "لا توجد تعذّرات مصعّدة بانتظار اعتمادك.";
+  if (role === Roles.SectionSupervisor) return "لا توجد تعذّرات مصعّدة بانتظار اعتمادك.";
   return partyScopedFailuresEmptyLine(role) ?? FAILURES_DEFAULT_EMPTY_LINE;
 }
 
@@ -85,10 +87,10 @@ export function viewerModeNote(role: RoleId): string | null {
   if (isCaseEditor(role) || isSupervisor(role) || isPartyScopedFailuresRole(role)) {
     return null;
   }
-  if (role === "general-manager") {
+  if (role === Roles.GeneralManager) {
     return "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي";
   }
-  if (role === "cdo") return "صلاحيات كاملة — يمكنك اعتماد التعذّرات وإنشاؤها";
+  if (role === Roles.Cdo) return "صلاحيات كاملة — يمكنك اعتماد التعذّرات وإنشاؤها";
   return "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذّرات";
 }
 
@@ -119,9 +121,9 @@ export function failuresKpiStats(items: FailureRecord[]): FailuresKpiStats {
   let review = 0;
   let final = 0;
   for (const f of items) {
-    if (f.status === "internal" || f.status === "returned") withSpecialist += 1;
-    else if (f.status === "review") review += 1;
-    else if (f.status === "approved") final += 1;
+    if (f.status === FailureStatuses.Internal || f.status === FailureStatuses.Returned) withSpecialist += 1;
+    else if (f.status === FailureStatuses.Review) review += 1;
+    else if (f.status === FailureStatuses.Approved) final += 1;
   }
   return { withSpecialist, review, final };
 }
@@ -242,11 +244,11 @@ export function failureActionPermissions(
   const canSpecialistAct =
     followsUp &&
     active &&
-    (f.status === "internal" || f.status === "returned");
-  const canSupervisorAct = viewer.supervisor && active && f.status === "review";
+    (f.status === FailureStatuses.Internal || f.status === FailureStatuses.Returned);
+  const canSupervisorAct = viewer.supervisor && active && f.status === FailureStatuses.Review;
   // `status !== "approved"` is implied by canSpecialistAct; kept for parity with the screen's rule.
   const canResolve = canSpecialistAct && (f.status as string) !== "approved";
-  const canRevertFinal = Boolean(viewer.coordinator) && f.status === "approved";
+  const canRevertFinal = Boolean(viewer.coordinator) && f.status === FailureStatuses.Approved;
   return { active, canSpecialistAct, canSupervisorAct, canResolve, canRevertFinal };
 }
 
@@ -285,7 +287,7 @@ export function failureMetaRows(
       value: f.continueInstructions.trim(),
     });
   }
-  if (f.status === "review") {
+  if (f.status === FailureStatuses.Review) {
     rows.push({
       label: "أخصائي الإسناد",
       value: specialistByPo.get(f.poNumber.trim()) || "—",

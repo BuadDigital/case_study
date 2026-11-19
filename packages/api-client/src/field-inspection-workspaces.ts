@@ -3,6 +3,7 @@
  */
 import { authHeaders, getApiBase } from "./api-base";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type FieldInspectionWorkspacesApiConfig = WorkOrdersApiConfig;
 
@@ -75,11 +76,11 @@ export async function listFieldInspectionWorkspaces(
     const res = await fetch(`${base}/api/field-inspection-workspaces`, {
       headers: authHeaders(config.token, { json: false }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>[];
     return { ok: true, data: raw.map(normalizeListItem) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

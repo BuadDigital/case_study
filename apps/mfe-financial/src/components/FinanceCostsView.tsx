@@ -26,11 +26,12 @@ import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
 import { FinanceExcludedCosts } from "./FinanceExcludedCosts";
 import { FinanceCostPartiesList } from "./FinanceCostPartiesList";
 import { prefetchCostsAccountTab } from "../query/costs-account-queries";
+import { PartyBillingPayeeTypes, PartyBillingStatementStatuses } from "@platform/api-client";
 
 
 // SAR suffix without forced fractional zeros — keep local to preserve the same display.
 function AccountHeader({ party }: { party: FinanceCostParty }) {
-  const isVendor = party.payeeType === "vendor";
+  const isVendor = party.payeeType === PartyBillingPayeeTypes.Vendor;
   const dueScaled = applyCostTax(party.dueSar, party.payeeType);
   const inStScaled = applyCostTax(party.inStatementSar, party.payeeType);
   const paidScaled = applyCostTax(party.paidSar, party.payeeType);
@@ -226,7 +227,7 @@ export function FinanceCostsView({
     : "dues";
 
   const partyTabs = useMemo(() => {
-    const isVendor = activeParty?.payeeType !== "individual";
+    const isVendor = activeParty?.payeeType !== PartyBillingPayeeTypes.Individual;
     return COSTS_ACCOUNT_TABS.map((t) => ({
       id: t.id,
       label:
@@ -244,8 +245,8 @@ export function FinanceCostsView({
     let paid = 0;
     for (const s of statementsQuery.data ?? []) {
       if ((s.assigneeId?.trim() || "") !== partyKey) continue;
-      if (s.status === "closed") paid += 1;
-      else if (s.status !== "cancelled") stmts += 1;
+      if (s.status === PartyBillingStatementStatuses.Closed) paid += 1;
+      else if (s.status !== PartyBillingStatementStatuses.Cancelled) stmts += 1;
     }
     return {
       dues: due,
@@ -334,10 +335,10 @@ export function FinanceCostsView({
             {accountSection === "statements" || accountSection === "paid" ? (
               <p className={cn(opsTfNote, "mb-3.5")}>
                 {accountSection === "paid"
-                  ? headerParty.payeeType === "individual"
+                  ? headerParty.payeeType === PartyBillingPayeeTypes.Individual
                     ? "أوامر الصرف المدفوعة للأفراد — للمطابقة فقط: المعاملات وسند الصرف وإيصال التحويل."
                     : "مسيرات الصرف المدفوعة — للمطابقة فقط: المعاملات وفاتورة المورّد وسند الصرف وإيصال التحويل."
-                  : headerParty.payeeType === "individual"
+                  : headerParty.payeeType === PartyBillingPayeeTypes.Individual
                     ? "أوامر صرف قيد الإجراء للأفراد — لا فاتورة. تحتاج توثيق الدفع ورفع إيصال التحويل. اضغط أمر الصرف لعرضه."
                     : "مسيرات قيد الإجراء: «بانتظار فاتورة المورّد» · «فاتورة واردة — بانتظار المطابقة» · «مطابق — بانتظار توثيق الصرف». اضغط المسير لإكمال الإجراء."}
               </p>

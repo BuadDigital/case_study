@@ -34,6 +34,8 @@ import {
 import { EngineeringSurveyWorkBody } from "./EngineeringSurveyWorkBody";
 import { useEngineeringSurveyCommands } from "./useEngineeringSurveyCommands";
 import { useEngineeringSurveyData } from "./useEngineeringSurveyData";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+import { InspectorFeeBillingStatuses } from "@platform/api-client";
 
 /**
  * Engineering survey work panel — the tab shell around the survey body:
@@ -197,7 +199,7 @@ export function EngineeringSurveyWorkPanel({
                   <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                     <EngField label="قيمة الأتعاب" value={feeAmountLabel} />
                     <EngField label="حالة الاستحقاق">
-                      {draft.status === "submitted" || locked ? (
+                      {draft.status === SubmissionStatuses.Submitted || locked ? (
                         <EngStatusPill
                           label="مستحقة بعد الإرسال"
                           color={ENG_STATUS_COLORS.submitted}
@@ -212,12 +214,12 @@ export function EngineeringSurveyWorkPanel({
                     <EngField label="حالة الدفع">
                       <EngStatusPill
                         label={
-                          feeForTask?.billingStatus === "disbursed"
+                          feeForTask?.billingStatus === InspectorFeeBillingStatuses.Disbursed
                             ? "صُرفت"
                             : "لم تُصرف"
                         }
                         color={
-                          feeForTask?.billingStatus === "disbursed"
+                          feeForTask?.billingStatus === InspectorFeeBillingStatuses.Disbursed
                             ? ENG_STATUS_COLORS.submitted
                             : ENG_STATUS_COLORS.unpaid
                         }

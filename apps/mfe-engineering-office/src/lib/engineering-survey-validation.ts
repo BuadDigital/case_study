@@ -8,6 +8,7 @@ import { parseCoordinate } from "@platform/app-shared/domain/geo";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 import { normalizeEngineeringSurveyChecklist } from "./engineering-survey-data";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 export type EngineeringSurveyFieldErrors = Partial<
   Record<
@@ -109,7 +110,7 @@ export function validateEngineeringSurveySubmission(
     errors.longitude = "أدخل خط الطول بصيغة رقمية صحيحة";
   }
 
-  if (submission.deedMatchesNature !== "yes" && submission.deedMatchesNature !== "no") {
+  if (submission.deedMatchesNature !== ChecklistAnswers.Yes && submission.deedMatchesNature !== "no") {
     errors.deed_matches_nature = "حدد هل الصك مطابق للطبيعة";
   }
 
@@ -117,7 +118,7 @@ export function validateEngineeringSurveySubmission(
     errors.on_site_area = "المساحة الإجمالية (حسب الصك) يجب أن تكون رقماً أكبر من صفر.";
   }
 
-  if (submission.deedMatchesNature === "no" && isBadArea(submission.natureOnSiteAreaSqm)) {
+  if (submission.deedMatchesNature === ChecklistAnswers.No && isBadArea(submission.natureOnSiteAreaSqm)) {
     errors.nature_on_site_area =
       "المساحة الإجمالية (حسب الطبيعة) يجب أن تكون رقماً أكبر من صفر.";
   }

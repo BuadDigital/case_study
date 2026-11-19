@@ -1,6 +1,8 @@
+import type { SubmissionStatus } from "../workflow/task-types";
+
 /** Inspector workspace draft — replaces legacy FieldInspectionSubmission. */
 
-export type InspectorWorkspaceStatus = "draft" | "submitted" | "reopened";
+export type InspectorWorkspaceStatus = SubmissionStatus;
 
 export type InspectorBoundaryKey = "north" | "south" | "east" | "west";
 
@@ -29,6 +31,7 @@ export type InspectorBoundaryMatch = {
 
 import { jeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
 import { toLatinDigits } from "@platform/ui-kit";
+import { SubmissionStatuses } from "../workflow/task-types";
 
 export type InspectorPhotoAttachment = {
   fileName: string;
@@ -63,7 +66,11 @@ export type InspectorDefinedPhotoSlot = {
   photos: InspectorSlotPhoto[];
 };
 
-export type InspectorFreePhotoUploader = "inspector" | "specialist";
+export const WorkspaceActors = {
+  Inspector: "inspector",
+  Specialist: "specialist",
+} as const;
+export type InspectorFreePhotoUploader = (typeof WorkspaceActors)[keyof typeof WorkspaceActors];
 
 export type InspectorFreePhoto = {
   id: number;
@@ -88,7 +95,7 @@ export type InspectorFreePhoto = {
 export function inspectorFreePhotoUploader(
   photo: InspectorFreePhoto,
 ): InspectorFreePhotoUploader {
-  return photo.uploadedBy ?? "inspector";
+  return photo.uploadedBy ?? WorkspaceActors.Inspector;
 }
 
 export function canDeleteInspectorFreePhoto(
@@ -101,7 +108,7 @@ export function canDeleteInspectorFreePhoto(
 export function inspectorFreePhotoUploaderLabel(
   uploader: InspectorFreePhotoUploader,
 ): string {
-  return uploader === "specialist" ? "الأخصائي" : "المعاين";
+  return uploader === WorkspaceActors.Specialist ? "الأخصائي" : "المعاين";
 }
 
 export type InspectorFeatureField = {
@@ -252,7 +259,7 @@ export function resolvedInspectorAssetSubject(input: {
   assetSubject?: string | null;
   initialAssetSubject?: string | null;
 }): string {
-  return input.status === "submitted"
+  return input.status === SubmissionStatuses.Submitted
     ? (input.assetSubject ?? "").trim()
     : (input.initialAssetSubject ?? "").trim();
 }
@@ -1485,7 +1492,7 @@ export function createInspectorWorkspaceDraft(input: {
     freePhotos: [],
     observations: [],
     inspectionConfirmed: false,
-    status: "draft",
+    status: SubmissionStatuses.Draft,
     submittedAtUtc: null,
     completedOnSiteAtUtc: "",
     sourceFingerprint: "",
@@ -1523,7 +1530,7 @@ export function inspectionLateUploadAtUtc(
 export function isInspectorWorkspaceLocked(
   status: InspectorWorkspaceStatus,
 ): boolean {
-  return status === "submitted";
+  return status === SubmissionStatuses.Submitted;
 }
 
 export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL =
@@ -1554,7 +1561,7 @@ export function includeInspectorPhotoForReaders(
 ): boolean {
   return (
     approved ||
-    workspace.status === "submitted" ||
+    workspace.status === SubmissionStatuses.Submitted ||
     isInspectorWorkspaceAccepted(workspace)
   );
 }
@@ -1636,7 +1643,7 @@ export function isInspectorWorkspaceReviewLocked(
   draft: Pick<InspectorWorkspaceDraft, "status" | "acceptedAtUtc">,
   options?: { specialistReview?: boolean },
 ): boolean {
-  if (draft.status === "reopened") return false;
+  if (draft.status === SubmissionStatuses.Reopened) return false;
   if (options?.specialistReview) return isInspectorWorkspaceAccepted(draft);
   return isInspectorWorkspaceLocked(draft.status);
 }
@@ -1645,9 +1652,9 @@ export function inspectorWorkspaceStatusLabel(
   status: InspectorWorkspaceStatus,
   options?: { accepted?: boolean },
 ): string {
-  if (status === "submitted" && options?.accepted) return "معتمد";
-  if (status === "submitted") return "مُرسَل — بانتظار الاعتماد";
-  if (status === "reopened") return "معادة للتصحيح";
+  if (status === SubmissionStatuses.Submitted && options?.accepted) return "معتمد";
+  if (status === SubmissionStatuses.Submitted) return "مُرسَل — بانتظار الاعتماد";
+  if (status === SubmissionStatuses.Reopened) return "معادة للتصحيح";
   return "قيد العمل";
 }
 
@@ -1733,7 +1740,7 @@ export function mapPinPatchForActor(
     mapLatitude: lat,
     mapLongitude: lng,
   };
-  if (actor === "inspector" && lat && lng) {
+  if (actor === WorkspaceActors.Inspector && lat && lng) {
     patch.inspectorMapLatitude = lat;
     patch.inspectorMapLongitude = lng;
   }

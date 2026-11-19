@@ -129,3 +129,19 @@ export function deedNatureMatchRequiresNotes(
     n === DeedNatureMatchOutcomes.Impediment
   );
 }
+
+/**
+ * The match notes once the specialist adopts the inspector's suggestion: «مطابق» clears them;
+ * «فروق» adds the inspector's per-side notes (the server refuses «فروق» without notes) and keeps
+ * what the specialist already wrote.
+ */
+export function adoptedDeedMatchNotes(
+  suggested: string,
+  current: string | undefined,
+  inspectorNotes: string,
+): string {
+  if (suggested === DeedNatureMatchOutcomes.Matched) return "";
+  const existing = (current ?? "").trim();
+  if (!inspectorNotes || existing.includes(inspectorNotes)) return current ?? "";
+  return existing ? `${existing}\n${inspectorNotes}` : inspectorNotes;
+}

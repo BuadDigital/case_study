@@ -17,6 +17,7 @@ import {
   type WorkflowTaskKind,
 } from "./tasks";
 
+import { WorkflowTaskStatuses, WorkflowTaskKinds, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 export type CaseStudyTrackState =
   | typeof PropertyListRowStatuses.New
   | typeof PropertyListRowStatuses.Progress
@@ -46,7 +47,7 @@ function trackStateFromTask(
 ): CaseStudyTrackState {
   if (!spawned) return PropertyListRowStatuses.New;
   if (!child) return PropertyListRowStatuses.New;
-  if (child.status === "completed") return PropertyListRowStatuses.Done;
+  if (child.status === WorkflowTaskStatuses.Completed) return PropertyListRowStatuses.Done;
   return PropertyListRowStatuses.Progress;
 }
 
@@ -65,7 +66,7 @@ function findChild(
 
 /** Real case-study parent id — party queue rows are children and may stand in as `parent`. */
 export function caseStudyFamilyParentId(task: WorkflowTask): string {
-  if (task.kind === "case-study-property" || !task.parentTaskId) return task.id;
+  if (task.kind === WorkflowTaskKinds.CaseStudyProperty || !task.parentTaskId) return task.id;
   return task.parentTaskId;
 }
 
@@ -77,7 +78,7 @@ function partyChildrenForTracks(
     caseStudyFamilyParentId(parent),
     allTasks,
   );
-  if (parent.kind === "case-study-property") return children;
+  if (parent.kind === WorkflowTaskKinds.CaseStudyProperty) return children;
   if (children.some((t) => t.id === parent.id)) return children;
   return [parent, ...children];
 }
@@ -120,7 +121,7 @@ function distributionAssigneeId(
 }
 
 function liveChild(child: WorkflowTask | undefined): WorkflowTask | undefined {
-  if (!child || child.status === "cancelled") return undefined;
+  if (!child || child.status === WorkflowTaskStatuses.Cancelled) return undefined;
   return child;
 }
 
@@ -178,7 +179,7 @@ function isPartyTrackAssigned(input: {
   }
   if (input.trackId === "appraisal") {
     const id = (distributionAssigneeId(input.distribution, "appraisal") ?? "").trim();
-    return Boolean(id || input.parent.kind === "property-appraisal");
+    return Boolean(id || input.parent.kind === WorkflowTaskKinds.PropertyAppraisal);
   }
   if (input.trackId === "caseStudy") {
     const id = (distributionAssigneeId(input.distribution, "caseStudy") ?? "").trim();
@@ -205,7 +206,7 @@ export function buildCaseStudyTracks(
         isPartyTrackAssigned({
           trackId: "survey",
           distribution,
-          child: childOf("engineering-survey"),
+          child: childOf(WorkflowTaskKinds.EngineeringSurvey),
           parent,
         }) ||
         familyPartyFlag(parent, allTasks, "engineeringSurveyAssigned") ||
@@ -217,7 +218,7 @@ export function buildCaseStudyTracks(
       spawned: isPartyTrackAssigned({
         trackId: "inspection",
         distribution,
-        child: childOf("field-inspection"),
+        child: childOf(WorkflowTaskKinds.FieldInspection),
         parent,
       }),
     },
@@ -228,8 +229,8 @@ export function buildCaseStudyTracks(
         trackId: "appraisal",
         distribution,
         child:
-          childOf("property-appraisal") ??
-          (parent.kind === "property-appraisal" ? parent : undefined),
+          childOf(WorkflowTaskKinds.PropertyAppraisal) ??
+          (parent.kind === WorkflowTaskKinds.PropertyAppraisal ? parent : undefined),
         parent,
       }),
     },
@@ -247,9 +248,9 @@ export function buildCaseStudyTracks(
           ) ?? (parent.kind === kind ? parent : undefined));
     let state =
       kind === "parent"
-        ? parent.status === "completed" || parent.phase === "done"
+        ? parent.status === WorkflowTaskStatuses.Completed || parent.phase === CaseStudyTaskPhases.Done
           ? PropertyListRowStatuses.Done
-          : parent.phase === "case-study"
+          : parent.phase === CaseStudyTaskPhases.CaseStudy
             ? PropertyListRowStatuses.Progress
             : PropertyListRowStatuses.New
         : trackStateFromTask(child, spawned);

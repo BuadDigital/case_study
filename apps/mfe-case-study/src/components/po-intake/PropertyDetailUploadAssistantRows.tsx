@@ -16,6 +16,7 @@ import {
   infathFieldAction,
   infathFieldHasValue,
   type CopyKey,
+  InfazIcons,
 } from "./property-detail-upload-assistant-state";
 
 /**
@@ -58,11 +59,11 @@ function CopyButton({
       onClick={onClick}
     >
       {done ? (
-        <InfazIcon name="check" />
+        <InfazIcon name={InfazIcons.Check} />
       ) : file ? (
-        <InfazIcon name="download" />
+        <InfazIcon name={InfazIcons.Download} />
       ) : (
-        <InfazIcon name="copy" />
+        <InfazIcon name={InfazIcons.Copy} />
       )}
     </Button>
   );
@@ -218,7 +219,7 @@ export function InfathSectionBlock({
           </Badge>
         ) : null}
         <InfazIcon
-          name="chevron"
+          name={InfazIcons.Chevron}
           className={cn(
             "shrink-0 text-text-3 transition-transform",
             collapsed && "-rotate-90",

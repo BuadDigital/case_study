@@ -5,6 +5,7 @@ import {
   propertyAppraisalWorkspacePath,
 } from "@platform/app-shared/domain/po-routes";
 import type { WorkflowTask } from "./app-data/tasks";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 export { propertyAppraisalWorkspacePath };
 
@@ -96,16 +97,16 @@ export function favoritesTaskPath(taskId: string): string {
 /** Full-page workspace for distributed party tasks opened from all-transactions. */
 export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
   switch (task.kind) {
-    case "field-inspection": {
+    case WorkflowTaskKinds.FieldInspection: {
       const propertyId = task.propertyId?.trim();
       if (propertyId) {
         return poPropertyInspectionInputPath(task.poNumber, propertyId);
       }
       return activeInspectionWorkspacePath(task.id);
     }
-    case "engineering-survey":
+    case WorkflowTaskKinds.EngineeringSurvey:
       return activeSurveyWorkspacePath(task.id);
-    case "property-appraisal":
+    case WorkflowTaskKinds.PropertyAppraisal:
       return propertyAppraisalWorkspacePath(task.id);
     default:
       return undefined;

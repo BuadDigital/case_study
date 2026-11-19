@@ -1,4 +1,7 @@
+import type { SubmissionStatus } from "@platform/app-shared/workflow/task-types";
 import { jeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 /** Field verification checklist — 13 items (from engineering_office_screen.html). */
 export const ENGINEERING_SURVEY_CHECKLIST_ITEMS = [
@@ -24,10 +27,7 @@ export type EngineeringSurveyChecklistRow = {
   note: string;
 };
 
-export type EngineeringSurveySubmissionStatus =
-  | "draft"
-  | "submitted"
-  | "reopened";
+export type EngineeringSurveySubmissionStatus = SubmissionStatus;
 
 export type EngineeringSurveyExtraReport = {
   fileName: string;
@@ -116,9 +116,9 @@ function parseChecklistRow(raw: unknown): EngineeringSurveyChecklistRow {
   const ans = row.answer;
   const answer: ChecklistAnswer =
     ans === "yes" || ans === true
-      ? "yes"
+      ? ChecklistAnswers.Yes
       : ans === "no" || ans === false
-        ? "no"
+        ? ChecklistAnswers.No
         : null;
   return {
     answer,
@@ -178,7 +178,7 @@ export function surveyDeedBoundariesFromProperty(
   draft: EngineeringSurveySubmission,
   property: Partial<Record<SurveyDeedBoundaryKey, string>> | null | undefined,
 ): Partial<Pick<EngineeringSurveySubmission, SurveyDeedBoundaryKey>> | null {
-  if (!property || draft.status === "submitted") return null;
+  if (!property || draft.status === SubmissionStatuses.Submitted) return null;
   if (SURVEY_DEED_BOUNDARY_KEYS.some((key) => (draft[key] ?? "").trim())) return null;
   const patch: Partial<Pick<EngineeringSurveySubmission, SurveyDeedBoundaryKey>> = {};
   for (const key of SURVEY_DEED_BOUNDARY_KEYS) {
@@ -205,7 +205,7 @@ export function createEngineeringSurveyDraft(input: {
     taskId: input.taskId,
     propertyId: input.propertyId,
     poNumber: input.poNumber,
-    status: "draft",
+    status: SubmissionStatuses.Draft,
     latitude,
     longitude,
     inspectorReferenceLatitude: input.inspectorReferenceLatitude?.trim() || "",
@@ -244,5 +244,5 @@ export function createEngineeringSurveyDraft(input: {
 export function isEngineeringSurveyFormLocked(
   status: EngineeringSurveySubmissionStatus,
 ): boolean {
-  return status === "submitted";
+  return status === SubmissionStatuses.Submitted;
 }

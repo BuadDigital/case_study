@@ -1,6 +1,7 @@
 import type { PageId, RoleId } from "@platform/types";
 import { SYSTEM_FIELDS_NAV } from "./system-fields-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "./system-fields-catalog-nav";
+import { Pages } from "@platform/types";
 
 export type SystemSettingsNavItem = {
   id: PageId;
@@ -83,8 +84,8 @@ const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
     id: "admin",
     label: "لوحة الإدارة",
     items: [
-      leaf("admin-overview", "admin-panel", ADMIN_PANEL_TAB_TITLES.overview, ADMIN_OVERVIEW_ICON, ADMIN_HREF("overview")),
-      leaf("admin-accounts", "admin-panel", ADMIN_PANEL_TAB_TITLES.accounts, ADMIN_ACCOUNTS_ICON, ADMIN_HREF("accounts")),
+      leaf("admin-overview", Pages.AdminPanel, ADMIN_PANEL_TAB_TITLES.overview, ADMIN_OVERVIEW_ICON, ADMIN_HREF("overview")),
+      leaf("admin-accounts", Pages.AdminPanel, ADMIN_PANEL_TAB_TITLES.accounts, ADMIN_ACCOUNTS_ICON, ADMIN_HREF("accounts")),
     ],
   },
   {
@@ -105,9 +106,9 @@ const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
     id: "org",
     label: "المنشأة",
     items: [
-      leaf("org-data", "organization-settings", "بيانات المنشأة", ORG_ICON, ORG_HREF("company")),
-      leaf("brand", "organization-settings", "الهوية البصرية", BRAND_ICON, ORG_HREF("branding")),
-      leaf("sla", "organization-settings", "وقت التنفيذ", SLA_ICON, ORG_HREF("sla")),
+      leaf("org-data", Pages.OrganizationSettings, "بيانات المنشأة", ORG_ICON, ORG_HREF("company")),
+      leaf("brand", Pages.OrganizationSettings, "الهوية البصرية", BRAND_ICON, ORG_HREF("branding")),
+      leaf("sla", Pages.OrganizationSettings, "وقت التنفيذ", SLA_ICON, ORG_HREF("sla")),
     ],
   },
   {
@@ -123,14 +124,14 @@ const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
     items: [
       leaf(
         "pro-report",
-        "organization-settings",
+        Pages.OrganizationSettings,
         "تقرير التقييم المهني",
         REPORT_ICON,
         ORG_HREF("report"),
       ),
       leaf(
         "purposes",
-        "attachment-print-dictionary",
+        Pages.AttachmentPrintDictionary,
         "قوائم التقييم",
         LISTS_ICON,
       ),
@@ -141,9 +142,9 @@ const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
     id: "other",
     label: "أخرى",
     items: [
-      leaf("users", "users", "المستخدمون", USERS_ICON),
-      leaf("fee-pricing", "fee-pricing", "التسعيرة", PRICING_ICON),
-      leaf("audit-log", "audit-log", "سجل التدقيق", AUDIT_ICON),
+      leaf("users", Pages.Users, "المستخدمون", USERS_ICON),
+      leaf("fee-pricing", Pages.FeePricing, "التسعيرة", PRICING_ICON),
+      leaf("audit-log", Pages.AuditLog, "سجل التدقيق", AUDIT_ICON),
     ],
   },
 ];
@@ -216,7 +217,7 @@ export function isSettingsNavItemActive(
   if (item.id !== page) return false;
   const qIndex = item.href.indexOf("?");
   if (qIndex === -1) {
-    return !search.includes("tab=") || page !== "organization-settings";
+    return !search.includes("tab=") || page !== Pages.OrganizationSettings;
   }
   const want = new URLSearchParams(item.href.slice(qIndex));
   const have = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);

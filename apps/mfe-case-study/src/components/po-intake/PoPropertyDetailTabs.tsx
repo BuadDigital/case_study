@@ -63,8 +63,11 @@ import { PropertyFailureSurveyFreezeLift } from "./PropertyFailureSurveyFreezeLi
 import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 
+import { WorkflowTaskStatuses, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
+import { FailureStatuses } from "@platform/app-shared/failures/failures-types";
+import { Roles, Pages } from "@platform/types";
 /** The inspector's party page — its role picks the case-study questions shown in the inspection tab. */
-const INSPECTION_CASE_STUDY_DEF = partyTaskPageDef("active-inspection") ?? undefined;
+const INSPECTION_CASE_STUDY_DEF = partyTaskPageDef(Pages.ActiveInspection) ?? undefined;
 
 export type PoPropertyDetailInspectorWorkspace = {
   /** Active field-inspection task for this property (desktop HTML inspect-desktop). */
@@ -303,8 +306,8 @@ export function PoPropertyDetailTabs({
                     key={failure.id}
                     className={cn(
                       "mb-1.5 flex flex-col gap-2 rounded-[var(--radius-DEFAULT)] bg-surface-2 px-3.5 py-3 border-e-[3px] sm:flex-row sm:items-start sm:justify-between sm:gap-3",
-                      failure.status === "approved" ||
-                        failure.status === "resolved"
+                      failure.status === FailureStatuses.Approved ||
+                        failure.status === FailureStatuses.Resolved
                         ? "border-e-success"
                         : "border-e-warning",
                     )}
@@ -535,7 +538,7 @@ export function PoPropertyDetailTabs({
               task={task ?? null}
               studyTask={studyTask}
               reportDeeds={reportDeeds}
-              hasSurveyTask={Boolean(surveyTask && surveyTask.status !== "cancelled")}
+              hasSurveyTask={Boolean(surveyTask && surveyTask.status !== WorkflowTaskStatuses.Cancelled)}
               parties={partySubmissionsQuery.data}
               documentSections={propertyDocumentSections}
               loading={partiesLoading}
@@ -570,7 +573,7 @@ export function PoPropertyDetailTabs({
             {/* View only (Omar 2026-11-08): the send to the study is on the coordinator's page. */}
             <PropertyDetailReceiptCard
               propertyId={property.id}
-              inCaseStudyPhase={task?.phase === "case-study"}
+              inCaseStudyPhase={task?.phase === CaseStudyTaskPhases.CaseStudy}
               withAction={false}
             />
             {canHandOverToEnfaz(access) ? (
@@ -580,7 +583,7 @@ export function PoPropertyDetailTabs({
               />
             ) : null}
             <PropertyTransactionTimeline record={record} property={property} />
-            {canEditPropertyData(role) || role === "section-supervisor" || role === "general-manager" ? (
+            {canEditPropertyData(role) || role === Roles.SectionSupervisor || role === Roles.GeneralManager ? (
               <PropertyChangeLogSection propertyId={property.id} />
             ) : null}
           </div>

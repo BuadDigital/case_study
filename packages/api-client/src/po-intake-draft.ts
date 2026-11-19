@@ -1,6 +1,7 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type PoIntakeDraftDto = {
   step: number;
@@ -29,10 +30,10 @@ export async function getPoIntakeDraft(
     const res = await fetch(`${baseUrl(config)}/api/po-intake-draft/mine`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = (await res.json()) as {
       step?: number;
       poNumber?: string;
@@ -73,7 +74,7 @@ export async function getPoIntakeDraft(
       },
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -100,13 +101,13 @@ export async function savePoIntakeDraft(
         valuePremiseKey: draft.valuePremiseKey,
       }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = (await res.json()) as PoIntakeDraftDto;
     return { ok: true, data };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -118,11 +119,11 @@ export async function deletePoIntakeDraft(
       method: "DELETE",
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok && res.status !== 404) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok && res.status !== 404) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: undefined };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

@@ -5,6 +5,7 @@ import {
   type EvaluatorReportChoices,
   type EvaluatorSubmission,
 } from "./evaluator-window-data";
+import { ValuationReportDraftStatuses } from "@platform/api-client";
 
 /**
  * The report choices the case specialist owns (the print attachments, their order and slots). Mirrors the
@@ -72,7 +73,7 @@ export function reportDateForPrint(
   submission: Pick<EvaluatorSubmission, "appraisalDate" | "reportIssueDate">,
   draft: Pick<ValuationReportDraftDto, "status" | "reportDate"> | null | undefined,
 ): string {
-  if (draft?.status === "approved" && draft.reportDate?.trim()) {
+  if (draft?.status === ValuationReportDraftStatuses.Approved && draft.reportDate?.trim()) {
     return draft.reportDate.trim();
   }
   return submission.appraisalDate || submission.reportIssueDate;
@@ -88,7 +89,7 @@ export function reportDateForPrint(
 export function reportIsApproved(
   draft: Pick<ValuationReportDraftDto, "status" | "reportStage"> | null | undefined,
 ): boolean {
-  return Boolean(draft) && (draft!.status === "approved" || draft!.reportStage !== "draft");
+  return Boolean(draft) && (draft!.status === ValuationReportDraftStatuses.Approved || draft!.reportStage !== "draft");
 }
 
 /** The printed report number with its version suffix — shared with the case-study report. */

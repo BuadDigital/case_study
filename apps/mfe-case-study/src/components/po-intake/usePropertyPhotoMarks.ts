@@ -23,6 +23,7 @@ import {
   requireWorkOrdersApiConfig,
   resolveApiError,
 } from "@platform/app-shared/app-data/work-orders-api-config";
+import { CaseStudyReportStatuses } from "@platform/app-shared/app-data/case-study-report-model";
 
 /** Every press sends the whole set, so the saves of one property run one after another. */
 const markWrites = createKeyedWriteQueue();
@@ -131,7 +132,7 @@ export function usePropertyPhotoMarks({
 
   return {
     marks,
-    canEdit: canManage && !study.isLoading && study.data?.status !== "issued",
+    canEdit: canManage && !study.isLoading && study.data?.status !== CaseStudyReportStatuses.Issued,
     movablesPresent: movables.data === true,
     change,
   };

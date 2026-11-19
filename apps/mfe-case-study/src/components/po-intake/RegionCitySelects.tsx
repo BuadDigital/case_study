@@ -13,6 +13,7 @@ import {
   type SelectableCityDto,
   type SelectableDistrictDto,
   type SelectableRegionDto,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   Badge,
@@ -118,7 +119,7 @@ export function RegionCitySelects({
       if (!result.ok) {
         setRegions([]);
         setCatalogError(
-          result.kind === "auth"
+          result.kind === ApiErrorKinds.Auth
             ? "يلزم تسجيل الدخول لتحميل المناطق والمدن"
             : "تعذّر تحميل المناطق — تحقق من تشغيل الـ API",
         );
@@ -325,7 +326,7 @@ export function RegionCitySelects({
     if (!result.ok) {
       setSuggestError(
         result.message ??
-          (result.kind === "auth"
+          (result.kind === ApiErrorKinds.Auth
             ? "يلزم تسجيل الدخول"
             : "تعذّر إضافة المسمّى — حاول مرة أخرى"),
       );

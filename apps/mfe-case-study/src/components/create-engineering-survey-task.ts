@@ -8,6 +8,7 @@ import {
   type PoIntakeRecord,
 } from "../lib/app-data/po-intake-data";
 
+import { CaseStudyTaskPhases, WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 export const SURVEY_PICK_DEED_AR = "اختر أمر العمل والصك";
 export const SURVEY_DEED_NOT_FOUND_AR = "الصك غير موجود في أمر العمل";
 export const SURVEY_NO_STUDY_TASK_AR = "لا توجد معاملة دراسة حالة لهذا الصك";
@@ -18,8 +19,8 @@ export const SURVEY_OBSTRUCTED_AR = "المعاملة متعذّرة بانتظ�
 export const SURVEY_AFTER_REPORT_AR = "صدر تقرير دراسة الحالة لهذه المعاملة — أعد فتح التقرير أولاً ثم أضف المكتب الهندسي";
 
 function phaseRefusal(phase: WorkflowTask["phase"]): string {
-  if (phase === "obstruction") return SURVEY_OBSTRUCTED_AR;
-  return phase === "done" ? SURVEY_AFTER_REPORT_AR : SURVEY_BEFORE_DISTRIBUTION_AR;
+  if (phase === CaseStudyTaskPhases.Obstruction) return SURVEY_OBSTRUCTED_AR;
+  return phase === CaseStudyTaskPhases.Done ? SURVEY_AFTER_REPORT_AR : SURVEY_BEFORE_DISTRIBUTION_AR;
 }
 // The server's words: an open survey and a delivered one both count — only a cancelled one does not.
 export const SURVEY_ALREADY_LIVE_AR = "يوجد رفع مساحي على هذا العقار";
@@ -69,19 +70,19 @@ export function engineeringSurveyTarget(input: {
 
   const studies = input.tasks.filter(
     (t) =>
-      t.kind === "case-study-property" &&
+      t.kind === WorkflowTaskKinds.CaseStudyProperty &&
       t.propertyId === property.id &&
-      t.status !== "cancelled",
+      t.status !== WorkflowTaskStatuses.Cancelled,
   );
-  const parent = studies.find((t) => t.phase === "case-study") ?? studies[0];
+  const parent = studies.find((t) => t.phase === CaseStudyTaskPhases.CaseStudy) ?? studies[0];
   if (!parent) return { ok: false, error: SURVEY_NO_STUDY_TASK_AR };
-  if (parent.phase !== "case-study") return { ok: false, error: phaseRefusal(parent.phase) };
+  if (parent.phase !== CaseStudyTaskPhases.CaseStudy) return { ok: false, error: phaseRefusal(parent.phase) };
 
   const live = input.tasks.some(
     (t) =>
-      t.kind === "engineering-survey" &&
+      t.kind === WorkflowTaskKinds.EngineeringSurvey &&
       t.parentTaskId === parent.id &&
-      t.status !== "cancelled",
+      t.status !== WorkflowTaskStatuses.Cancelled,
   );
   if (live) return { ok: false, error: SURVEY_ALREADY_LIVE_AR };
 

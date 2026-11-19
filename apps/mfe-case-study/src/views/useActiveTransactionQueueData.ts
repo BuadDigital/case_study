@@ -68,6 +68,7 @@ import {
   resolveQueueLayoutFlags,
   type ActiveTransactionQueueConfig,
 } from "./active-transaction-queue-state";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
 /* Stable empty refs for loading — a fresh `[]` each render invalidates every useMemo
@@ -273,7 +274,7 @@ export function useActiveTransactionQueueData({
       ? listed.map((t) => t.propertyId)
       : // Only issued, not handed-over studies have a draft to read (the batch read caps at 200 ids).
         listed
-          .filter((t) => t.kind === "case-study-property" && t.studyReportIssued && !t.propertyHandedOverToEnfaz)
+          .filter((t) => t.kind === WorkflowTaskKinds.CaseStudyProperty && t.studyReportIssued && !t.propertyHandedOverToEnfaz)
           .map((t) => t.propertyId),
     isPropertyAppraisalTable || tracksProgress,
   );
@@ -303,7 +304,7 @@ export function useActiveTransactionQueueData({
     const byId = new Map(all.map((t) => [t.id, t]));
     // The row may stand on a party task (its latest stage) — progress is read on its case-study parent.
     const progressOf = (task: WorkflowTask) => {
-      const parent = task.kind === "case-study-property" ? task : byId.get(task.parentTaskId ?? "");
+      const parent = task.kind === WorkflowTaskKinds.CaseStudyProperty ? task : byId.get(task.parentTaskId ?? "");
       // «جميع العقارات» (Omar 2026-11-15): the uploaded and the cancelled stay listed, as closed rows.
       return parent
         ? (transactionProgress(parent, all, getReportDraftState) ?? closedTransactionProgress(parent))

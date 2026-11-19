@@ -12,6 +12,7 @@ import { Button, Note, cn, opsPanelCard, useToast } from "@platform/ui-kit";
 import { canFormallyReceive } from "../../lib/app-data/po-roles";
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
 import { beatTransactionWork, workMarkerLine } from "../../lib/app-data/transaction-work-marker";
+import { Roles } from "@platform/types";
 
 /**
  * The property rail's coordination card (ruling 2026-11-02): «إرسال المعاملة للدراسة» while the
@@ -45,7 +46,7 @@ export function PropertyDetailReceiptCard({
   const [refusal, setRefusal] = useState<string | null>(null);
 
   const transactionId = transaction?.id ?? null;
-  const isSpecialist = access.role === "case-specialist";
+  const isSpecialist = access.role === Roles.CaseSpecialist;
   useEffect(() => {
     if (isSpecialist) beatTransactionWork(transactionId);
   }, [isSpecialist, transactionId]);

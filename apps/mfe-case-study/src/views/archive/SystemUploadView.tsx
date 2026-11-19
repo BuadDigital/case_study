@@ -12,14 +12,16 @@ import {
   systemUploadPath,
 } from "../../lib/my-task-routes";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
+import { Pages } from "@platform/types";
+import { ActiveTransactionQueueTableLayouts } from "../active-transaction-queue-state";
 
 export function SystemUploadView() {
   const config = useMemo(
     (): ActiveTransactionQueueConfig => ({
-      pageId: "system-upload",
+      pageId: Pages.SystemUpload,
       pageTitle: "الرفع على النظام",
       hidePageTitle: true,
-      tableLayout: "case-study",
+      tableLayout: ActiveTransactionQueueTableLayouts.CaseStudy,
       emptyLine: "لا توجد عقارات جاهزة للرفع.",
       emptyHint:
         "تظهر هنا فقط العقارات التي صدر تقرير دراسة حالتها وأُودع تقرير تقييمها. اضغط الصف لفتح تبويب حزمة الرفع/إنفاذ.",

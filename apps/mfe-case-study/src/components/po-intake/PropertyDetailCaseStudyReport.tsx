@@ -40,6 +40,7 @@ import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { EmptyState, InfoBox } from "./PropertyDetailFields";
 import { PARTY_CASE_STUDY_REPORT_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
+import { CaseStudyQuestionSections } from "@platform/app-shared/domain/case-study/question-catalog";
 const SECTION_AR_NUMS: Record<CaseStudyQuestionSection, string> = {
   deed: "1",
   survey: "2",
@@ -49,8 +50,8 @@ const SECTION_AR_NUMS: Record<CaseStudyQuestionSection, string> = {
 };
 
 const REMARKS_SECTIONS: ReadonlySet<CaseStudyQuestionSection> = new Set([
-  "deed",
-  "survey",
+  CaseStudyQuestionSections.Deed,
+  CaseStudyQuestionSections.Survey,
 ]);
 
 const CheckMark = () => (
@@ -264,7 +265,7 @@ function CaseStudySectionAccordion({
                   </td>
                 </tr>
               ))}
-              {section.id !== "extra" ? (
+              {section.id !== CaseStudyQuestionSections.Extra ? (
                 <tr>
                   <td
                     colSpan={3}

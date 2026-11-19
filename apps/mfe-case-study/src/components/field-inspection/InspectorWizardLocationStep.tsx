@@ -13,6 +13,7 @@ import {
   type InspectorFeatureField,
   type InspectorMapActor,
   type InspectorWorkspaceDraft,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE,
@@ -51,6 +52,7 @@ import {
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 /**
  * Desktop wizard step 1: the map card (pin, coordinates, GPS, undo, date/time), the transaction's
@@ -142,7 +144,7 @@ export function InspectorWizardLocationStep({
     <>
       <InsCard title="تحديد موقع العقار" step={1}>
         <div id="ins-map-section">
-        {editable && mapActor === "inspector" ? (
+        {editable && mapActor === WorkspaceActors.Inspector ? (
           <>
             <InspectorCopyPriorButton taskId={draft.taskId} className="mb-3" onApply={onPatch} />
             <InspectorGpsButton className="mb-3" onCoords={onMapMove} />
@@ -160,7 +162,7 @@ export function InspectorWizardLocationStep({
               offlineHint="الخريطة تحتاج اتصالاً بالشبكة. سجّل موقع العقار الآن بزر «تحديد موقعي الحالي» — يعمل دون اتصال، وتظهر الخريطة تلقائياً عند عودة الشبكة."
               interactive={editable && !mapPinned}
               pinLabel={
-                mapPinned && mapActor === "specialist"
+                mapPinned && mapActor === WorkspaceActors.Specialist
                   ? "الموقع المعتمد"
                   : undefined
               }
@@ -313,7 +315,7 @@ export function InspectorWizardLocationStep({
             // Case staff change the type of a sent inspection in this field (Omar 2026-11-16 — the
             // review routes it to its own command); before the inspector sends, it is his.
             readOnlyFeatureKeys={
-              serviceProofFromTransactionPhotos && draft.status !== "submitted"
+              serviceProofFromTransactionPhotos && draft.status !== SubmissionStatuses.Submitted
                 ? ["assetSubject"]
                 : []
             }
@@ -377,7 +379,7 @@ export function InspectorWizardLocationStep({
           <InspectorPropertyPhotosSection
             draft={draft}
             disabled={!editable}
-            actor={serviceProofFromTransactionPhotos ? "specialist" : "inspector"}
+            actor={serviceProofFromTransactionPhotos ? WorkspaceActors.Specialist : WorkspaceActors.Inspector}
             isLand={isLand}
             onPatch={onPatch}
           />

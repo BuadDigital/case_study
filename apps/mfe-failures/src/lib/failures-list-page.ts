@@ -5,6 +5,8 @@ import type {
 } from "@platform/app-shared/failures/failures-types";
 import type { RoleId } from "@platform/types";
 import { failureListStatusLabel, failureRecordTitle } from "./failures-labels";
+import { Roles } from "@platform/types";
+import { FailureStatuses } from "@platform/app-shared/failures/failures-types";
 
 /** Same window as the PO list — the pagination contract pages the failures queue. */
 export const FAILURES_PAGE_SIZE = 10;
@@ -29,9 +31,9 @@ export function failuresTabStatuses(
   tab: FailuresTab,
   role: RoleId,
 ): readonly FailureStatus[] {
-  if (tab === "final") return ["approved"];
-  if (role === "section-supervisor") return ["review"];
-  return ["internal", "returned", "review"];
+  if (tab === "final") return [FailureStatuses.Approved];
+  if (role === Roles.SectionSupervisor) return [FailureStatuses.Review];
+  return [FailureStatuses.Internal, FailureStatuses.Returned, FailureStatuses.Review];
 }
 
 /**

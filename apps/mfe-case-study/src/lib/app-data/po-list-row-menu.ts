@@ -1,6 +1,7 @@
 import type { RowMoreMenuItem } from "@platform/ui-kit";
 import type { PoListStatus } from "@platform/app-shared/app-data/po-list-status";
 import { poHeaderEditPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
+import { PoListStatuses } from "@platform/app-shared/app-data/po-list-status";
 
 export function buildPoListRowMoreItems(options: {
   poNumber: string;
@@ -51,7 +52,7 @@ export function buildPoListRowMoreItems(options: {
     });
   }
 
-  const cancelled = options.status === "cancelled";
+  const cancelled = options.status === PoListStatuses.Cancelled;
   if (options.showCancel) {
     items.push({
       id: "cancel-po",
@@ -63,7 +64,7 @@ export function buildPoListRowMoreItems(options: {
   }
 
   if (options.showLifecycleActions) {
-    const stopped = options.status === "stopped";
+    const stopped = options.status === PoListStatuses.Stopped;
     items.push({
       id: "stop-po",
       label: options.lifecycleBusy ? "جاري الإيقاف..." : "إيقاف أمر العمل",
