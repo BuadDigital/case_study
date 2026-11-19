@@ -5,6 +5,14 @@ namespace RealEstateEval.Application.Abstractions;
 public interface IValuationRequestService
 {
     Task<IReadOnlyList<ValuationRequestDto>> ListAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// The requests a page at a time, newest first, with the total — the map overlay reads every page
+    /// (2026-11-19: <see cref="ListAsync"/> stops at 500 and said nothing of the rest).
+    /// </summary>
+    Task<PagedResultDto<ValuationRequestDto>> ListPagedAsync(
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken = default);
     Task<ValuationRequestDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
     /// <summary>The property's open valuation request — its own, or the holder deed's when it was folded.</summary>
     /// <remarks>

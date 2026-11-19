@@ -16,6 +16,12 @@ public sealed class HttpValuationRequestService(
     public Task<IReadOnlyList<ValuationRequestDto>> ListAsync(CancellationToken cancellationToken = default) =>
         throw new InvalidOperationException("List valuation requests on the Valuation API.");
 
+    public Task<PagedResultDto<ValuationRequestDto>> ListPagedAsync(
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken = default) =>
+        throw new InvalidOperationException("List valuation requests on the Valuation API.");
+
     public Task<ValuationRequestDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         UpstreamJson.GetOrDefaultAsync<ValuationRequestDto>(
             http,

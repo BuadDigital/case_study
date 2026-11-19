@@ -88,25 +88,39 @@ public class WorkOrdersController : ControllerBase
         return Ok(await _workOrders.CountsAsync(query, actor, cancellationToken));
     }
 
+    /// <summary>
+    /// Every work order with its details. With <c>page</c> / <c>pageSize</c> it answers a page and the
+    /// total (the browser reads every page); without them, the first 500 as before (2026-11-19).
+    /// </summary>
     [HttpGet("details")]
     [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
-    public async Task<ActionResult<IReadOnlyList<WorkOrderDto>>> ListDetails(
+    public async Task<IActionResult> ListDetails(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
-        return Ok(await _workOrders.ListDetailsAsync(
-            await ActorAsync(cancellationToken),
-            cancellationToken));
+        var actor = await ActorAsync(cancellationToken);
+        if (page.HasValue || pageSize.HasValue)
+            return Ok(await _workOrders.ListDetailsPagedAsync(page, pageSize, actor, cancellationToken));
+        return Ok(await _workOrders.ListDetailsAsync(actor, cancellationToken));
     }
 
+    /// <summary>
+    /// The property rows. With <c>page</c> / <c>pageSize</c> a page of work orders (one row per deed)
+    /// and the work orders' total; without them, the first 500 work orders as before (2026-11-19).
+    /// </summary>
     [HttpGet("property-rows")]
     [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
-    public async Task<ActionResult<IReadOnlyList<PropertyListItemDto>>> ListPropertyRows(
+    public async Task<IActionResult> ListPropertyRows(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "private, max-age=60";
-        return Ok(await _workOrders.ListPropertyListItemsAsync(
-            await ActorAsync(cancellationToken),
-            cancellationToken));
+        var actor = await ActorAsync(cancellationToken);
+        if (page.HasValue || pageSize.HasValue)
+            return Ok(await _workOrders.ListPropertyListItemsPagedAsync(page, pageSize, actor, cancellationToken));
+        return Ok(await _workOrders.ListPropertyListItemsAsync(actor, cancellationToken));
     }
 
     [HttpGet("exists")]
@@ -118,11 +132,16 @@ public class WorkOrdersController : ControllerBase
         return Ok(await _workOrders.ExistsAsync(poNumber, cancellationToken));
     }
 
+    /// <summary>The deeds waiting on the bourse inquiry — paged like <see cref="ListDetails"/>.</summary>
     [HttpGet("properties/pending-bourse")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
-    public async Task<ActionResult<IReadOnlyList<PendingBoursePropertyDto>>> ListPendingBourse(
+    public async Task<IActionResult> ListPendingBourse(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
+        if (page.HasValue || pageSize.HasValue)
+            return Ok(await _workOrders.ListPendingBoursePagedAsync(page, pageSize, cancellationToken));
         return Ok(await _workOrders.ListPendingBourseAsync(cancellationToken));
     }
 

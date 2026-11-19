@@ -841,6 +841,9 @@ public class TransactionStateEnfazTests
         public Task<IReadOnlyList<ValuationRequestDto>> ListAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<PagedResultDto<ValuationRequestDto>> ListPagedAsync(int? page, int? pageSize, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<ValuationRequestDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 

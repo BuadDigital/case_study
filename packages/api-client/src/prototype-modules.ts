@@ -4,6 +4,7 @@ import { mergeHeaderRecords } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { parseJson } from "./parse-json";
+import { fetchAllListPages } from "./pagination";
 
 export type PrototypeModulesApiConfig = {
   baseUrl?: string;
@@ -141,30 +142,14 @@ export type ValuationRequestDto = {
   mergedIntoRequestId?: string | null;
 };
 
-async function fetchValuationRequestList(
-  config: PrototypeModulesApiConfig,
-  path: string,
-): Promise<PrototypeModulesResult<ValuationRequestDto[]>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}${path}`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = await parseJson<ValuationRequestDto[]>(res);
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-/** Case-staff readable overlay for the property map (not the operator queue). */
+/**
+ * Case-staff readable overlay for the property map (not the operator queue), every page: the
+ * unpaged read stopped at the newest 500 requests (2026-11-19).
+ */
 export async function listValuationRequestMapOverlay(
   config: PrototypeModulesApiConfig,
 ): Promise<PrototypeModulesResult<ValuationRequestDto[]>> {
-  return fetchValuationRequestList(config, "/api/valuation-requests/map-overlay");
+  return fetchAllListPages<ValuationRequestDto>(config, "/api/valuation-requests/map-overlay");
 }
 
 export type KeyEnvelopeLinkedPropertyDto = {

@@ -508,22 +508,14 @@ export async function getWorkOrderListCounts(
   }
 }
 
-/** Full work orders with properties — one round-trip (replaces N+1 getWorkOrder calls). */
+/**
+ * Full work orders with properties (replaces N+1 getWorkOrder calls), every page of them: the
+ * unpaged read stopped at 500 orders and said nothing of the rest (2026-11-19).
+ */
 export async function listWorkOrdersWithDetails(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<WorkOrderDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/work-orders/details`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as WorkOrderDto[];
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchAllListPages<WorkOrderDto>(config, "/api/work-orders/details");
 }
 
 export type PropertyListRowDto = {
@@ -545,39 +537,21 @@ export type PropertyListItemDto = {
   propertyId: string;
 };
 
-/** Flat property rows for dashboard tables — avoids the full work-order details payload. */
+/**
+ * Flat property rows for dashboard tables — avoids the full work-order details payload. Every page
+ * (pages count work orders, one row per deed): the unpaged read stopped at 500 orders (2026-11-19).
+ */
 export async function listPropertyListItems(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<PropertyListItemDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/work-orders/property-rows`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as PropertyListItemDto[];
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchAllListPages<PropertyListItemDto>(config, "/api/work-orders/property-rows");
 }
 
+/** The deeds waiting on the bourse inquiry, every page (the unpaged read stopped at 500). */
 export async function listPendingBourseProperties(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<PendingBoursePropertyDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/work-orders/properties/pending-bourse`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as PendingBoursePropertyDto[];
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchAllListPages<PendingBoursePropertyDto>(config, "/api/work-orders/properties/pending-bourse");
 }
 
 export async function getWorkOrder(

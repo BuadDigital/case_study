@@ -94,6 +94,20 @@ public partial class WorkOrderService : IWorkOrderService
         CancellationToken cancellationToken = default) =>
         _query.ListPropertyListItemsAsync(actor, cancellationToken);
 
+    public Task<PagedResultDto<WorkOrderDto>> ListDetailsPagedAsync(
+        int? page,
+        int? pageSize,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        _query.ListDetailsPagedAsync(page, pageSize, actor, cancellationToken);
+
+    public Task<PagedResultDto<PropertyListItemDto>> ListPropertyListItemsPagedAsync(
+        int? page,
+        int? pageSize,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        _query.ListPropertyListItemsPagedAsync(page, pageSize, actor, cancellationToken);
+
     public Task<WorkOrderDto?> GetByPoNumberAsync(
         string poNumber,
         PermissionsDto? actor = null,
@@ -121,6 +135,12 @@ public partial class WorkOrderService : IWorkOrderService
     public Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
         CancellationToken cancellationToken) =>
         _query.ListPendingBourseAsync(cancellationToken);
+
+    public Task<PagedResultDto<PendingBoursePropertyDto>> ListPendingBoursePagedAsync(
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken) =>
+        _query.ListPendingBoursePagedAsync(page, pageSize, cancellationToken);
 
     public async Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateWorkOrderRequest request,

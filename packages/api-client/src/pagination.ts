@@ -103,6 +103,8 @@ async function requestPage<T>(
   try {
     const res = await fetch(url, { headers: authHeaders(config.token) });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    // A role without the read (the map overlay is one) is told so, not shown a server error.
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (!res.ok) return { ok: false, kind: "server" };
     const data = (await res.json()) as PagedResultDto<T> | T[];
     if (Array.isArray(data)) return { ok: true, data: arrayAsPage(data) };

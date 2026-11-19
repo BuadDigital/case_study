@@ -46,12 +46,20 @@ public class ValuationRequestsController : ControllerBase
 
     /// <summary>
     /// Map card facts, readable by case staff (<see cref="CapabilityPolicyNames.ReadValuationReport"/>).
+    /// With <c>page</c> / <c>pageSize</c> a page and the total (the map reads every page); without
+    /// them, the newest 500 as before (2026-11-19).
     /// </summary>
     [HttpGet("map-overlay")]
     [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
-    public async Task<ActionResult<IReadOnlyList<ValuationRequestDto>>> MapOverlay(
+    public async Task<IActionResult> MapOverlay(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken ct)
-        => Ok(await _service.ListAsync(ct));
+    {
+        if (page.HasValue || pageSize.HasValue)
+            return Ok(await _service.ListPagedAsync(page, pageSize, ct));
+        return Ok(await _service.ListAsync(ct));
+    }
 
     [HttpGet("{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
