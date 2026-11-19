@@ -14,6 +14,7 @@
  * Pure rules behind `AdjustmentsMatrix` — which rows the table shows, the
  * comparison-basis readouts under it and the alert panel. No React, no I/O.
  */
+import { AreaMethodChoices } from "@platform/api-client";
 import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
@@ -90,8 +91,8 @@ export type MatrixBasisView = {
  * so the line says «آلية» (found in the browser run: it said «اختيار المقيّم» beside «آلي»).
  */
 function areaMethodLabel(method: string | null | undefined, chosen: string | null | undefined): string {
-  if (method === "cash") return "مبلغ نقدي = فرق المساحة × سعر المتر";
-  const name = method === "multiplier" ? "طريقة المضاعف" : "طريقة الأمثال";
+  if (method === AreaMethodChoices.Cash) return "مبلغ نقدي = فرق المساحة × سعر المتر";
+  const name = method === AreaMethodChoices.Multiplier ? "طريقة المضاعف" : "طريقة الأمثال";
   return `${name} — ${chosen && chosen === method ? "اختيار المقيّم" : "آلية"}`;
 }
 
@@ -160,8 +161,8 @@ export function matrixBasisView(
     areaMethodChoice: selection.areaAdjustmentMethodChoice ?? "",
     landAreaMethodChoice: selection.landAreaAdjustmentMethodChoice ?? "",
     cashAllowed: selection.cashAreaAdjustmentAllowed === true,
-    areaIsCash: adopted[0]?.market?.areaAdjustmentMethod === "cash",
-    landAreaIsCash: adopted[0]?.market?.landAreaAdjustmentMethod === "cash",
+    areaIsCash: adopted[0]?.market?.areaAdjustmentMethod === AreaMethodChoices.Cash,
+    landAreaIsCash: adopted[0]?.market?.landAreaAdjustmentMethod === AreaMethodChoices.Cash,
     areaCashRate: selection.areaCashRateSar ?? null,
     landAreaCashRate: selection.landAreaCashRateSar ?? null,
     subjectLandArea,

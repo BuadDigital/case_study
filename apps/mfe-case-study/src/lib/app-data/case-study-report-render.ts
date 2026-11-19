@@ -128,7 +128,11 @@ function renderSection(section: CaseStudyReportSection): string {
       ? CASE_STUDY_SECTION_REMARKS_HINT
       : "الملاحظات";
   const occExtra = section.id === CaseStudyQuestionSections.Occ ? section.extras?.[0] : undefined;
-  const compExtras = section.id === CaseStudyQuestionSections.Comp ? (section.extras ?? []) : [];
+  // Lines of their own under the questions: the deed↔nature result, the electricity meter.
+  const lineExtras =
+    section.id === CaseStudyQuestionSections.Deed || section.id === CaseStudyQuestionSections.Comp
+      ? (section.extras ?? [])
+      : [];
 
   const bodyRows = section.rows
     .map((row, i) => {
@@ -154,7 +158,7 @@ function renderSection(section: CaseStudyReportSection): string {
     })
     .join("");
 
-  const extras = compExtras
+  const extras = lineExtras
     .map((line) => `<tr><td colspan="3">${esc(line)}</td></tr>`)
     .join("");
 

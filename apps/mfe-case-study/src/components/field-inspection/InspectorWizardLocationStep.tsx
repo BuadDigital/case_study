@@ -6,9 +6,10 @@
  */
 
 import { useMemo, useState } from "react";
-import { Button, cn, GoogleMapPin, useToast } from "@platform/ui-kit";
+import { cn, GoogleMapPin, parseLatLng, useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
+  hasInspectorOriginalMapPin,
   mapPinPatchForActor,
   type InspectorFeatureField,
   type InspectorMapActor,
@@ -26,6 +27,7 @@ import {
   inspectorWizardMapGeo,
 } from "./inspector-wizard-state";
 import { InspectorCoordsInput } from "./InspectorCoordsInput";
+import { InspectorLocationSources } from "./InspectorLocationSources";
 import { InspectorCopyPriorButton } from "./InspectorCopyPriorButton";
 import {
   InspectorGpsButton,
@@ -225,37 +227,25 @@ export function InspectorWizardLocationStep({
               </button>
             </div>
           ) : null}
-          {editable && canRestoreInspectorMap && onRestoreInspectorMap ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={onRestoreInspectorMap}
-            >
-              اعتماد موقع المعاين
-            </Button>
-          ) : null}
-          {editable && canAdoptEngineeringMap && onAdoptEngineeringMap ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={onAdoptEngineeringMap}
-            >
-              اعتماد موقع المكتب الهندسي
-            </Button>
-          ) : null}
         </div>
         {editable && canUndoMapMove && onUndoMapMove ? (
           <div className="mt-2.5">
             <InspectorMapUndoButton onUndo={onUndoMapMove} />
           </div>
         ) : null}
-        {contextPins.length > 0 ? (
-          <p className="mt-2 mb-0 text-[10.5px] leading-relaxed text-text-3">
-            الدبابيس الإضافية للمقارنة فقط (معاين / مكتب هندسي) — الموقع
-            المعتمد هو الدبوس الرئيسي بعد الاختيار.
-          </p>
+        {mapActor === WorkspaceActors.Specialist ? (
+          <InspectorLocationSources
+            approved={parseLatLng(draft.mapLatitude, draft.mapLongitude)}
+            inspector={
+              hasInspectorOriginalMapPin(draft)
+                ? parseLatLng(draft.inspectorMapLatitude, draft.inspectorMapLongitude)
+                : null
+            }
+            office={engineeringMapPin}
+            editable={editable}
+            onMoveToInspector={canRestoreInspectorMap ? onRestoreInspectorMap : undefined}
+            onMoveToOffice={canAdoptEngineeringMap ? onAdoptEngineeringMap : undefined}
+          />
         ) : null}
         {fieldErrors.mapLatitude ? (
           <p className="mt-2 mb-0 text-[11px] text-danger-text" role="alert">

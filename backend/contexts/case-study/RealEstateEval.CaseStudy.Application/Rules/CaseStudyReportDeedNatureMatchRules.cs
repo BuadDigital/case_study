@@ -82,7 +82,7 @@ public static class CaseStudyReportDeedNatureMatchRules
         {
             return new Dictionary<string, string>
             {
-                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «تعذّر محتمل»",
+                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «غير مطابق» أو «تعذّر محتمل»",
             };
         }
 

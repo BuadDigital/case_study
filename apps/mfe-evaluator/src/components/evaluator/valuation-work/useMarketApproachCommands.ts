@@ -11,6 +11,7 @@ import {
   saveValuationMarketApproach,
   type AreaMethodChoice,
   type SaveValuationMarketApproachRequest,
+  AreaMethodChoices,
 } from "@platform/api-client";
 import { areaCashRateSource } from "./lib/area-cash-rates";
 import { scheduleInvalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
@@ -153,7 +154,7 @@ export function useMarketApproachCommands(
     if (!writeContext({ requireUnlocked: true })) return;
     const extra: Partial<SaveValuationMarketApproachRequest> =
       line === "land" ? { landAreaAdjustmentMethod: method } : { areaAdjustmentMethod: method };
-    if (method === "cash") {
+    if (method === AreaMethodChoices.Cash) {
       const stored = line === "land" ? selection?.landAreaCashRateSar : selection?.areaCashRateSar;
       const seed = areaCashRateSource(cost, line);
       if (!(Number(stored) > 0) && seed) {

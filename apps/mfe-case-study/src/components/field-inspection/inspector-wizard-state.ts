@@ -7,6 +7,7 @@ import { cn, type FrameSectionDef, type GoogleMapContextPin } from "@platform/ui
 import { INSPECTOR_STEPS, type InspectorStepId } from "./InspectorStepNav";
 import {
   activeMapDiffersFromInspectorOriginal,
+  mapPinsSameSpot,
   hasInspectorOriginalMapPin,
   inspectorFeatureOffersPhoto,
   isShopHiddenInspectorComponentKey,
@@ -254,8 +255,12 @@ export function inspectorReferenceMapPins(
   }
   const original = parseLatLng(draft.inspectorMapLatitude, draft.inspectorMapLongitude);
   if (!original) return [];
-  return [{ ...original, title: "موقع المعاين الأصلي", label: "مع" }];
+  return [{ ...original, title: "موقع المعاين", label: "معاين", color: INSPECTOR_SOURCE_PIN_COLOR }];
 }
+
+/** The sources' pin colours — the same dots name them in «مصادر الموقع» under the map. */
+export const INSPECTOR_SOURCE_PIN_COLOR = "#378add";
+export const OFFICE_SOURCE_PIN_COLOR = "#d9822b";
 
 /** Engineering-office pin for specialist comparison (when it differs from the active pin). */
 export function engineeringOfficeContextPins(
@@ -264,20 +269,14 @@ export function engineeringOfficeContextPins(
   engineeringPin: { lat: number; lng: number } | null,
 ): GoogleMapContextPin[] {
   if (mapActor !== WorkspaceActors.Specialist || !engineeringPin) return [];
-  const active = parseLatLng(draft.mapLatitude, draft.mapLongitude);
-  if (
-    active &&
-    Math.abs(active.lat - engineeringPin.lat) < 1e-5 &&
-    Math.abs(active.lng - engineeringPin.lng) < 1e-5
-  ) {
-    return [];
-  }
+  if (mapPinsSameSpot(parseLatLng(draft.mapLatitude, draft.mapLongitude), engineeringPin)) return [];
   return [
     {
       lat: engineeringPin.lat,
       lng: engineeringPin.lng,
       title: "موقع المكتب الهندسي",
       label: "مكتب",
+      color: OFFICE_SOURCE_PIN_COLOR,
     },
   ];
 }

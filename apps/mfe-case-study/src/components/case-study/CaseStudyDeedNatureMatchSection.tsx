@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Button,
   FormGroup,
@@ -77,24 +77,35 @@ function DeedMatchSidesTable({ sides }: { sides: readonly DeedMatchSideRow[] }) 
   );
 }
 
-/**
- * Specialist review of deed↔nature match. Only the field inspector proposes;
- * a prior survey and the engineering office's verdict are shown as context
- * lines. The specialist adopts or amends.
- * Lives on تبويب مدخلات المعاين — the case-study report is issued after valuation.
- */
+/** What each outcome does — the choice's tooltip, and spelled out under the choices when it stops the valuation. */
 const OUTCOME_HINTS: Record<string, string> = {
-  matched: "الصك يطابق الطبيعة — يُسمح بإكمال التقييم وإصدار تقرير دراسة الحالة.",
-  differences: "توجد فروق بين الصك والطبيعة — يلزم توضيحها أدناه، ويُوقف مسار التقييم حتى تُعالَج (مسار تعذّر).",
-  impediment: "المطابقة غير ممكنة أو الحالة تعذّر محتمل — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذّر).",
+  [DeedNatureMatchOutcomes.Matched]: "الصك يطابق الطبيعة — يُسمح بإكمال التقييم وإصدار تقرير دراسة الحالة.",
+  [DeedNatureMatchOutcomes.Differences]:
+    "الصك لا يطابق الطبيعة — يلزم توضيح الفرق أدناه، ويُوقف مسار التقييم حتى يُعالَج (مسار تعذّر).",
+  [DeedNatureMatchOutcomes.Impediment]:
+    "المطابقة غير ممكنة أو الحالة تعذّر محتمل — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذّر).",
 };
 
+/** An outcome with the notes it is saved with, while the specialist writes them. */
+type OutcomeEdit = { value: string; notes: string };
+
+/**
+ * The specialist's review of the deed↔nature match, on the inspector's inputs tab: the four sides beside
+ * the inspector's findings, then the specialist's outcome. Only the field inspector proposes; a prior
+ * survey and the engineering office's verdict are context lines.
+ *
+ * How it works: the buttons show the choice being made (`edit`), else the saved outcome. «مطابق» saves on
+ * the click; an outcome that needs text — «غير مطابق» / «تعذّر محتمل», or «مطابق» against whoever said
+ * «غير مطابق» — opens its notes, saved with it in one save (the server refuses it without them). Saved
+ * notes are read, and changed through «تعديل».
+ * Edge cases: clicking the saved outcome again drops the choice being made (it used to stay open — a
+ * radio already checked fires no change); a new outcome starts with empty notes, so one outcome's reason
+ * never becomes another's; an outcome saved without its notes opens them at once.
+ */
 export function CaseStudyDeedNatureMatchSection({
   draft,
   disabled,
   onPatch,
-  outcomeInvalid,
-  notesInvalid,
   sourceLabelAr,
   suggestedOutcome,
   infoLinesAr,
@@ -104,9 +115,8 @@ export function CaseStudyDeedNatureMatchSection({
 }: {
   draft: Pick<CaseStudyReportDraft, "deedNatureMatchOutcome" | "deedNatureMatchNotes">;
   disabled?: boolean;
+  /** Saves at once — called once per decision, never per keystroke. */
   onPatch: (patch: Partial<CaseStudyReportDraft>) => void;
-  outcomeInvalid?: boolean;
-  notesInvalid?: boolean;
   sourceLabelAr?: string;
   suggestedOutcome?: string;
   /** Prior-survey / engineering-office context — shown, never proposed. */
@@ -120,42 +130,42 @@ export function CaseStudyDeedNatureMatchSection({
    */
   dissent?: DeedMatchDissent | null;
 }) {
+  const radioName = useId();
   const outcome = draft.deedNatureMatchOutcome ?? "";
-  const inspectorSaidNotMatched = dissent !== null;
+  const savedNotes = (draft.deedNatureMatchNotes ?? "").trim();
   const dissentLabel = deedMatchDissentLabel(dissent);
-  // An outcome that needs text — «فروق» / «تعذّر محتمل», or «مطابق» against the inspector — is not saved on
-  // click: its notes are written first and saved with it (a click alone is refused by the server and rolled
-  // back), and they start empty — the reason of one outcome never becomes the notes of another.
-  const [pending, setPending] = useState<{ value: string; notes: string } | null>(null);
-  const pendingIsOverride = pending?.value === DeedNatureMatchOutcomes.Matched && inspectorSaidNotMatched;
-  const pendingMin = pendingIsOverride ? DEED_MATCH_OVERRIDE_REASON_MIN : 1;
-  const pendingShort = (pending?.notes ?? "").trim().length < pendingMin;
-  const pendingLabel = DEED_NATURE_MATCH_OPTIONS.find((o) => o.value === pending?.value)?.label ?? "";
-  const savedOverrideReason = inspectorSaidNotMatched && outcome === DeedNatureMatchOutcomes.Matched ? (draft.deedNatureMatchNotes ?? "").trim() : "";
-  const needsNotes = deedNatureMatchRequiresNotes(outcome);
+  const isOverride = (value: string) => dissent !== null && value === DeedNatureMatchOutcomes.Matched;
+  const needsText = (value: string) => deedNatureMatchRequiresNotes(value) || isOverride(value);
+  const labelOf = (value: string) => DEED_NATURE_MATCH_OPTIONS.find((o) => o.value === value)?.label ?? "";
+
+  const [edit, setEdit] = useState<OutcomeEdit | null>(null);
+  // An outcome saved without the text it needs opens its notes at once.
+  const editor = edit ?? (needsText(outcome) && !savedNotes ? { value: outcome, notes: "" } : null);
+  const shown = editor?.value ?? outcome;
+  const shownHint = shown !== DeedNatureMatchOutcomes.Matched ? (OUTCOME_HINTS[shown] ?? "") : "";
   const canAdopt = Boolean(onAdoptSuggestion && suggestedOutcome && suggestedOutcome !== outcome);
-  const outcomeHint = OUTCOME_HINTS[outcome] ?? "";
+
+  function choose(value: string) {
+    if (value === outcome) {
+      setEdit(null);
+      return;
+    }
+    if (needsText(value)) {
+      setEdit({ value, notes: "" });
+      return;
+    }
+    setEdit(null);
+    onPatch({ deedNatureMatchOutcome: value, deedNatureMatchNotes: "" });
+  }
 
   return (
-    <section
-      id="cs-deed-nature-match"
-      className={cn(
-        "overflow-hidden rounded-[10px] border border-border",
-        outcomeInvalid && invalidControlClass,
-      )}
-    >
+    <section id="cs-deed-nature-match" className="overflow-hidden rounded-[10px] border border-border">
       <header className="border-b border-border bg-surface-2 px-4 py-2.5">
-        <h3 className="m-0 text-[12.5px] font-bold text-heading">
-          مطابقة الصك على الطبيعة
-        </h3>
+        <h3 className="m-0 text-[12.5px] font-bold text-heading">مطابقة الصك على الطبيعة</h3>
       </header>
 
       <div className="grid gap-3.5 px-4 py-3.5">
-        {sourceLabelAr ? (
-          <p className="m-0 text-[12px] leading-relaxed text-text-2">
-            {sourceLabelAr}
-          </p>
-        ) : null}
+        {sourceLabelAr ? <p className="m-0 text-[12px] leading-relaxed text-text-2">{sourceLabelAr}</p> : null}
 
         {sides.length > 0 ? <DeedMatchSidesTable sides={sides} /> : null}
 
@@ -171,7 +181,10 @@ export function CaseStudyDeedNatureMatchSection({
           <button
             type="button"
             disabled={disabled}
-            onClick={onAdoptSuggestion}
+            onClick={() => {
+              setEdit(null);
+              onAdoptSuggestion?.();
+            }}
             className="w-fit cursor-pointer rounded-[var(--radius-sm)] border border-gold bg-gold-soft px-3 py-[7px] text-[12px] font-bold text-gold-d disabled:cursor-not-allowed disabled:opacity-55"
           >
             اعتماد اقتراح المعاين
@@ -181,17 +194,10 @@ export function CaseStudyDeedNatureMatchSection({
         <FormGroup>
           {/* Omar 2026-11-12: no explanation bars here — each choice says what it does in its
               tooltip, and only a choice that stops the valuation is spelled out under them. */}
-          <Label className="mb-1.5 text-[11px] font-semibold text-text-2">
-            نتيجة مراجعة الأخصائي
-          </Label>
-          <div
-            className="flex flex-wrap gap-2"
-            role="radiogroup"
-            aria-label="نتيجة مطابقة الصك على الطبيعة"
-            aria-invalid={outcomeInvalid || undefined}
-          >
+          <Label className="mb-1.5 text-[11px] font-semibold text-text-2">نتيجة مراجعة الأخصائي</Label>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="نتيجة مطابقة الصك على الطبيعة">
             {DEED_NATURE_MATCH_OPTIONS.map((opt) => {
-              const on = outcome === opt.value;
+              const on = shown === opt.value;
               return (
                 <label
                   key={opt.value}
@@ -206,111 +212,125 @@ export function CaseStudyDeedNatureMatchSection({
                 >
                   <input
                     type="radio"
-                    name="deed-nature-match"
+                    name={radioName}
                     className="sr-only"
                     checked={on}
                     disabled={disabled}
-                    onChange={() => {
-                      const needsText =
-                        deedNatureMatchRequiresNotes(opt.value) ||
-                        (inspectorSaidNotMatched && opt.value === DeedNatureMatchOutcomes.Matched);
-                      if (needsText) {
-                        setPending({ value: opt.value, notes: "" });
-                        return;
-                      }
-                      setPending(null);
-                      onPatch({ deedNatureMatchOutcome: opt.value, deedNatureMatchNotes: "" });
-                    }}
+                    onChange={() => choose(opt.value)}
                   />
                   {opt.label}
                 </label>
               );
             })}
           </div>
-          {outcomeHint && outcome !== DeedNatureMatchOutcomes.Matched ? (
+          {shownHint ? (
             <p
               className="mb-0 mt-2 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-[11.5px] leading-relaxed text-amber-text"
               role="status"
             >
-              {outcomeHint}
+              {shownHint}
             </p>
           ) : null}
         </FormGroup>
 
-        {pending ? (
-          <FormGroup>
-            <Label htmlFor="deed-match-pending-notes" className="text-[11px] text-text-2">
-              {pendingIsOverride ? `سبب اعتماد «مطابق» خلافاً لرأي ${dissentLabel}` : "ملاحظات الفروق / التعذّر"}{" "}
-              <span className="text-danger-text">*</span>
-            </Label>
-            <Textarea
-              id="deed-match-pending-notes"
-              disabled={disabled}
-              rows={3}
-              value={pending.notes}
-              onChange={(e) => setPending({ ...pending, notes: e.target.value })}
-              className={cn(pendingShort && pending.notes.length > 0 && invalidControlClass)}
-              placeholder={
-                pendingIsOverride
-                  ? `لماذا تعتبر الصك مطابقاً للطبيعة رغم رأي ${dissentLabel}؟`
-                  : "صف الفرق أو سبب ترشيح التعذّر…"
-              }
-            />
-            {pendingIsOverride && pendingShort ? (
-              <p className="mb-0 mt-1 text-[11px] text-text-3">{deedMatchOverrideReasonMessage(dissent)}</p>
-            ) : null}
-            <div className="mt-2 flex gap-2">
+        {editor ? (
+          <OutcomeNotesEditor
+            edit={editor}
+            override={isOverride(editor.value)}
+            outcomeLabel={labelOf(editor.value)}
+            dissent={dissent}
+            disabled={disabled}
+            onChange={setEdit}
+            onCancel={edit ? () => setEdit(null) : undefined}
+            onSave={() => {
+              onPatch({ deedNatureMatchOutcome: editor.value, deedNatureMatchNotes: editor.notes.trim() });
+              setEdit(null);
+            }}
+          />
+        ) : needsText(outcome) && savedNotes ? (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[11.5px] leading-relaxed text-text-2">
+            <p className="m-0 whitespace-pre-line">
+              <span className="font-semibold text-heading">
+                {isOverride(outcome) ? `سبب اعتماد «مطابق» خلافاً لرأي ${dissentLabel}` : `ملاحظات «${labelOf(outcome)}»`}:
+              </span>{" "}
+              {savedNotes}
+            </p>
+            {!disabled ? (
               <Button
                 type="button"
-                disabled={disabled || pendingShort}
-                onClick={() => {
-                  onPatch({
-                    deedNatureMatchOutcome: pending.value,
-                    deedNatureMatchNotes: pending.notes.trim(),
-                  });
-                  setPending(null);
-                }}
+                variant="ghost"
+                size="sm"
+                onClick={() => setEdit({ value: outcome, notes: draft.deedNatureMatchNotes ?? "" })}
               >
-                {`حفظ «${pendingLabel}» مع ${pendingIsOverride ? "السبب" : "الملاحظات"}`}
+                تعديل
               </Button>
-              <Button type="button" variant="ghost" disabled={disabled} onClick={() => setPending(null)}>
-                إلغاء
-              </Button>
-            </div>
-          </FormGroup>
-        ) : savedOverrideReason ? (
-          <p className="m-0 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[11.5px] leading-relaxed text-text-2">
-            سبب اعتماد «مطابق» خلافاً لرأي {dissentLabel}: {savedOverrideReason}
-          </p>
-        ) : null}
-
-        {needsNotes && !pending ? (
-          <FormGroup>
-            <Label
-              htmlFor="deed-nature-match-notes"
-              className="text-[11px] text-text-2"
-            >
-              ملاحظات الفروق / التعذّر{" "}
-              <span className="text-danger-text">*</span>
-            </Label>
-            <p className="mb-1.5 mt-0 text-[11px] text-text-3">
-              إلزامية عند «فروق» أو «تعذّر محتمل» — بدونها لا يُقبل إصدار تقرير دراسة الحالة.
-            </p>
-            <Textarea
-              id="deed-nature-match-notes"
-              disabled={disabled}
-              rows={3}
-              value={draft.deedNatureMatchNotes ?? ""}
-              aria-invalid={notesInvalid || undefined}
-              onChange={(e) =>
-                onPatch({ deedNatureMatchNotes: e.target.value })
-              }
-              className={cn(notesInvalid && invalidControlClass)}
-              placeholder="صف الفرق أو سبب ترشيح التعذّر…"
-            />
-          </FormGroup>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </section>
+  );
+}
+
+/** The notes an outcome is saved with — written here, saved once with «حفظ». */
+function OutcomeNotesEditor({
+  edit,
+  override,
+  outcomeLabel,
+  dissent,
+  disabled,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  edit: OutcomeEdit;
+  /** «مطابق» against whoever said «غير مطابق»: a reason of DEED_MATCH_OVERRIDE_REASON_MIN characters. */
+  override: boolean;
+  outcomeLabel: string;
+  dissent: DeedMatchDissent | null;
+  disabled?: boolean;
+  onChange: (edit: OutcomeEdit) => void;
+  /** Absent when there is no saved state to go back to (an outcome saved without its notes). */
+  onCancel?: () => void;
+  onSave: () => void;
+}) {
+  const id = useId();
+  const dissentLabel = deedMatchDissentLabel(dissent);
+  const short = edit.notes.trim().length < (override ? DEED_MATCH_OVERRIDE_REASON_MIN : 1);
+  return (
+    <FormGroup>
+      <Label htmlFor={id} className="text-[11px] text-text-2">
+        {override ? `سبب اعتماد «مطابق» خلافاً لرأي ${dissentLabel}` : `ملاحظات «${outcomeLabel}»`}{" "}
+        <span className="text-danger-text">*</span>
+      </Label>
+      <p className="mb-1.5 mt-0 text-[11px] text-text-3">
+        {override
+          ? deedMatchOverrideReasonMessage(dissent)
+          : "إلزامية — بدونها لا تُحفظ النتيجة ولا يُصدر تقرير دراسة الحالة."}
+      </p>
+      <Textarea
+        id={id}
+        disabled={disabled}
+        rows={3}
+        value={edit.notes}
+        onChange={(e) => onChange({ ...edit, notes: e.target.value })}
+        className={cn(short && edit.notes.length > 0 && invalidControlClass)}
+        placeholder={
+          override
+            ? `لماذا تعتبر الصك مطابقاً للطبيعة رغم رأي ${dissentLabel}؟`
+            : "صف الفرق أو سبب ترشيح التعذّر…"
+        }
+      />
+      <div className="mt-2 flex gap-2">
+        <Button type="button" disabled={disabled || short} onClick={onSave}>
+          {`حفظ «${outcomeLabel}»`}
+        </Button>
+        {onCancel ? (
+          <Button type="button" variant="ghost" disabled={disabled} onClick={onCancel}>
+            إلغاء
+          </Button>
+        ) : null}
+      </div>
+    </FormGroup>
   );
 }

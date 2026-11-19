@@ -42,6 +42,7 @@ import {
   INSPECTOR_OBSERVATION_CATEGORIES,
   MOVABLES_DESCRIPTION_KEY,
   activeMapDiffersFromInspectorOriginal,
+  mapPinsSameSpot,
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
@@ -337,12 +338,7 @@ export function PropertyDetailInspectionTab({
 
   const canAdoptEngineeringMap = useMemo(() => {
     if (mapActor !== WorkspaceActors.Specialist || !engineeringMapPin || !draft) return false;
-    const active = parsePlacedMapPin(draft.mapLatitude, draft.mapLongitude);
-    if (!active) return true;
-    return (
-      Math.abs(active.lat - engineeringMapPin.lat) > 1e-5 ||
-      Math.abs(active.lng - engineeringMapPin.lng) > 1e-5
-    );
+    return !mapPinsSameSpot(parsePlacedMapPin(draft.mapLatitude, draft.mapLongitude), engineeringMapPin);
   }, [draft, engineeringMapPin, mapActor]);
 
   const resolveLocationPinMismatchFailure = useCallback(

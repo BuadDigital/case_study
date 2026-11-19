@@ -25,6 +25,11 @@ import {
 import type { WorkflowTask } from "./tasks";
 import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 import { CASE_STUDY_METER_TYPE_OPTIONS, CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
+import {
+  DEED_NATURE_MATCH_OPTIONS,
+  DeedNatureMatchOutcomes,
+  normalizeDeedNatureMatchOutcome,
+} from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 
 type CaseStudyReportQuestionRow = {
   question: string;
@@ -253,6 +258,28 @@ function meterExtras(draft: CaseStudyReportDraft): string[] {
   return lines;
 }
 
+/**
+ * The specialist's deed↔nature result, printed under the deed questions (Omar 2026-11-19: the
+ * report never carried it, so the justification the specialist must write was nowhere in it).
+ *
+ * How it works: one line with the result — «مطابق» too, with no notes — and, when there are notes,
+ * a second line: «مبرر المطابقة» for «مطابق» (only written against the inspector's or the office's
+ * «غير مطابق»), «الملاحظات» for «غير مطابق» / «تعذّر محتمل».
+ * Edge cases: no result chosen (or a registered title, which has no match gate) prints nothing; the
+ * notes' line breaks print as « — », since a report line is one line.
+ */
+function deedMatchExtras(draft: CaseStudyReportDraft): string[] {
+  const outcome = normalizeDeedNatureMatchOutcome(draft.deedNatureMatchOutcome);
+  const label = DEED_NATURE_MATCH_OPTIONS.find((o) => o.value === outcome)?.label;
+  if (!label) return [];
+  const lines = [`مطابقة الصك على الطبيعة: ${label}`];
+  const notes = (draft.deedNatureMatchNotes ?? "").trim().replace(/\s*\n\s*/g, " — ");
+  if (notes) {
+    lines.push(`${outcome === DeedNatureMatchOutcomes.Matched ? "مبرر المطابقة" : "الملاحظات"}: ${notes}`);
+  }
+  return lines;
+}
+
 export function buildCaseStudyReportModel(
   draft: CaseStudyReportDraft,
   property: PoPropertyIntake | null,
@@ -295,8 +322,11 @@ export function buildCaseStudyReportModel(
       ),
     };
 
-    if (id === CaseStudyQuestionSections.Deed && draft.deedRemarks.trim()) {
-      section.remarks = draft.deedRemarks.trim();
+    if (id === CaseStudyQuestionSections.Deed) {
+      section.extras = deedMatchExtras(draft);
+      if (draft.deedRemarks.trim()) {
+        section.remarks = draft.deedRemarks.trim();
+      }
     }
     if (id === CaseStudyQuestionSections.Survey && draft.surveyRemarks.trim()) {
       section.remarks = draft.surveyRemarks.trim();
