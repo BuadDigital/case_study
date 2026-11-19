@@ -2,7 +2,7 @@
 
 import { SpecialistValuationReportFinishingEditor } from "./SpecialistValuationReportFinishingEditor";
 
-/** Specialist fills finishing level on property valuation. */
+/** «مستوى تشطيبات البناء» for the valuation report — the specialist picks it, the appraiser reads it. */
 export function SpecialistValuationReportInputs({
   propertyId,
   poNumber,
@@ -18,14 +18,19 @@ export function SpecialistValuationReportInputs({
       <div className="mb-3 flex items-center gap-2.5">
         <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
         <h3 className="m-0 text-[14px] font-extrabold text-heading">
-          مدخلات تقرير التقييم
+          مستوى تشطيبات البناء
+          {readOnly ? null : (
+            <span className="ms-1 text-danger" aria-hidden>
+              *
+            </span>
+          )}
         </h3>
         <span className="flex-1 border-t border-border" aria-hidden />
       </div>
       <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
         {readOnly
-          ? "للعرض فقط."
-          : "يعبّئها الأخصائي من دراسة الحالة (تبويب مدخلات المعاين)، وتظهر للمقيّم للعرض فقط. مستوى التشطيب مطلوب قبل التأكيد."}
+          ? "اختاره أخصائي دراسة الحالة — يُطبع في تقرير التقييم."
+          : "يُطبع في تقرير التقييم مع وصفه، ويراه المقيّم. اختره قبل تأكيد مدخلات المعاين."}
       </p>
       <SpecialistValuationReportFinishingEditor
         propertyId={propertyId}

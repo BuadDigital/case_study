@@ -108,19 +108,6 @@ export function arabicErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-/** Old shortened defaults — replace with HTML v3 full copy when still stored in org settings. */
-const LEGACY_SHORT_FINISHING = new Set([
-  "واجهات حجر طبيعي أو دهان عالي الجودة، أرضيات مداخل ومجالس من رخام فاخر، عزل ونوافذ عالية، تكييف مركزي ومصعد.",
-  "واجهات حجر أو دهان، أرضيات سيراميك، تكييف منفصل (سبليت)، مكونات جدران مزدوجة.",
-  "واجهات دهان، أرضيات سيراميك عادي أو بلاط بلدي، شبابيك عادية، تكييف شباك، بدون جبس أسقف.",
-]);
-
-export function finishingTextForReport(stored: string, htmlV3Default: string): string {
-  const t = (stored ?? "").trim();
-  if (!t || LEGACY_SHORT_FINISHING.has(t)) return htmlV3Default;
-  return t;
-}
-
 async function loadValuationApproaches(
   config: ValuationApiConfig,
   property: PoPropertyIntake | null | undefined,

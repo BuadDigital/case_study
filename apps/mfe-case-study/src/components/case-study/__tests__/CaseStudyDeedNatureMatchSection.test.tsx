@@ -89,4 +89,25 @@ describe("CaseStudyDeedNatureMatchSection", () => {
     fireEvent.click(radio("تعذّر محتمل"));
     expect(notesBox()?.value).toBe("");
   });
+
+  it("tags the inspector's suggestion on its own button, with no separate adopt button (Omar 2026-11-19)", () => {
+    show(Differences, "فرق", { suggestedOutcome: Matched });
+    expect(screen.getByRole("radio", { name: /مطابق.*اقتراح المعاين/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "اعتماد اقتراح المعاين" })).toBeNull();
+  });
+
+  it("starts «غير مطابق» with the inspector's notes when he suggested it", () => {
+    show(Matched, "", { suggestedOutcome: Differences, suggestedNotes: "الحد الشرقي: 28 م" });
+    fireEvent.click(radio("غير مطابق اقتراح المعاين"));
+    expect(notesBox()?.value).toBe("الحد الشرقي: 28 م");
+  });
+
+  it("shows what the office sent behind a toggle (Omar 2026-11-19)", () => {
+    show(Matched, "", { officeDetails: <p>الرفع المساحي للمكتب</p> });
+    expect(screen.queryByText("الرفع المساحي للمكتب")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "عرض ما أرسله المكتب الهندسي" }));
+    expect(screen.getByText("الرفع المساحي للمكتب")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "إخفاء ما أرسله المكتب الهندسي" }));
+    expect(screen.queryByText("الرفع المساحي للمكتب")).toBeNull();
+  });
 });

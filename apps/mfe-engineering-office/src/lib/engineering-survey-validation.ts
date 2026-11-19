@@ -110,7 +110,7 @@ export function validateEngineeringSurveySubmission(
     errors.longitude = "أدخل خط الطول بصيغة رقمية صحيحة";
   }
 
-  if (submission.deedMatchesNature !== ChecklistAnswers.Yes && submission.deedMatchesNature !== "no") {
+  if (submission.deedMatchesNature !== ChecklistAnswers.Yes && submission.deedMatchesNature !== ChecklistAnswers.No) {
     errors.deed_matches_nature = "حدد هل الصك مطابق للطبيعة";
   }
 

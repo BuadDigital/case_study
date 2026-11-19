@@ -21,6 +21,9 @@ import {
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { useInspectionPackage } from "./useInspectionPackage";
+import { PartyRoleDetailPanel } from "../po-intake/PartyRoleDetailPanel";
+import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   buildPropertyDetailPartyCards,
   type PropertyDetailPartyCard,
@@ -38,6 +41,28 @@ import {
 import { InspectorPhotoClassification } from "../coordination/InspectorPhotoClassification";
 
 import { WorkflowTaskKinds, WorkflowTaskStatuses, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+/**
+ * What the engineering office sent — the same read-only view as the coordination page's survey section
+ * (`PartyRoleDetailPanel`), opened from the deed-match review (Omar 2026-11-19: «تقدر تعرض هو ايش ارسل؟»).
+ * Mounted only when opened, so the submissions are read only then.
+ */
+function EngineeringOfficeSentDetails({
+  caseStudyTask,
+  tasks,
+  staffUsers,
+}: {
+  caseStudyTask: WorkflowTask;
+  tasks: WorkflowTask[];
+  staffUsers: StaffUser[];
+}) {
+  const submissions = usePropertyDetailPartySubmissionsQuery({ parentTask: caseStudyTask, allTasks: tasks });
+  const card = buildPropertyDetailPartyCards({ task: caseStudyTask, allTasks: tasks, staffUsers }).find(
+    (c) => c.roleKey === "survey",
+  );
+  if (!card) return null;
+  return <PartyRoleDetailPanel card={card} submission={submissions.data?.survey ?? null} loading={submissions.isPending} />;
+}
+
 function relatedTaskId(
   tasks: WorkflowTask[],
   propertyId: string,
@@ -237,6 +262,11 @@ export function CaseStudyAppraisalPanel({
             (readOnlyPage && !currentInspectionAccepted)
           }
           readOnlyOnceDecided={readOnlyPage && currentInspectionAccepted}
+          officeDetails={
+            engineeringAssigned ? (
+              <EngineeringOfficeSentDetails caseStudyTask={caseStudyTask} tasks={tasks} staffUsers={staffUsers} />
+            ) : undefined
+          }
         />
       ) : null}
       <section className="mb-6">
