@@ -17,6 +17,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { resetAllOperationalData } from "../lib/system-maintenance-api";
+import { ApiErrorKinds } from "@platform/api-client";
 
 const DELETED = [
   "كل أوامر العمل (PO) وعقاراتها",
@@ -71,7 +72,7 @@ export function DevSystemResetPanel() {
       const result = await resetAllOperationalData();
       if (!result.ok) {
         const msg =
-          result.kind === "not_found"
+          result.kind === ApiErrorKinds.NotFound
             ? "متاح في بيئة التطوير فقط."
             : apiErrorMessage(result.kind, "تعذّر مسح البيانات");
         showToast(msg, "error");

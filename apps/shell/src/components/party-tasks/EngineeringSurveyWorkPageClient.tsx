@@ -4,6 +4,7 @@
 // the page itself is a server component that only passes taskId (server-side).
 import { PartyActiveTaskWorkPage } from "@case-study/mfe/views/PartyActiveTaskWorkPage";
 import { partyEngineeringSurveyExtensions } from "@engineering-office/mfe/extensions/party-engineering-survey-extensions";
+import { Pages } from "@platform/types";
 
 export function EngineeringSurveyWorkPageClient({
   taskId,
@@ -14,7 +15,7 @@ export function EngineeringSurveyWorkPageClient({
 }) {
   return (
     <PartyActiveTaskWorkPage
-      pageId="active-survey"
+      pageId={Pages.ActiveSurvey}
       taskId={taskId}
       engineeringSurveyExtensions={partyEngineeringSurveyExtensions}
       engineeringSurveyEntry={entry}

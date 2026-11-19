@@ -5,6 +5,7 @@ import {
   type EvaluatorReportChoices,
   type EvaluatorSubmission,
 } from "./evaluator-window-data";
+import { ValuationReportDraftStatuses } from "@platform/api-client";
 
 /**
  * The report choices the case specialist owns (the print attachments, their order and slots). Mirrors the
@@ -72,7 +73,7 @@ export function reportDateForPrint(
   submission: Pick<EvaluatorSubmission, "appraisalDate" | "reportIssueDate">,
   draft: Pick<ValuationReportDraftDto, "status" | "reportDate"> | null | undefined,
 ): string {
-  if (draft?.status === "approved" && draft.reportDate?.trim()) {
+  if (draft?.status === ValuationReportDraftStatuses.Approved && draft.reportDate?.trim()) {
     return draft.reportDate.trim();
   }
   return submission.appraisalDate || submission.reportIssueDate;
@@ -88,25 +89,11 @@ export function reportDateForPrint(
 export function reportIsApproved(
   draft: Pick<ValuationReportDraftDto, "status" | "reportStage"> | null | undefined,
 ): boolean {
-  return Boolean(draft) && (draft!.status === "approved" || draft!.reportStage !== "draft");
+  return Boolean(draft) && (draft!.status === ValuationReportDraftStatuses.Approved || draft!.reportStage !== "draft");
 }
 
-/**
- * The report number printed on the report: a new version (n+1) keeps the number and adds «/n».
- *
- * How it works: trims `reportNo`; when it is set and `version` is above 1 returns
- * `${number}/${version}` (PRV-26-00123/2), else the number as is.
- *
- * Edge cases: version 1 or unknown → the bare number; no number yet → "" (never "/2").
- * The suffix changed from « نسخة n» to «/n» with the PRV- numbering.
- */
-export function versionedReportNo(
-  reportNo: string | null | undefined,
-  version: number | null | undefined,
-): string {
-  const base = (reportNo ?? "").trim();
-  return base && version != null && version > 1 ? `${base}/${version}` : base;
-}
+/** The printed report number with its version suffix — shared with the case-study report. */
+export { versionedReportNo } from "@platform/app-shared/domain/report-number";
 
 /** The deposit code printed on the report: the one recorded with the deposit copy — nowhere else keeps it. */
 export function depositCodeForPrint(

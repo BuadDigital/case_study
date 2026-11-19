@@ -20,6 +20,7 @@ import {
 } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
+  canAcceptPartyWork,
   canDeleteProperty,
   canEditPropertyData,
 } from "../../lib/app-data/po-roles";
@@ -90,7 +91,7 @@ export function PoPropertyEdit({
   onSectionSavedAction?: () => void;
   onDeletedAction?: () => void;
 }) {
-  const { role } = useAppAccess();
+  const { role, access } = useAppAccess();
   const { showToast } = useToast();
   const editor = usePropertyIntakeEditor({
     poNumber,
@@ -106,6 +107,9 @@ export function PoPropertyEdit({
   // instead of showing the form; null means his task list is still loading.
   const editsThisProperty = useViewerEditsProperty(propertyId, property?.transactionId);
   const mayEdit = canEditPropertyData(role) && editsThisProperty === true;
+  // «جدول الحصر»: the inspector sends it, the study specialist and the appraiser edit and add (Omar
+  // 2026-11-18). «مكونات العقار» text stays the case staff's (the server's CanAcceptPartyWork).
+  const componentsTextReadOnly = !canAcceptPartyWork(access);
 
   if (loading || editsThisProperty === null) {
     return (
@@ -234,6 +238,7 @@ export function PoPropertyEdit({
               poNumber={poNumber}
               propertyId={propertyId}
               disabled={!mayEdit}
+              textReadOnly={componentsTextReadOnly}
             />
           </CardBody>
         </Card>

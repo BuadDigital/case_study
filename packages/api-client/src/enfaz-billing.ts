@@ -6,6 +6,7 @@ import {
 } from "./pagination";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type EnfazBillingApiConfig = WorkOrdersApiConfig;
 
@@ -355,8 +356,8 @@ export async function listEnfazTrackingPage(
 
 /** A billing write's answer (save, issue, collect): 401 → auth, other failures → server. */
 async function readBillingWrite(res: Response): Promise<ApiOk<PoEnfazBillingDto> | ApiErr> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
   const raw = (await res.json()) as Record<string, unknown>;
   return { ok: true, data: normalizeBilling(raw) };
 }
@@ -371,13 +372,13 @@ export async function getPoEnfazBilling(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeBilling(raw) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -398,7 +399,7 @@ export async function savePoEnfazBilling(
     );
     return await readBillingWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -410,12 +411,12 @@ export async function listEnfazTracking(
     const res = await fetch(`${base}/api/enfaz-billing/tracking`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>[];
     return { ok: true, data: raw.map(normalizeTrackingRow) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -432,7 +433,7 @@ export async function issuePoEnfazInvoice(
     );
     return await readBillingWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -454,7 +455,7 @@ export async function collectPoEnfazInvoice(
     );
     return await readBillingWrite(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -468,12 +469,12 @@ export async function downloadPoEnfazInvoicePdf(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/invoice.pdf`,
       { headers: { Authorization: `Bearer ${config.token}` } },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await res.blob() };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -488,8 +489,8 @@ export async function getPropertyEnfazRevenue(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/properties/${propertyId}`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     const caseStudyRaw = raw.caseStudyFeeSar ?? raw.CaseStudyFeeSar;
     const surveyRaw = raw.surveyFeeSar ?? raw.SurveyFeeSar;
@@ -514,7 +515,7 @@ export async function getPropertyEnfazRevenue(
       },
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -541,12 +542,12 @@ export async function listEnfazFollowups(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/followups`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>[];
     return { ok: true, data: raw.map(normalizeFollowup) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -569,12 +570,24 @@ export async function addEnfazFollowup(
         }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeFollowup(raw) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
+  }
+}
+
+/** A finance-flag write: no body back, so a 2xx is the whole answer. */
+async function writeFinanceFlag(send: () => Promise<Response>): Promise<ApiOk<true> | ApiErr> {
+  try {
+    const res = await send();
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
+    return { ok: true, data: true };
+  } catch {
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -584,25 +597,17 @@ export async function setEnfazFinanceFlag(
   body: SetEnfazFinanceFlagRequest,
 ): Promise<ApiOk<true> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/finance-flag`,
-      {
-        method: "POST",
-        headers: authHeaders(config.token),
-        body: JSON.stringify({
-          flag: body.flag,
-          propertyId: body.propertyId ?? null,
-          note: body.note ?? null,
-        }),
-      },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: true };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return writeFinanceFlag(() =>
+    fetch(`${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/finance-flag`, {
+      method: "POST",
+      headers: authHeaders(config.token),
+      body: JSON.stringify({
+        flag: body.flag,
+        propertyId: body.propertyId ?? null,
+        note: body.note ?? null,
+      }),
+    }),
+  );
 }
 
 export async function clearEnfazFinanceFlag(
@@ -611,19 +616,14 @@ export async function clearEnfazFinanceFlag(
   propertyId?: string | null,
 ): Promise<ApiOk<true> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
-  try {
-    const qs =
-      propertyId?.trim() != null && propertyId.trim() !== ""
-        ? `?propertyId=${encodeURIComponent(propertyId.trim())}`
-        : "";
-    const res = await fetch(
-      `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/finance-flag${qs}`,
-      { method: "DELETE", headers: authHeaders(config.token) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: true };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  const qs =
+    propertyId?.trim() != null && propertyId.trim() !== ""
+      ? `?propertyId=${encodeURIComponent(propertyId.trim())}`
+      : "";
+  return writeFinanceFlag(() =>
+    fetch(`${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/finance-flag${qs}`, {
+      method: "DELETE",
+      headers: authHeaders(config.token),
+    }),
+  );
 }

@@ -6,6 +6,7 @@ import {
   EVALUATOR_SUBMISSION_CHANGED_EVENT,
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { Pages } from "@platform/types";
 
 const PARTY_PAGE_SUBMISSION_EVENTS: Partial<Record<PageId, string>> = {
   "active-inspection": FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
@@ -21,7 +22,7 @@ export function refreshPartyTaskWorkQueries(
   void queryClient.invalidateQueries({
     queryKey: appDataKeys.workflowTasks(),
   });
-  if (pageId === "active-inspection") {
+  if (pageId === Pages.ActiveInspection) {
     void queryClient.invalidateQueries({
       queryKey: appDataKeys.fieldInspectionWorkspaces(),
     });

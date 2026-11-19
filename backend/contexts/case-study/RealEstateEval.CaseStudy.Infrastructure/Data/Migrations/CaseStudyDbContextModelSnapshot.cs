@@ -22,6 +22,133 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.AppraiserHandoverRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AppraisalTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ClosedByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ClosedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ClosingNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Direction")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime?>("EscalatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HandingUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("HandlerSubRole")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("PeerAssigneeId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("PeerName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PoNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly?>("RemindedOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestedByAssigneeId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("RequestedByName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("RequestedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime?>("TakenAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TakenByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("TakenByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppraisalTaskId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" IN ('pending', 'taken')");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("AppraiserHandoverRequests", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_AppraiserHandoverRequests_Kind", "\"Kind\" IS NULL OR \"Kind\" IN ('reassign', 'peer')");
+
+                            t.HasCheckConstraint("CK_AppraiserHandoverRequests_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'taken', 'done', 'declined', 'cancelled')");
+                        });
+                });
+
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.BuildingInventoryLine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -186,6 +313,11 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.Property<Guid?>("PropertyId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("ReportVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("RequestDate")
                         .IsRequired()
@@ -976,6 +1108,9 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("ChangesValue")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("ClosedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1034,6 +1169,9 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.Property<DateTime?>("UploadedAgainAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValuationInputsJson")
+                        .HasColumnType("jsonb");
 
                     b.HasKey("Id");
 
@@ -1731,6 +1869,15 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasDatabaseName("UX_case_study_ReferenceSequences_Prefix_Year");
 
                     b.ToTable("CaseStudyReferenceSequences", "case_study");
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.AppraiserHandoverRequest", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkflowTask", null)
+                        .WithMany()
+                        .HasForeignKey("AppraisalTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.BuildingInventoryLine", b =>

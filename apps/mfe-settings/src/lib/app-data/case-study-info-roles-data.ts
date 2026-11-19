@@ -4,7 +4,9 @@ import {
   CASE_STUDY_SECTION_QUESTIONS,
   caseStudyAnswerKey,
   type CaseStudyQuestionSection,
+  CaseStudyQuestionSections,
 } from "@platform/app-shared/domain/case-study/question-catalog";
+import { Roles } from "@platform/types";
 
 /**
  * Party in the user–information relationship matrix.
@@ -39,35 +41,35 @@ export const CASE_STUDY_INFO_PARTIES: CaseStudyInfoParty[] = [
     name: "أخصائي دراسة الحالة",
     abbr: "أخ",
     color: "#7C3AED",
-    roleId: "case-specialist",
+    roleId: Roles.CaseSpecialist,
   },
   {
     id: "insp",
     name: "المعاين العقاري",
     abbr: "مع",
     color: "#102b4e",
-    roleId: "field-inspector",
+    roleId: Roles.FieldInspector,
   },
   {
     id: "val",
     name: "المقيّم العقاري",
     abbr: "قم",
     color: "#DC2626",
-    roleId: "real-estate-appraiser",
+    roleId: Roles.RealEstateAppraiser,
   },
   {
     id: "eng",
     name: "المكتب الهندسي",
     abbr: "هن",
     color: "#D97706",
-    roleId: "engineering-office",
+    roleId: Roles.EngineeringOffice,
   },
   {
     id: "sup",
     name: "مشرف دراسة الحالة",
     abbr: "مش",
     color: "#0D9488",
-    roleId: "section-supervisor",
+    roleId: Roles.SectionSupervisor,
   },
 ];
 
@@ -122,24 +124,24 @@ export const CASE_STUDY_QUESTION_CATALOG = buildCaseStudyQuestionCatalog();
 
 export const CASE_STUDY_INFO_SECTIONS = CASE_STUDY_REPORT_STEPS.map((s, i) => {
   const sectionIds: CaseStudyQuestionSection[] = [
-    "deed",
-    "survey",
-    "comp",
-    "occ",
-    "extra",
+    CaseStudyQuestionSections.Deed,
+    CaseStudyQuestionSections.Survey,
+    CaseStudyQuestionSections.Comp,
+    CaseStudyQuestionSections.Occ,
+    CaseStudyQuestionSections.Extra,
   ];
   const id = sectionIds[i];
   return {
     id,
     label: s.label,
     color:
-      id === "deed"
+      id === CaseStudyQuestionSections.Deed
         ? "#0284C7"
-        : id === "survey"
+        : id === CaseStudyQuestionSections.Survey
           ? "#102b4e"
-          : id === "comp"
+          : id === CaseStudyQuestionSections.Comp
             ? "#D97706"
-            : id === "occ"
+            : id === CaseStudyQuestionSections.Occ
               ? "#7C3AED"
               : "#DC2626",
     questionCount: CASE_STUDY_SECTION_QUESTIONS[id].length,

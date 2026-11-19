@@ -34,6 +34,7 @@ import {
   THead,
   Tr,
 } from "@platform/ui-kit";
+import { PartyBillingPayeeTypes, PartyBillingStatementStatuses } from "@platform/api-client";
 
 type DueSt = "due" | "instmt" | "paid";
 
@@ -51,7 +52,7 @@ function isFieldInspectionLine(taskKind: string | null | undefined) {
 }
 
 function isInspectorStatement(s: PartyBillingStatementDto): boolean {
-  if (s.payeeType === "vendor") return false;
+  if (s.payeeType === PartyBillingPayeeTypes.Vendor) return false;
   if (s.taskKind && s.taskKind !== "field-inspection") return false;
   return true;
 }
@@ -75,7 +76,7 @@ function buildLines(
 
   for (const line of ready) {
     if (!isFieldInspectionLine(line.taskKind)) continue;
-    if (line.payeeType === "vendor") continue;
+    if (line.payeeType === PartyBillingPayeeTypes.Vendor) continue;
     if ((line.assigneeId ?? "").trim() !== aid) continue;
     const label = (line.propertyLabel || "").trim();
     const ref =
@@ -101,9 +102,9 @@ function buildLines(
 
   for (const s of statements) {
     if (!isInspectorStatement(s)) continue;
-    if (s.status === "cancelled") continue;
+    if (s.status === PartyBillingStatementStatuses.Cancelled) continue;
     if ((s.assigneeId ?? "").trim() !== aid) continue;
-    const st: DueSt = s.status === "closed" ? "paid" : "instmt";
+    const st: DueSt = s.status === PartyBillingStatementStatuses.Closed ? "paid" : "instmt";
     for (const line of s.lines) {
       const label = (line.propertyLabel || "").trim();
       const ref =

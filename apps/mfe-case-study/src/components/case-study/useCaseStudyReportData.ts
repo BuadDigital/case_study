@@ -37,6 +37,7 @@ import {
 import {
   emptyCaseStudyReportDraft,
   type CaseStudyReportDraft,
+  CaseStudyReportStatuses,
 } from "@platform/app-shared/app-data/case-study-report-model";
 import {
   type CaseStudyDeedMatchChangedDetail,
@@ -56,7 +57,7 @@ import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-int
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
-import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
+import { DEFAULT_CASE_STUDY_QUESTION_CATALOG, CaseStudyQuestionSections } from "@platform/app-shared/domain/case-study/question-catalog";
 import {
   buildSeed,
   caseStudyAnswerSummary,
@@ -215,7 +216,7 @@ export function useCaseStudyReportData({
     }
 
     const current = draftRef.current;
-    if (current.status === "issued") return;
+    if (current.status === CaseStudyReportStatuses.Issued) return;
 
     const applied = applyInspectorAnswersToSpecialist(
       current.answers,
@@ -318,8 +319,8 @@ export function useCaseStudyReportData({
   const canEditKey = useCallback(
     (key: string) => {
       if (forceReadOnly) return false;
-      if (!isParty && draft.status === "issued") return false;
-      if (isParty && (draft.status === "issued" || parentFormSubmitted)) {
+      if (!isParty && draft.status === CaseStudyReportStatuses.Issued) return false;
+      if (isParty && (draft.status === CaseStudyReportStatuses.Issued || parentFormSubmitted)) {
         return false;
       }
       if (!isParty) {
@@ -339,7 +340,7 @@ export function useCaseStudyReportData({
 
   const hasPartyVisibleNonDeedSections = useMemo(() => {
     if (!isParty) return false;
-    return FORM_STEP_SECTIONS.filter((section) => section !== "deed").some(
+    return FORM_STEP_SECTIONS.filter((section) => section !== CaseStudyQuestionSections.Deed).some(
       (section) =>
         sectionQuestions[section].some((_, i) =>
           isQuestionVisible(caseStudyAnswerKey(section, i)),
@@ -349,7 +350,7 @@ export function useCaseStudyReportData({
 
   const sectionHasVisibleQuestions = useCallback(
     (section: CaseStudyQuestionSection) =>
-      !(isParty && hasPartyVisibleNonDeedSections && section === "deed") &&
+      !(isParty && hasPartyVisibleNonDeedSections && section === CaseStudyQuestionSections.Deed) &&
       sectionQuestions[section].some((_, i) =>
         isQuestionVisible(caseStudyAnswerKey(section, i)),
       ),
@@ -425,11 +426,11 @@ export function useCaseStudyReportData({
     let cancelled = false;
     void loadCaseStudyReportDraft(referenceTaskId).then((parent) => {
       if (cancelled) return;
-      const locked = parent?.status === "issued";
+      const locked = parent?.status === CaseStudyReportStatuses.Issued;
       setParentFormSubmitted(locked);
       if (!locked) return;
       setDraft((current) =>
-        current.status === "issued" ? current : { ...current, status: "issued" },
+        current.status === CaseStudyReportStatuses.Issued ? current : { ...current, status: CaseStudyReportStatuses.Issued },
       );
     }).catch(() => {
       if (cancelled) return;

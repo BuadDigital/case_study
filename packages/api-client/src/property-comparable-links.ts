@@ -1,6 +1,7 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type PropertyComparableLinkItemDto = {
   linkId: string;
@@ -39,10 +40,10 @@ export async function listPropertyComparableLinks(
       `${base}/api/property-comparable-links?propertyId=${encodeURIComponent(propertyId)}`,
       { headers: authHeaders(config.token, { accept: true }) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as PropertyComparableLinkListDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

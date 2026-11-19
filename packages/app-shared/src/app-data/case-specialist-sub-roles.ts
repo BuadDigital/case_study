@@ -1,4 +1,5 @@
 import type { CaseSpecialistSubRole, PageId, RoleId } from "@platform/types";
+import { Roles, Pages } from "@platform/types";
 
 /**
  * The case specialist's sub-roles (Omar's ruling 2026-11-02) — mirrors `CaseSpecialistSubRoles`
@@ -37,7 +38,7 @@ export function subRolesFromPermissions(
   role: RoleId | null,
   raw: readonly string[] | null | undefined,
 ): readonly CaseSpecialistSubRole[] {
-  if (role !== "case-specialist") return [];
+  if (role !== Roles.CaseSpecialist) return [];
   const held = new Set((raw ?? []).map((s) => s.trim().toLowerCase()));
   const known = CASE_SPECIALIST_SUB_ROLES.filter((s) => held.has(s));
   return known.length > 0 ? known : CASE_SPECIALIST_SUB_ROLES;
@@ -45,7 +46,7 @@ export function subRolesFromPermissions(
 
 /** True only for a case specialist holding that sub-role. */
 export function holdsSubRole(access: StaffAccess, subRole: CaseSpecialistSubRole): boolean {
-  return access.role === "case-specialist" && access.subRoles.includes(subRole);
+  return access.role === Roles.CaseSpecialist && access.subRoles.includes(subRole);
 }
 
 /**
@@ -54,18 +55,18 @@ export function holdsSubRole(access: StaffAccess, subRole: CaseSpecialistSubRole
  */
 const SUB_ROLE_PAGES: Record<CaseSpecialistSubRole, readonly PageId[]> = {
   coordination: [
-    "active-primary-data",
-    "bourse-inquiry",
-    "active-distribution",
-    "active-receipt",
-    "operations-tasks",
-    "keys",
-    "field-sync-board",
-    "suspended-transactions",
-    "failure-types",
+    Pages.ActivePrimaryData,
+    Pages.BourseInquiry,
+    Pages.ActiveDistribution,
+    Pages.ActiveReceipt,
+    Pages.OperationsTasks,
+    Pages.Keys,
+    Pages.FieldSyncBoard,
+    Pages.SuspendedTransactions,
+    Pages.FailureTypes,
   ],
-  study: ["active-case-study"],
-  review: ["system-upload"],
+  study: [Pages.ActiveCaseStudy],
+  review: [Pages.SystemUpload],
 };
 
 const SUB_ROLE_PAGE_SET = new Set<PageId>(Object.values(SUB_ROLE_PAGES).flat());
@@ -82,7 +83,7 @@ export function filterPagesBySubRoles(
   subRoles: readonly CaseSpecialistSubRole[],
   pages: readonly PageId[],
 ): PageId[] {
-  if (role !== "case-specialist") return [...pages];
+  if (role !== Roles.CaseSpecialist) return [...pages];
   const allowed = new Set<PageId>(subRoles.flatMap((s) => SUB_ROLE_PAGES[s]));
   return pages.filter((page) => !SUB_ROLE_PAGE_SET.has(page) || allowed.has(page));
 }
@@ -95,6 +96,6 @@ export function staffAccessOf(
   role: RoleId,
   subRoles?: readonly CaseSpecialistSubRole[],
 ): StaffAccess {
-  if (role !== "case-specialist") return { role, subRoles: [] };
+  if (role !== Roles.CaseSpecialist) return { role, subRoles: [] };
   return { role, subRoles: subRoles ?? CASE_SPECIALIST_SUB_ROLES };
 }

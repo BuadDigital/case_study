@@ -37,6 +37,7 @@ import { CoordinationIntakeBanner, IntakeScope } from "./CoordinationIntake";
 import { PoPropertyRouteGate } from "./PoPropertyRouteGate";
 import { useCoordinationSections, useSurveyTask } from "./useCoordinationSections";
 import { StepLink } from "./StepLink";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 const EMPTY_TASKS: WorkflowTask[] = [];
 
@@ -96,7 +97,7 @@ function CoordinationPageBody({
 
   const footer = (
     <div className="flex flex-col gap-2" data-testid="coordination-send">
-      <PropertyDetailReceiptCard propertyId={property.id} inCaseStudyPhase={task?.phase === "case-study"} />
+      <PropertyDetailReceiptCard propertyId={property.id} inCaseStudyPhase={task?.phase === CaseStudyTaskPhases.CaseStudy} />
       {step < FOLLOW_UP_STEP ? (
         <p className="m-0 text-[12px] text-text-3">يظهر «إرسال المعاملة للدراسة» بعد التوزيع.</p>
       ) : null}

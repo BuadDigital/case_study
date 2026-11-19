@@ -26,6 +26,7 @@ import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-
 import type { PoIntakeRecord } from "./po-intake-data";
 import { findPropertyForTask } from "./my-task-row";
 
+import { CaseStudyTaskPhases, WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 type ActiveQueueRowMoreOptions = {
   task: WorkflowTask;
   propertyId?: string;
@@ -100,7 +101,7 @@ function appendPhaseRevertItems(
   if (!options.viewerAccess || !canRevertTaskPhase(options.viewerAccess)) return;
   const phase = options.task.phase;
 
-  if (phase === "distribution") {
+  if (phase === CaseStudyTaskPhases.Distribution) {
     if (!options.skipsBourse) {
       items.push({
         id: "revert-bourse",
@@ -108,7 +109,7 @@ function appendPhaseRevertItems(
         onClick: () => {
           void runPhaseRevert(
             options,
-            "bourse",
+            CaseStudyTaskPhases.Bourse,
             "إرجاع لاستعلام البورصة",
             "إرجاع المعاملة لاستعلام البورصة؟ يمكن تعديل بيانات البورصة ثم المتابعة مجددًا.",
             "تم إرجاع المعاملة لاستعلام البورصة",
@@ -118,14 +119,14 @@ function appendPhaseRevertItems(
     }
   }
 
-  if (phase === "bourse") {
+  if (phase === CaseStudyTaskPhases.Bourse) {
     items.push({
       id: "revert-enfath",
       label: "إرجاع للبيانات الأولية",
       onClick: () => {
         void runPhaseRevert(
           options,
-          "enfath",
+          CaseStudyTaskPhases.Enfath,
           "إرجاع للبيانات الأولية",
           "إرجاع المعاملة للبيانات الأولية؟ يمكن تعديل بيانات إنفاذ ثم المتابعة مجددًا.",
           "تم إرجاع المعاملة للبيانات الأولية",
@@ -204,7 +205,7 @@ export function buildActiveQueueRowMoreItems(
     });
   }
 
-  if (options.task.kind === "engineering-survey") {
+  if (options.task.kind === WorkflowTaskKinds.EngineeringSurvey) {
     items.push({
       id: "start-survey",
       label: "ابدأ الرفع المساحي",
@@ -212,7 +213,7 @@ export function buildActiveQueueRowMoreItems(
     });
   }
 
-  if (options.task.kind === "field-inspection") {
+  if (options.task.kind === WorkflowTaskKinds.FieldInspection) {
     const record = options.poByNumber?.get(options.task.poNumber.trim());
     const property = findPropertyForTask(record, options.task);
     items.push({
@@ -229,13 +230,13 @@ export function buildActiveQueueRowMoreItems(
   }
 
   const isPartyTask =
-    options.task.kind === "engineering-survey" ||
-    options.task.kind === "field-inspection" ||
-    options.task.kind === "property-appraisal";
+    options.task.kind === WorkflowTaskKinds.EngineeringSurvey ||
+    options.task.kind === WorkflowTaskKinds.FieldInspection ||
+    options.task.kind === WorkflowTaskKinds.PropertyAppraisal;
   // Primary data and bourse rows — same gate as the PO properties list.
   const isIntakeTask =
-    options.task.kind === "case-study-property" &&
-    (options.task.phase === "enfath" || options.task.phase === "bourse") &&
+    options.task.kind === WorkflowTaskKinds.CaseStudyProperty &&
+    (options.task.phase === CaseStudyTaskPhases.Enfath || options.task.phase === CaseStudyTaskPhases.Bourse) &&
     Boolean(options.viewerRole && canRaisePropertyFailure(options.viewerRole));
 
   if ((isPartyTask || isIntakeTask) && propertyId) {
@@ -316,8 +317,8 @@ export function buildCaseStudyQueueRowMoreItems(options: {
   const items: RowMoreMenuItem[] = [];
 
   if (
-    options.task.kind === "case-study-property" &&
-    options.task.phase === "case-study" &&
+    options.task.kind === WorkflowTaskKinds.CaseStudyProperty &&
+    options.task.phase === CaseStudyTaskPhases.CaseStudy &&
     options.onRedistributeParties &&
     options.viewerAccess &&
     canRedistributeParties(options.viewerAccess)

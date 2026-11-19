@@ -5,13 +5,14 @@ import {
   partyRoleForStaffUser,
   type DistributionAssignee,
 } from "../distribution-assignees";
+import { Roles } from "@platform/types";
 
 /** Party roles that can receive an operations task (execution sides). */
 const EXECUTION_PARTY_ORDER: RoleId[] = [
-  "field-inspector",
-  "real-estate-appraiser",
-  "engineering-office",
-  "government-reviewer",
+  Roles.FieldInspector,
+  Roles.RealEstateAppraiser,
+  Roles.EngineeringOffice,
+  Roles.GovernmentReviewer,
 ];
 
 const GROUP_LABELS: Record<string, string> = {
@@ -85,7 +86,7 @@ export function assigneesForOperationsTaskType(
       .filter(
         (u) =>
           isStaffAssignable(u) &&
-          partyRoleForStaffUser(u) === "government-reviewer",
+          partyRoleForStaffUser(u) === Roles.GovernmentReviewer,
       )
       .map(toAssignee)
       .sort((a, b) => a.name.localeCompare(b.name, "ar"));
@@ -97,7 +98,7 @@ export function assigneesForOperationsTaskType(
       .filter(
         (u) =>
           isStaffAssignable(u) &&
-          partyRoleForStaffUser(u) === "field-inspector",
+          partyRoleForStaffUser(u) === Roles.FieldInspector,
       )
       .map(toAssignee)
       .sort((a, b) => a.name.localeCompare(b.name, "ar"));

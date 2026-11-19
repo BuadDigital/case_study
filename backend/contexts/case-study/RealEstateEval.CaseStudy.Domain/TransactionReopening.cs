@@ -52,6 +52,15 @@ public class TransactionReopening
     /// <summary>Field work is needed (a new visit or photos) — the study is reopened and a task is made for it.</summary>
     public bool NeedsFieldWork { get; set; }
 
+    /// <summary>Enfaz asked to change the value or the forced-sale ratio (Omar 2026-11-18) — the valuation reopens.</summary>
+    public bool ChangesValue { get; set; }
+
+    /// <summary>
+    /// A study-only reopening keeps the deed's data as it was (JSON of the property DTO): before the upload,
+    /// a change to what the valuation report prints or reads refuses it until the valuation reopens too.
+    /// </summary>
+    public string? ValuationInputsJson { get; set; }
+
     public string Status { get; set; } = TransactionReopeningStatuses.Open;
 
     public DateTime OpenedAtUtc { get; set; }

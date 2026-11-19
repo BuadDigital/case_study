@@ -1,6 +1,8 @@
 import type { RoleId } from "@platform/types";
 import type { WorkflowTask } from "./tasks";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
 /**
  * What: whether a role edits property data and documents only on the transactions assigned to it.
  * How it works: true for the appraiser only. Mirrors `PoRoleMatrixRules.EditsOnlyAssignedProperties`.
@@ -8,7 +10,7 @@ import type { WorkflowTask } from "./tasks";
  * edits only his own.
  */
 export function editsOnlyAssignedProperties(role: RoleId): boolean {
-  return role === "real-estate-appraiser";
+  return role === Roles.RealEstateAppraiser;
 }
 
 /**
@@ -29,8 +31,8 @@ export function appraiserAssignedToProperty(
   if (!property && !transaction) return false;
   return (tasks ?? []).some(
     (t) =>
-      t.kind === "property-appraisal" &&
-      t.status !== "cancelled" &&
+      t.kind === WorkflowTaskKinds.PropertyAppraisal &&
+      t.status !== WorkflowTaskStatuses.Cancelled &&
       ((property && t.propertyId === property) ||
         (transaction && t.transactionId === transaction)),
   );

@@ -83,6 +83,9 @@ public class WorkflowTasksController : ControllerBase
         return Ok(await _tasks.ListAsync(query, actor, cancellationToken));
     }
 
+    // The server aligns a work order's slots when it or a deed is saved, and a sweep every ten
+    // minutes (2026-11-19); the app no longer calls this. Kept for tabs opened before that release.
+    [Obsolete("The slots are aligned on save and by WorkflowTaskSlotSweepHostedService.")]
     [HttpPost("sync")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<IReadOnlyList<WorkflowTaskDto>>> Sync(
@@ -333,7 +336,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpPost("{id:guid}/redistribute")]
-    [Authorize(Policy = CapabilityPolicyNames.ReassignParties)]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> Redistribute(
         Guid id,
         [FromBody] RedistributePartiesRequest request,

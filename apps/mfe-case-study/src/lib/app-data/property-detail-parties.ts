@@ -13,6 +13,7 @@ import { assigneeLabel, getCaseSpecialists } from "./distribution-parties";
 import type { CaseSpecialistGroup } from "./my-work-model";
 import { migrateDistribution, type WorkflowTask } from "./tasks";
 import { WORK_SECTIONS, workPageStep } from "./work-page-model";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 export type PropertyDetailPartyRoleKey =
   | "specialist"
@@ -146,12 +147,12 @@ function timelineSpecialistRow(input: {
   if (!task) return unassigned;
 
   const parent =
-    task.kind === "case-study-property"
+    task.kind === WorkflowTaskKinds.CaseStudyProperty
       ? task
       : allTasks.find(
           (t) =>
             t.id === caseStudyFamilyParentId(task) &&
-            t.kind === "case-study-property",
+            t.kind === WorkflowTaskKinds.CaseStudyProperty,
         );
 
   if (parent) {
@@ -236,13 +237,13 @@ function specialistSubRoleRows(input: {
   const holderId = input.studyHolderTaskId?.trim();
   const parent =
     (holderId
-      ? allTasks.find((t) => t.id === holderId && t.kind === "case-study-property")
+      ? allTasks.find((t) => t.id === holderId && t.kind === WorkflowTaskKinds.CaseStudyProperty)
       : undefined) ??
-    (task?.kind === "case-study-property"
+    (task?.kind === WorkflowTaskKinds.CaseStudyProperty
       ? task
       : task
         ? allTasks.find(
-            (t) => t.id === caseStudyFamilyParentId(task) && t.kind === "case-study-property",
+            (t) => t.id === caseStudyFamilyParentId(task) && t.kind === WorkflowTaskKinds.CaseStudyProperty,
           )
         : undefined);
 

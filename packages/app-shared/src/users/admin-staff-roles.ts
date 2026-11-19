@@ -1,17 +1,18 @@
 import type { RoleId } from "@platform/types";
 import { ROLES } from "../app-data/constants";
+import { Roles } from "@platform/types";
 
 /** Operational roles the CDO can assign — mirrors backend CreatableStaffRoleIds. */
 const ADMIN_CREATABLE_STAFF_ROLE_IDS: RoleId[] = [
-  "cdo",
-  "general-manager",
-  "section-supervisor",
-  "case-specialist",
-  "government-reviewer",
-  "real-estate-appraiser",
-  "field-inspector",
-  "financial-officer",
-  "engineering-office",
+  Roles.Cdo,
+  Roles.GeneralManager,
+  Roles.SectionSupervisor,
+  Roles.CaseSpecialist,
+  Roles.GovernmentReviewer,
+  Roles.RealEstateAppraiser,
+  Roles.FieldInspector,
+  Roles.FinancialOfficer,
+  Roles.EngineeringOffice,
 ];
 
 /** Canonical department codes a section supervisor may supervise. */

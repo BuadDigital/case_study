@@ -393,6 +393,40 @@ public class ValuationRequestServiceTests
             "2026-06-25",
             DateTime.UtcNow);
 
+    // 2026-11-19: the map overlay read stopped at 500 requests and said nothing of the rest.
+    [Fact]
+    public async Task Paged_list_brings_back_every_request_newest_first_with_the_total()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db);
+        for (var day = 1; day <= 5; day++)
+        {
+            var (_, error) = await service.CreateAsync(new SaveValuationRequestRequest
+            {
+                PropId = Guid.NewGuid().ToString(),
+                Area = "جدة",
+                Type = "فيلا",
+                Appraiser = "مقيم",
+                Status = ValuationRequestStatuses.Progress,
+                Date = $"2026-07-{day:D2}",
+            });
+            Assert.Null(error);
+        }
+
+        var pages = new List<ValuationRequestDto>();
+        for (var page = 1; page <= 3; page++)
+        {
+            var result = await service.ListPagedAsync(page, 2);
+            Assert.Equal(5, result.TotalCount);
+            Assert.Equal(3, result.TotalPages);
+            pages.AddRange(result.Items);
+        }
+
+        Assert.Equal(5, pages.Select(r => r.Id).Distinct().Count());
+        Assert.Equal("2026-07-05", pages[0].Date);
+        Assert.Equal("2026-07-01", pages[^1].Date);
+    }
+
     private static ValuationDbContext CreateDb() => TestDatabases.Valuation("valuation-request");
 
  /// <summary>

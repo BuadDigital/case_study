@@ -56,6 +56,7 @@ import {
   EMPTY_TASKS,
   useActiveTransactionQueueWorkflow,
 } from "./useActiveTransactionQueueWorkflow";
+import { Pages } from "@platform/types";
 
 export type {
   ActiveQueueApi,
@@ -480,8 +481,8 @@ export function ActiveTransactionQueueView({
                 {config.tableHint === null ? null : (
                 <QueueTableHint
                   className={cn(
-                    (config.pageId === "all-transactions" ||
-                      config.pageId === "active-primary-data" ||
+                    (config.pageId === Pages.AllTransactions ||
+                      config.pageId === Pages.ActivePrimaryData ||
                       isPartyQueueToggleTable) &&
                       "border-t border-border bg-surface-2",
                   )}
@@ -541,7 +542,7 @@ export function ActiveTransactionQueueView({
   return (
     <>
       <ActiveTransactionPageLayout
-        pageId={config.pageId ?? "active-primary-data"}
+        pageId={config.pageId ?? Pages.ActivePrimaryData}
         hasRail={hasRail}
         panelOpen={panelOpen}
         aboveSituation={

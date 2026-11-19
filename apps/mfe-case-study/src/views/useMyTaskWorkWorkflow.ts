@@ -50,6 +50,7 @@ import {
   taskWorkSaveLabel,
   taskWorkTitles,
   type TaskWorkLayout,
+  TaskWorkLayouts,
 } from "./my-task-work-state";
 import { useMyTaskWorkCommands } from "./useMyTaskWorkCommands";
 import {
@@ -58,6 +59,8 @@ import {
   peekPropertyFieldAutosave,
   queuePropertyFieldAutosave,
 } from "../lib/app-data/property-field-autosave";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
 
 export type CaseStudyTaskWorkProps = {
   task: WorkflowTask;
@@ -77,7 +80,7 @@ export type MyTaskWorkflow = ReturnType<typeof useMyTaskWorkWorkflow>;
 export function useMyTaskWorkWorkflow({
   task,
   onRefresh,
-  layout = "page",
+  layout = TaskWorkLayouts.Page,
   onClose,
   onEnfathSaved,
 }: CaseStudyTaskWorkProps) {
@@ -143,7 +146,7 @@ export function useMyTaskWorkWorkflow({
   const roleFlags = taskWorkRoleFlags(access);
   const { isSupervisor, isSpecialist, failureSpecialist } = roleFlags;
   const failureRaisedByRole =
-    role === "section-supervisor"
+    role === Roles.SectionSupervisor
       ? FAILURE_RAISER_SUPERVISOR
       : FAILURE_RAISER_SPECIALIST;
 
@@ -282,7 +285,7 @@ export function useMyTaskWorkWorkflow({
   const engineeringHint = engineeringOfficeUnavailableReason(property, hasPriorSurvey);
 
   useEffect(() => {
-    if (loading || task.phase !== "distribution" || showEngineering) return;
+    if (loading || task.phase !== CaseStudyTaskPhases.Distribution || showEngineering) return;
     if (distribution.engineeringOffice) {
       const next = migrateDistribution({
         ...distribution,

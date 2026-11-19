@@ -21,6 +21,7 @@ import {
 } from "../../lib/app-data/case-study-report-commands";
 import type { CaseStudyReportData } from "./useCaseStudyReportData";
 import { useCaseStudyReportIssue } from "./useCaseStudyReportIssue";
+import { CaseStudyReportStatuses, CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 
 type PartyDraft = Awaited<ReturnType<typeof loadPartyCaseStudyReportDraft>>;
 
@@ -92,14 +93,14 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
     (next: CaseStudyReportDraft) => {
       if (resyncingRef.current) return;
       setDraft(next);
-      if (!isParty && next.status === "issued" && draft.status === "issued") {
+      if (!isParty && next.status === CaseStudyReportStatuses.Issued && draft.status === CaseStudyReportStatuses.Issued) {
         return;
       }
       if (
         isParty &&
         (parentFormSubmitted ||
-          draft.status === "issued" ||
-          next.status === "issued")
+          draft.status === CaseStudyReportStatuses.Issued ||
+          next.status === CaseStudyReportStatuses.Issued)
       ) {
         return;
       }
@@ -132,7 +133,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
       });
 
       const displayAnswers = { ...draft.answers, [key]: value };
-      const marksPartyReview = !isParty && (value === "A" || value === "B" || value === "NA");
+      const marksPartyReview = !isParty && (value === CaseStudyReportAnswers.A || value === CaseStudyReportAnswers.B || value === "NA");
       const next: CaseStudyReportDraft = {
         ...draft,
         answers: displayAnswers,
@@ -227,7 +228,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
     value: CaseStudyReportDraft[K],
   ) => {
     const current = draftRef.current;
-    if (isParty || current.status === "issued" || resyncingRef.current) return;
+    if (isParty || current.status === CaseStudyReportStatuses.Issued || resyncingRef.current) return;
     if (
       key === "deedRemarks" ||
       key === "deedNatureMatchOutcome" ||
@@ -268,24 +269,24 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
 
   const saveDraft = () => {
     if (resyncingRef.current) return;
-    if (!isParty && draft.status === "issued") return;
+    if (!isParty && draft.status === CaseStudyReportStatuses.Issued) return;
     void withSaveFeedback(
       "حفظ مسودة",
       "تم حفظ المسودة — يمكنك مواصلة التعبئة لاحقاً",
-      () => ({ ...draft, status: "draft" }),
+      () => ({ ...draft, status: CaseStudyReportStatuses.Draft }),
     );
   };
 
   const submitForm = async () => {
     if (resyncingRef.current) return;
-    if (!isParty && draft.status === "issued") return;
-    if (isParty && (draft.status === "issued" || parentFormSubmitted)) return;
+    if (!isParty && draft.status === CaseStudyReportStatuses.Issued) return;
+    if (isParty && (draft.status === CaseStudyReportStatuses.Issued || parentFormSubmitted)) return;
     if (saving || submittingForm) return;
     if (isParty) {
       await withSaveFeedback(
         "حفظ إجاباتي",
         "تم حفظ إجاباتك في تقرير دراسة الحالة",
-        () => ({ ...draft, status: "draft" }),
+        () => ({ ...draft, status: CaseStudyReportStatuses.Draft }),
       );
       return;
     }

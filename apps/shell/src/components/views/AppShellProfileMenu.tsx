@@ -6,6 +6,7 @@ import { cn } from "@platform/ui-kit";
 import type { PageId } from "@platform/types";
 import { ThemeSwitch } from "@/components/views/ThemeSwitch";
 import { ChevronDownIcon, LogoutIcon } from "./AppShellNavPrimitives";
+import { Pages } from "@platform/types";
 
 export function ProfileMenu({
   chipName,
@@ -23,7 +24,7 @@ export function ProfileMenu({
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const inMenuSection = currentPage === "profile";
+  const inMenuSection = currentPage === Pages.Profile;
 
   useEffect(() => {
     if (!open) return;

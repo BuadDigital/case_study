@@ -24,6 +24,7 @@ import {
   isInspectorWorkspaceLocked,
   mapPinPatchForActor,
   type InspectorWorkspaceDraft,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { flushInspectorInventorySave } from "./inspector-inventory-flush";
 import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
@@ -52,6 +53,7 @@ import {
   scheduleInspectorErrorScroll,
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
+  InspectorStepLayouts,
 } from "../../lib/app-data/inspector-workspace-validation";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
@@ -60,6 +62,7 @@ import {
   newerInspectorDraft,
   SAVE_CHIP_SECTION_BY_FIELD,
 } from "./field-inspection-work-state";
+import { WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 
 /** The bag the body and its section cards consume; sections `Pick` from it. */
 export type FieldInspectionWorkflow = ReturnType<typeof useFieldInspectionWorkflow>;
@@ -149,7 +152,7 @@ export function useFieldInspectionWorkflow({
   }, [task.id, mapPinned]);
 
   const locked =
-    task.status === "completed" ||
+    task.status === WorkflowTaskStatuses.Completed ||
     (draft ? isInspectorWorkspaceLocked(draft.status) : false);
   const workLocked = locked;
   const boundariesUnavailable = property
@@ -246,7 +249,7 @@ export function useFieldInspectionWorkflow({
         }
         persist({
           ...(lat && lng
-            ? mapPinPatchForActor(draft, lat, lng, "inspector")
+            ? mapPinPatchForActor(draft, lat, lng, WorkspaceActors.Inspector)
             : {}),
           mapPinned: true,
         });
@@ -266,7 +269,7 @@ export function useFieldInspectionWorkflow({
       const curLat = draft.mapLatitude.trim();
       const curLng = draft.mapLongitude.trim();
       if (!curLat || !curLng || !mapPinnedRef.current) {
-        persist(mapPinPatchForActor(draft, nextLat, nextLng, "inspector"));
+        persist(mapPinPatchForActor(draft, nextLat, nextLng, WorkspaceActors.Inspector));
         return "saved";
       }
       if (curLat === nextLat && curLng === nextLng) return "same";
@@ -336,7 +339,7 @@ export function useFieldInspectionWorkflow({
       showToast(message ?? "يرجى تصحيح الحقول", "error");
       const targetId = firstInspectorWorkspaceErrorTarget(errors);
       // The phone body's own step order — not the desktop wizard's (fixed 2026-11-04).
-      if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId, "mobile"));
+      if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId, InspectorStepLayouts.Mobile));
       scheduleInspectorErrorScroll(errors);
       return false;
     }
@@ -398,7 +401,7 @@ export function useFieldInspectionWorkflow({
    * opened step 1 and the description / service-photo links opened step 2 on the phone.
    */
   const scrollToErrorTarget = useCallback((targetId: string) => {
-    setActiveStep(inspectorWizardStepForErrorTarget(targetId, "mobile"));
+    setActiveStep(inspectorWizardStepForErrorTarget(targetId, InspectorStepLayouts.Mobile));
     scheduleScrollToFormField(targetId, 80);
   }, [setActiveStep]);
 
@@ -415,7 +418,7 @@ export function useFieldInspectionWorkflow({
         draft,
         pendingMapMove.nextLat,
         pendingMapMove.nextLng,
-        "inspector",
+        WorkspaceActors.Inspector,
       ),
       mapPinned: true,
     });
@@ -429,7 +432,7 @@ export function useFieldInspectionWorkflow({
 
   function undoMapMove() {
     if (!mapBackup || !draft) return;
-    persist(mapPinPatchForActor(draft, mapBackup.lat, mapBackup.lng, "inspector"));
+    persist(mapPinPatchForActor(draft, mapBackup.lat, mapBackup.lng, WorkspaceActors.Inspector));
     setMapBackup(null);
     setMapPinEpoch((n) => n + 1);
   }

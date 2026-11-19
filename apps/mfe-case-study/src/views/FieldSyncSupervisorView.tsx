@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   listStaleFieldSyncStatuses,
   type FieldSyncStatusDto,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { getValidAuthSession } from "@platform/auth-client";
 import {
@@ -75,7 +76,7 @@ export function FieldSyncSupervisorView() {
     const result = await listStaleFieldSyncStatuses({ token: session.token });
     if (!result.ok) {
       setError(
-        result.kind === "forbidden"
+        result.kind === ApiErrorKinds.Forbidden
           ? "لا تملك صلاحية عرض لوحة المزامنة"
           : "تعذّر تحميل اللوحة",
       );

@@ -15,6 +15,7 @@ import type {
   ValuationReconciliationDto,
   ValuationSelectionsApiConfig,
 } from "./valuation-comparable-selections";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type ValuationAlertOverrideInput = {
   code: string;
@@ -51,7 +52,7 @@ export async function saveValuationAlertOverrides(
         body: JSON.stringify({ methodologyAlertOverrides: overrides }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400 || res.status === 403 || res.status === 409) {
       const payload = (await res.json().catch(() => null)) as {
         errors?: Record<string, string>;
@@ -60,7 +61,7 @@ export async function saveValuationAlertOverrides(
       } | null;
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message:
           (payload?.errors ? Object.values(payload.errors)[0] : undefined) ??
           payload?.message ??
@@ -72,6 +73,6 @@ export async function saveValuationAlertOverrides(
     if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationReconciliationDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

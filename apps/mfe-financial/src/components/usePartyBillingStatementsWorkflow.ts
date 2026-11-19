@@ -36,6 +36,7 @@ import {
   usePartyBillingStatementsPageQuery,
 } from "../query/billing-list-page-queries";
 import { EMPTY_READY_LINES, EMPTY_STATEMENTS } from "./FinancePartyBillingParts";
+import { PartyBillingPayeeTypes } from "@platform/api-client";
 
 type PartyBillingWorkflowArgs = {
   mode: PartyBillingMode;
@@ -315,7 +316,7 @@ export function usePartyBillingStatementsWorkflow({
         showToast(result.error, "error");
         return;
       }
-      if (statement.payeeType === "vendor") {
+      if (statement.payeeType === PartyBillingPayeeTypes.Vendor) {
         pushNotification({
           title: "أُرسل مسير الصرف",
           body: `${result.statement.referenceNumber} مرسل للمكتب.`,

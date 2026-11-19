@@ -8,6 +8,7 @@ import {
   type PagedResultDto,
 } from "./pagination";
 import { parseFieldErrorsFromResponse } from "./field-errors";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type TaskDistributionDraftDto = {
   governmentAuditor: boolean;
@@ -122,12 +123,12 @@ async function readTaskWrite<T>(
   res: Response,
   options: { fieldErrorsOn400?: boolean } = {},
 ): Promise<ApiOk<T> | ApiErr> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 404) return { ok: false, kind: "not_found" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
   if (options.fieldErrorsOn400 && res.status === 400) {
-    return { ok: false, kind: "validation", errors: await parseFieldErrorsFromResponse(res) };
+    return { ok: false, kind: ApiErrorKinds.Validation, errors: await parseFieldErrorsFromResponse(res) };
   }
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
   return { ok: true, data: await readJson<T>(res) };
 }
 
@@ -210,24 +211,6 @@ export async function listWorkflowTasksPage(
   );
 }
 
-export async function syncWorkflowTasks(
-  config: WorkOrdersApiConfig,
-): Promise<ApiOk<WorkflowTaskDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/workflow-tasks/sync`, {
-      method: "POST",
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = await readJson<WorkflowTaskDto[]>(res);
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function patchWorkflowTaskDistribution(
   config: WorkOrdersApiConfig,
   taskId: string,
@@ -245,7 +228,7 @@ export async function patchWorkflowTaskDistribution(
     );
     return await readTaskWrite<WorkflowTaskDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -271,7 +254,7 @@ export async function confirmWorkflowTaskDistribution(
     );
     return await readTaskWrite<ConfirmTaskDistributionResponseDto>(res, { fieldErrorsOn400: true });
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -297,7 +280,7 @@ export async function redistributeWorkflowTaskParties(
     );
     return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -317,7 +300,7 @@ async function postEngineeringSurvey(
     });
     return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -367,7 +350,7 @@ export async function advanceWorkflowTaskAfterEnfath(
     );
     return await readTaskWrite<WorkflowTaskDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -386,7 +369,7 @@ export async function linkWorkflowTaskProperty(
     });
     return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -407,7 +390,7 @@ export async function advanceWorkflowTaskAfterBourse(
     );
     return await readTaskWrite<WorkflowTaskDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -428,7 +411,7 @@ export async function revertWorkflowTaskPhase(
     );
     return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -444,18 +427,18 @@ export async function patchWorkflowTask(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     // A refusal (e.g. completing / reopening a case-study task by hand: «يُنجز الإصدار وإعادة الفتح
     // من تقرير دراسة الحالة») carries its Arabic text in field error `_` — keep it for the caller.
     if (res.status === 400 || res.status === 409 || res.status === 422) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors, message: errors._ };
+      return { ok: false, kind: ApiErrorKinds.Validation, errors, message: errors._ };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -476,7 +459,7 @@ export async function reopenCompletedWorkflowTask(
     );
     return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -495,16 +478,16 @@ export async function deleteWorkflowTaskSlot(
         body: JSON.stringify({ reason }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (res.status === 422) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
+      return { ok: false, kind: ApiErrorKinds.Validation, errors };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: undefined };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -521,11 +504,11 @@ export async function deleteWorkflowTasksForPo(
         headers: authHeaders(config.token),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: undefined };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -544,10 +527,10 @@ export async function deleteWorkflowTasksForProperty(
         headers: authHeaders(config.token),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: undefined };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

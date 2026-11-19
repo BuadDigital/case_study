@@ -39,9 +39,10 @@ import {
   resetFailureTypesCatalog,
 } from "../lib/failure-types-commands";
 import { useFailureTypesQuery } from "../query/failure-types-queries";
+import { Roles } from "@platform/types";
 
 function canManageFailureTypes(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "section-supervisor";
+  return isSuperAdmin(role) || role === Roles.SectionSupervisor;
 }
 
 const FOLDER_ICON =

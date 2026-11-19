@@ -28,6 +28,7 @@ import { inspectorServiceMeters } from "./field-inspection-work-state";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 export function InspectorWizardServicesCard({
   draft,
@@ -116,7 +117,7 @@ export function InspectorWizardServicesCard({
               draft={draft}
               disabled={!editable}
               onPatch={onPatch}
-              layout="desktop"
+              layout={InspectorStepLayouts.Desktop}
               transactionPhotos={
                 serviceProofFromTransactionPhotos
                   ? transactionPhotos

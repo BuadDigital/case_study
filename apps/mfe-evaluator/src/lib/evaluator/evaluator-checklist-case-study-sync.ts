@@ -6,6 +6,7 @@ import type {
   SharedDeedScope,
 } from "./evaluator-window-data";
 import { checklistAnswerLabel } from "./evaluator-window-data";
+import { CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 
 const APPRAISER_PARTY_ID = "val" as const;
 
@@ -117,8 +118,8 @@ export function caseStudyAnswerDisplayLabel(
 export function caseStudyAnswerToChecklistBoolean(
   answer: CaseStudyReportAnswer | null | undefined,
 ): boolean | null {
-  if (answer === "A") return true;
-  if (answer === "B") return false;
+  if (answer === CaseStudyReportAnswers.A) return true;
+  if (answer === CaseStudyReportAnswers.B) return false;
   return null;
 }
 
@@ -126,8 +127,8 @@ function sharedDeedScopeFromCaseStudy(
   answers: Record<string, CaseStudyReportAnswer | null | undefined>,
 ): SharedDeedScope | null {
   const answer = answers.deed_10;
-  if (answer === "A") return "full";
-  if (answer === "B") return "part";
+  if (answer === CaseStudyReportAnswers.A) return "full";
+  if (answer === CaseStudyReportAnswers.B) return "part";
   return null;
 }
 

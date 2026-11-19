@@ -13,6 +13,8 @@ import { refreshPartyTaskWorkQueries } from "../lib/party-task-work-refresh";
 import { partyTaskPath } from "../lib/my-task-routes";
 import { useWorkflowTasksQuery } from "../query/case-study-queries";
 import { PartyActiveTaskWork } from "./PartyActiveTaskWork";
+import { Pages } from "@platform/types";
+import { TaskWorkLayouts } from "./my-task-work-state";
 
 export function PartyActiveTaskWorkPage({
   pageId,
@@ -72,7 +74,7 @@ export function PartyActiveTaskWorkPage({
   }
 
   const documentScrollWorkspace =
-    pageId === "property-appraisal" || pageId === "active-survey";
+    pageId === Pages.PropertyAppraisal || pageId === Pages.ActiveSurvey;
 
   return (
     <div
@@ -86,7 +88,7 @@ export function PartyActiveTaskWorkPage({
         def={def}
         task={task}
         hostRef={hostRef}
-        layout="page"
+        layout={TaskWorkLayouts.Page}
         appraisalExtensions={appraisalExtensions}
         engineeringSurveyExtensions={engineeringSurveyExtensions}
         engineeringSurveyEntry={engineeringSurveyEntry}

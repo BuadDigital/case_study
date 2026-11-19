@@ -2,9 +2,10 @@
 import type { ReactNode } from "react";
 import { Button, Card, CardBody } from "@platform/ui-kit";
 import { PoEditShell } from "@case-study/mfe/components/po-intake/PoEditShell";
+import { TaskWorkLayouts } from "../../views/my-task-work-state";
 
 export function TaskWorkChrome({
-  layout = "page",
+  layout = TaskWorkLayouts.Page,
   title,
   subtitle,
   deedBadge,
@@ -37,7 +38,7 @@ export function TaskWorkChrome({
   saveShowActionToast?: boolean;
   children: ReactNode;
 }) {
-  if (layout === "panel") {
+  if (layout === TaskWorkLayouts.Panel) {
     const footerVisible = showFooter && variant !== "detail";
     return (
       <Card className="m-0 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden border-0 shadow-none">

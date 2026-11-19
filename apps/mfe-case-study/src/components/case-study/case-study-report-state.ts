@@ -1,5 +1,5 @@
 import { caseStudyAnswerKey, type CaseStudyReportAnswer, type CaseStudyQuestionSection } from "../../lib/app-data/case-study-report-data";
-import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
+import { emptyCaseStudyReportDraft, type CaseStudyReportDraft, CaseStudyReportStatuses, CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 import { caseStudyQuestionTargetId } from "../../lib/app-data/case-study-report-ux";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
@@ -8,13 +8,14 @@ import {
 } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { isDeedNatureMatchChosen } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import type { CaseStudyDeedMatchChangedDetail } from "@platform/app-shared/app-data/case-study-report-model";
+import { CaseStudyQuestionSections } from "@platform/app-shared/domain/case-study/question-catalog";
 
 export const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
-  "deed",
-  "survey",
-  "comp",
-  "occ",
-  "extra",
+  CaseStudyQuestionSections.Deed,
+  CaseStudyQuestionSections.Survey,
+  CaseStudyQuestionSections.Comp,
+  CaseStudyQuestionSections.Occ,
+  CaseStudyQuestionSections.Extra,
 ];
 
 export type SectionQuestions = Record< CaseStudyQuestionSection, readonly string[]>;
@@ -47,7 +48,7 @@ export function buildSeed(
 }
 
 function isAnswered(value: CaseStudyReportAnswer | null | undefined): boolean {
-  return value === "A" || value === "B" || value === "NA";
+  return value === CaseStudyReportAnswers.A || value === CaseStudyReportAnswers.B || value === "NA";
 }
 
 /** The stored draft merged onto the seed — party drafts layer over the parent answers. */
@@ -62,13 +63,13 @@ export function hydrateCaseStudyReportDraft(args: {
   const base = stored ?? emptyCaseStudyReportDraft(storageTaskId, seed);
   const mergedAnswers = isParty ? { ...parentDraft?.answers, ...base.answers } : base.answers;
   const mergedNotes = isParty ? { ...parentDraft?.answerNotes, ...base.answerNotes } : base.answerNotes;
-  const parentSubmitted = parentDraft?.status === "issued";
+  const parentSubmitted = parentDraft?.status === CaseStudyReportStatuses.Issued;
   return {
     parentSubmitted,
     draft: { ...base, ...seed,
       answers: mergedAnswers,
       answerNotes: mergedNotes,
-      status: parentSubmitted && isParty ? "issued" : base.status,
+      status: parentSubmitted && isParty ? CaseStudyReportStatuses.Issued : base.status,
       specialistReviewApproved: { ...base.specialistReviewApproved, ...stored?.specialistReviewApproved },
       requestNumber: seed.requestNumber ?? base.requestNumber,
       deedNumber: seed.deedNumber ?? base.deedNumber,
@@ -182,8 +183,7 @@ export function caseStudyIncompleteMessage(answered: number, total: number): str
 }
 
 /** The refusal both sides show while a traditional deed has no deed ↔ nature outcome. */
-export const CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE =
-  "اختر نتيجة «مطابقة الصك على الطبيعة» من تبويب «مدخلات المعاين» قبل إصدار تقرير دراسة الحالة";
+export const CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE = "اختر نتيجة «مطابقة الصك على الطبيعة» من تبويب «مدخلات المعاين» قبل إصدار تقرير دراسة الحالة";
 
 /**
  * Issuing waits for the specialist's deed ↔ nature outcome on a traditional deed (the issue locks

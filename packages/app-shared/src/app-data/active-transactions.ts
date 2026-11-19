@@ -1,7 +1,7 @@
 import type { PageId, RoleId } from "@platform/types";
-import { CASE_STUDY_READY_NAV } from "@platform/types";
+import { CASE_STUDY_READY_NAV, Roles, Pages } from "@platform/types";
 import { isValuationDepositedForTask } from "../workflow/task-done";
-import { isFoldedCaseStudyTask, type WorkflowTask } from "../workflow/task-types";
+import { isFoldedCaseStudyTask, type WorkflowTask, WorkflowTaskKinds, CaseStudyTaskPhases, WorkflowTaskStatuses } from "../workflow/task-types";
 import { PARTY_ACTIVE_TRANSACTIONS_NAV } from "./party-task-pages";
 
 /** Sidebar items under Active Transactions. */
@@ -23,13 +23,13 @@ const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
     available: true,
   })),
   {
-    id: "active-case-study",
+    id: Pages.ActiveCaseStudy,
     label: "دراسة حالة العقارات",
     icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
     available: true,
   },
   {
-    id: "system-upload",
+    id: Pages.SystemUpload,
     label: "الرفع على النظام",
     icon: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
     available: true,
@@ -47,12 +47,12 @@ const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
  * folded deeds, because every deed is uploaded to Enfaz on its own.
  */
 function taskMatchesCaseStudy(task: WorkflowTask): boolean {
-  if (task.kind !== "case-study-property") return false;
+  if (task.kind !== WorkflowTaskKinds.CaseStudyProperty) return false;
   // Phase 4: one study per transaction — a deed folded into another deed's study is not a row.
   if (isFoldedCaseStudyTask(task)) return false;
   // Ruling 2026-11-02: a transaction joins the study queue at coordination's formal receipt.
-  if (task.phase === "case-study") return task.transactionReceived === true;
-  return task.phase === "done";
+  if (task.phase === CaseStudyTaskPhases.CaseStudy) return task.transactionReceived === true;
+  return task.phase === CaseStudyTaskPhases.Done;
 }
 
 /**
@@ -67,9 +67,9 @@ function taskMatchesCaseStudy(task: WorkflowTask): boolean {
 export function filterTasksForReceipt(tasks: WorkflowTask[]): WorkflowTask[] {
   return tasks.filter(
     (t) =>
-      t.kind === "case-study-property" &&
+      t.kind === WorkflowTaskKinds.CaseStudyProperty &&
       !isFoldedCaseStudyTask(t) &&
-      t.phase === "case-study" &&
+      t.phase === CaseStudyTaskPhases.CaseStudy &&
       t.transactionReceived !== true,
   );
 }
@@ -91,11 +91,11 @@ function filterDepositedNotUploaded(
   tasks: readonly WorkflowTask[],
   allTasks: readonly WorkflowTask[],
 ): WorkflowTask[] {
-  const appraisals = allTasks.filter((t) => t.kind === "property-appraisal");
+  const appraisals = allTasks.filter((t) => t.kind === WorkflowTaskKinds.PropertyAppraisal);
   return tasks.filter(
     (t) =>
-      t.kind === "case-study-property" &&
-      t.status === "completed" &&
+      t.kind === WorkflowTaskKinds.CaseStudyProperty &&
+      t.status === WorkflowTaskStatuses.Completed &&
       t.propertyHandedOverToEnfaz !== true &&
       isValuationDepositedForTask(t, appraisals),
   );
@@ -125,7 +125,7 @@ export function filterTasksForUploadPrep(
 
 /** Party fee billing — under Active Transactions for party roles and supervisor. */
 const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
-  id: "party-fees",
+  id: Pages.PartyFees,
   label: "فوترة الأتعاب",
   icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
   available: true,
@@ -134,12 +134,12 @@ const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
 /** Roles that show party fees under Active Transactions, not System Settings. */
 export function isPartyFeesUnderActiveTransactions(role?: RoleId): boolean {
   return (
-    role === "engineering-office" ||
-    role === "field-inspector" ||
-    role === "government-reviewer" ||
-    role === "section-supervisor" ||
-    role === "case-specialist" ||
-    role === "cdo"
+    role === Roles.EngineeringOffice ||
+    role === Roles.FieldInspector ||
+    role === Roles.GovernmentReviewer ||
+    role === Roles.SectionSupervisor ||
+    role === Roles.CaseSpecialist ||
+    role === Roles.Cdo
   );
 }
 
@@ -159,8 +159,8 @@ const CASE_STUDY_STAGE_PAGE_IDS = new Set<PageId>(
  */
 const REPLACED_BY_MY_WORK = new Set<PageId>([
   ...CASE_STUDY_STAGE_PAGE_IDS,
-  "property-appraisal",
-  "active-inspection",
+  Pages.PropertyAppraisal,
+  Pages.ActiveInspection,
 ]);
 
 /**
@@ -181,13 +181,13 @@ export function activeTransactionNavForRole(
   rolePages: PageId[],
   role?: RoleId,
 ): ActiveTransactionNavItem[] {
-  const hasMyWork = rolePages.includes("my-work");
+  const hasMyWork = rolePages.includes(Pages.MyWork);
   return ACTIVE_TRANSACTIONS_NAV.filter((item) => {
     if (hasMyWork && REPLACED_BY_MY_WORK.has(item.id)) return false;
-    if (item.id === "party-fees") {
+    if (item.id === Pages.PartyFees) {
       return (
         isPartyFeesUnderActiveTransactions(role) &&
-        rolePages.includes("party-fees")
+        rolePages.includes(Pages.PartyFees)
       );
     }
     return rolePages.includes(item.id);
@@ -205,7 +205,7 @@ export function isInActiveTransactionsSection(
   onTaskWork: boolean,
   role?: RoleId,
 ): boolean {
-  if (page === "party-fees") {
+  if (page === Pages.PartyFees) {
     return isPartyFeesUnderActiveTransactions(role);
   }
   return onTaskWork || isActiveTransactionPage(page);

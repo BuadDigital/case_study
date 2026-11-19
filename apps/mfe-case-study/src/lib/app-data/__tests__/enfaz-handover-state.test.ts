@@ -150,3 +150,18 @@ describe("enfazStageTone", () => {
     expect(enfazStageTone("not_started")).toBe("gray");
   });
 });
+
+describe("planTransactionReopen — a value change (Omar 2026-11-18)", () => {
+  it("always reopens the valuation report and says so to the server", () => {
+    const plan = planTransactionReopen({
+      source: "internal",
+      enfazReference: "",
+      reason: "إنفاذ تطلب تعديل القيمة السوقية",
+      reopenStudy: false,
+      reopenValuation: false,
+      needsFieldWork: false,
+      changesValue: true,
+    });
+    expect(plan).toMatchObject({ ok: true, request: { reopenValuation: true, changesValue: true } });
+  });
+});

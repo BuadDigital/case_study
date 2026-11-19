@@ -5,6 +5,7 @@ import {
   listAttachmentsForProperty,
   uploadAttachment,
   type FileAttachmentMetaDto,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
@@ -313,7 +314,7 @@ async function writeCachedDoc(
       return {
         ok: false,
         error:
-          upload.kind === "validation" && upload.message
+          upload.kind === ApiErrorKinds.Validation && upload.message
             ? upload.message
             : "تعذّر رفع الملف — تحقق من الاتصال وحاول مجدداً.",
       };

@@ -52,7 +52,7 @@ import type { PageSituationCardDef } from "../lib/app-data/active-transaction-pa
 import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
 import { tasksForRole, type WorkflowTask } from "../lib/app-data/tasks";
 import { seesAllCaseStudyWorkflowTasks } from "../lib/app-data/viewer-task-access";
-import { isFoldedAppraisalTask } from "@platform/app-shared/workflow/task-types";
+import { isFoldedAppraisalTask, WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 import { workspaceHasDraftProgress } from "../lib/app-data/field-inspection-work-queue";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import {
@@ -73,6 +73,7 @@ import { FavoriteStar } from "../components/ui/FavoriteStar";
 import { MY_WORK_PIN_LIMIT, pinnedFirst, useMyWorkPins } from "../lib/app-data/my-work-pins";
 import { QueueRowMoreCell } from "./active-transaction-queue-row-parts";
 import { useMyWorkRowMenu } from "./useMyWorkRowMenu";
+import { AppraiserHandoverInbox } from "../components/appraiser-handover/AppraiserHandoverCards";
 import { DeedWithArea, MY_WORK_LONG_VALUE, Muted, MyWorkDates } from "./my-work-table-parts";
 import { useActiveReopeningsQuery } from "../query/use-active-reopenings-query";
 
@@ -193,7 +194,7 @@ function PinButton({ pinned, onToggle }: { pinned: boolean; onToggle: () => void
 export function MyWorkView() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { role, rolePages } = useAppAccess();
+  const { role, rolePages, distributionAssigneeId } = useAppAccess();
   const nowMs = useTickingMinute();
   // The chip picked by hand: a stage, «الكل» ("all"), or null while none was picked — the page then
   // follows the role's own stage (`defaultMyWorkStage`, Omar 2026-11-11).
@@ -252,13 +253,13 @@ export function MyWorkView() {
       mine
         .filter(
           (t) =>
-            (t.kind === "case-study-property" &&
+            (t.kind === WorkflowTaskKinds.CaseStudyProperty &&
               t.studyReportIssued &&
               !t.propertyHandedOverToEnfaz) ||
             (asAppraiser &&
-              t.kind === "property-appraisal" &&
-              t.status !== "cancelled" &&
-              t.status !== "completed" &&
+              t.kind === WorkflowTaskKinds.PropertyAppraisal &&
+              t.status !== WorkflowTaskStatuses.Cancelled &&
+              t.status !== WorkflowTaskStatuses.Completed &&
               !isFoldedAppraisalTask(t)),
         )
         .map((t) => t.propertyId),
@@ -414,6 +415,10 @@ export function MyWorkView() {
     // Spaced like «أوامر العمل»: the shell's gap-3 is the only space between blocks (no margins).
     <PageShell variant="canvas" className="h-fit min-w-0 max-w-full gap-3 py-4 sm:py-5">
       <SituationBar cards={CARDS} values={values} flush />
+      {/* The appraiser's reassignment requests and the transfers waiting for him (Omar 2026-11-18). */}
+      {role === "real-estate-appraiser" && distributionAssigneeId ? (
+        <AppraiserHandoverInbox myAssigneeId={distributionAssigneeId} />
+      ) : null}
 
       {visibleGroups.length > 0 ? (
         // The system's list toolbar (as «أوامر العمل»): search first, then every chip on one row —

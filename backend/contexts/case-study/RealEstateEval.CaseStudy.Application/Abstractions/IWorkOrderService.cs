@@ -32,6 +32,20 @@ public interface IWorkOrderService
     Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>The details list a page at a time, with the total (the unpaged list stops at 500).</summary>
+    Task<PagedResultDto<WorkOrderDto>> ListDetailsPagedAsync(
+        int? page,
+        int? pageSize,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>The property rows a page of work orders at a time, with the work orders' total.</summary>
+    Task<PagedResultDto<PropertyListItemDto>> ListPropertyListItemsPagedAsync(
+        int? page,
+        int? pageSize,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
     Task<WorkOrderDto?> GetByPoNumberAsync(
         string poNumber,
         PermissionsDto? actor = null,
@@ -49,6 +63,10 @@ public interface IWorkOrderService
         Guid? excludePropertyId = null,
         int take = 20);
     Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
+        CancellationToken cancellationToken);
+    Task<PagedResultDto<PendingBoursePropertyDto>> ListPendingBoursePagedAsync(
+        int? page,
+        int? pageSize,
         CancellationToken cancellationToken);
     Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateWorkOrderRequest request,

@@ -6,6 +6,8 @@ public class CaseStudyReportDto
     public string? PropertyId { get; set; }
     public string? PoNumber { get; set; }
     public string Status { get; set; } = "new";
+    /// <summary>1, then +1 each time the report is reopened after reaching Enfaz (printed PRC-…/N).</summary>
+    public int Version { get; set; } = 1;
     public int CurrentStep { get; set; }
     public string RequestNumber { get; set; } = "";
     public string RequestDate { get; set; } = "";

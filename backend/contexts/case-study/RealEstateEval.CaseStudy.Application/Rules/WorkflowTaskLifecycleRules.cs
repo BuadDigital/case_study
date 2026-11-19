@@ -28,14 +28,6 @@ public static partial class WorkflowTaskLifecycleRules
     public static bool CanRedistributeParties(StaffActor actor) =>
         IsSectionSupervisorOrAbove(actor.Role) || actor.HoldsCoordination;
 
-    /// <summary>
-    /// Handing a party of a case-study transaction to someone else («تعديل الأطراف»): everyone in
-    /// <see cref="CanRedistributeParties"/>, and the appraiser, from «جميع العقارات» on any
-    /// transaction (Omar 2026-11-18). Adding the engineering survey stays with the narrower rule.
-    /// </summary>
-    public static bool CanReassignParties(StaffActor actor) =>
-        CanRedistributeParties(actor) || actor.NormalizedRole == StaffRoleIds.RealEstateAppraiser;
-
     public static string NormalizeReason(string? reason) => (reason ?? "").Trim();
 
     /// <summary>

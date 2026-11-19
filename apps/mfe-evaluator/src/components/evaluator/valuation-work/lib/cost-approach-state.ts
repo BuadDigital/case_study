@@ -49,6 +49,7 @@ import {
   costLineComputed,
   includedFirstFloorLine,
 } from "./cost-line-math";
+import { CostGroups } from "@platform/app-shared/domain/cost-items";
 
 /** Per-item indirect draft: percentages stay strings so typing is lossless. */
 type IndirectDraft = Record<string, { pct: string; rationale: string }>;
@@ -738,7 +739,7 @@ export function costDepreciationIncomplete(
   costDraft: readonly ValuationCostLineDto[],
 ): boolean {
   if (fields.actualAge.trim() && fields.economicAge.trim()) return false;
-  return costDraft.some((l) => l.isIncluded !== false && costGroupOf(l) === "area");
+  return costDraft.some((l) => l.isIncluded !== false && costGroupOf(l) === CostGroups.Area);
 }
 
 /** Cost-approach alerts — the interactive-form trigger table, in order. */
@@ -850,7 +851,7 @@ export function buildCostAlerts(
     // An extra that adds nothing (unpriced, zero quantity or excluded) cannot double-count what
     // the floor rate already holds, so it needs no rationale yet (A→Z #78: «المسبح» at 0 asked one).
     if (
-      costGroupOf(l) === "extra" &&
+      costGroupOf(l) === CostGroups.Extra &&
       (l.label.trim() || l.itemKey !== "custom") &&
       costLineComputed(l, costDraft, totals.firstFloorLine ?? null).total > 0 &&
       !l.rationale.trim()

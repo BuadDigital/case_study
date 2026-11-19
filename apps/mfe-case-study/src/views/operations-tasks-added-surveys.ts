@@ -6,6 +6,7 @@
  */
 import type { WorkflowTask } from "../lib/app-data/tasks-model";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 /** Where the added survey stands: with the office, delivered and waiting, or received. */
 export type AddedSurveyState = "open" | "delivered" | "received";
 
@@ -44,19 +45,19 @@ export function surveysAddedAfterDistribution(tasks: WorkflowTask[]): AddedSurve
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const distributedAt = new Map<string, string>();
   for (const t of tasks) {
-    if (t.kind === "field-inspection" && t.parentTaskId) distributedAt.set(t.parentTaskId, t.createdAt);
+    if (t.kind === WorkflowTaskKinds.FieldInspection && t.parentTaskId) distributedAt.set(t.parentTaskId, t.createdAt);
   }
   return tasks
     .filter((t) => {
-      if (t.kind !== "engineering-survey" || t.status === "cancelled" || !t.parentTaskId) return false;
-      if (byId.get(t.parentTaskId)?.phase !== "case-study") return false;
+      if (t.kind !== WorkflowTaskKinds.EngineeringSurvey || t.status === WorkflowTaskStatuses.Cancelled || !t.parentTaskId) return false;
+      if (byId.get(t.parentTaskId)?.phase !== CaseStudyTaskPhases.CaseStudy) return false;
       const spawned = distributedAt.get(t.parentTaskId);
       return spawned !== undefined && spawned !== t.createdAt;
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((task) => ({
       task,
-      state: task.status !== "completed" ? "open" : task.packageAccepted ? "received" : "delivered",
+      state: task.status !== WorkflowTaskStatuses.Completed ? "open" : task.packageAccepted ? "received" : "delivered",
     }));
 }
 

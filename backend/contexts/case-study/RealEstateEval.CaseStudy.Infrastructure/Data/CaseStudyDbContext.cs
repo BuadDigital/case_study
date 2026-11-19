@@ -19,6 +19,7 @@ public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> opti
     public DbSet<TransactionReopening> TransactionReopenings => Set<TransactionReopening>();
     public DbSet<TransactionExternalReceipt> TransactionExternalReceipts => Set<TransactionExternalReceipt>();
     public DbSet<TransactionCancellation> TransactionCancellations => Set<TransactionCancellation>();
+    public DbSet<AppraiserHandoverRequest> AppraiserHandoverRequests => Set<AppraiserHandoverRequest>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<BuildingInventoryLine> BuildingInventoryLines => Set<BuildingInventoryLine>();
     public DbSet<PropertyContact> PropertyContacts => Set<PropertyContact>();

@@ -23,6 +23,7 @@ import {
   type PartyBillingStatementListQuery,
   type RejectVendorInvoiceRequest,
   type SubmitVendorInvoiceRequest,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "./modules-api-config";
 import {
@@ -86,7 +87,7 @@ export async function loadPartyBillingStatement(
   if (!config) return null;
   const result = await getPartyBillingStatement(config, statementId);
   if (!result.ok) {
-    if (result.kind === "not_found") return null;
+    if (result.kind === ApiErrorKinds.NotFound) return null;
     throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل المسير"));
   }
   return result.data;

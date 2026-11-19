@@ -3,39 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
-import { propertyRecordsFacadeType } from "@platform/app-shared/app-data/po-intake-property-model";
 import {
+  adoptedDeedMatchNotes,
   deedMatchDissent,
   DeedNatureMatchOutcomes,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
-import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
+import { emptyCaseStudyReportDraft, type CaseStudyReportDraft, CaseStudyReportStatuses } from "@platform/app-shared/app-data/case-study-report-model";
 import { notifyCaseStudyDeedMatchChanged } from "@platform/app-shared/app-data/case-study-report-model";
 import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import { saveCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
-import { isInspectorWorkspaceAccepted } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { loadEngineeringSurveySubmissionSnapshot } from "../../lib/app-data/property-detail-party-submission-loaders";
 import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import {
-  deedMatchSideRows,
-  proposeDeedNatureMatch,
-  type DeedMatchSideRow,
-  type DeedNatureMatchProposal,
-} from "../../lib/app-data/deed-nature-match-proposal";
-
-/**
- * Notes that go with an adopted suggestion: «matched» clears them; «differences» carries the
- * inspector's per-side notes (the server rejects differences with empty notes) without
- * dropping what the specialist already wrote.
- */
-function adoptedNotes(suggested: string, current: string | undefined, inspectorNotes: string): string {
-  if (suggested === DeedNatureMatchOutcomes.Matched) return "";
-  const existing = (current ?? "").trim();
-  if (!inspectorNotes || existing.includes(inspectorNotes)) return current ?? "";
-  return existing ? `${existing}\n${inspectorNotes}` : inspectorNotes;
-}
+import { deedMatchSourceView, type DeedMatchSideRow, type DeedNatureMatchProposal } from "../../lib/app-data/deed-nature-match-proposal";
 
 export function CaseStudyDeedNatureMatchReview({
   caseStudyTaskId,
@@ -95,24 +77,15 @@ export function CaseStudyDeedNatureMatchReview({
         const nextDraft =
           form ?? emptyCaseStudyReportDraft(caseStudyTaskId, { propertyId: property.id, poNumber });
         setDraft(nextDraft);
-        const inspectorSubmitted = inspector?.status === "submitted" || isInspectorWorkspaceAccepted(inspector);
-        // Land in any form and an apartment have no «نوع الواجهة» — the column stays off (Omar 2026-11-16).
-        const sideRows = inspectorSubmitted ? deedMatchSideRows(inspector, property) : [];
-        setSides(
-          propertyRecordsFacadeType(property, inspector)
-            ? sideRows
-            : sideRows.map((side) => ({ ...side, facade: "" })),
-        );
-        const engineeringSubmitted = survey?.status === "submitted" || Boolean(survey?.acceptedAtUtc?.trim());
-        setProposal(
-          proposeDeedNatureMatch({
-            inspector,
-            inspectorSubmitted: Boolean(inspectorSubmitted),
-            hasPriorSurvey: Boolean(prior),
-            engineeringAssigned,
-            engineeringDeedMatchesNature: engineeringSubmitted ? (survey?.deedMatchesNature ?? null) : null,
-          }),
-        );
+        const view = deedMatchSourceView({
+          property,
+          inspector,
+          survey,
+          hasPriorSurvey: Boolean(prior),
+          engineeringAssigned,
+        });
+        setSides(view.sides);
+        setProposal(view.proposal);
       } catch (err) {
         if (!cancelled) {
           setLoadError(
@@ -136,7 +109,7 @@ export function CaseStudyDeedNatureMatchReview({
 
   const locked =
     readOnly ||
-    draft?.status === "issued" ||
+    draft?.status === CaseStudyReportStatuses.Issued ||
     (readOnlyOnceDecided && Boolean(draft?.deedNatureMatchOutcome));
 
   const persist = useCallback(
@@ -149,7 +122,7 @@ export function CaseStudyDeedNatureMatchReview({
         const latest =
           (await loadCaseStudyReportDraft(caseStudyTaskId)) ?? draft;
         rollbackDraft = latest;
-        if (latest.status === "issued") {
+        if (latest.status === CaseStudyReportStatuses.Issued) {
           setDraft(latest);
           showToast("التقرير صادر — المطابقة للعرض فقط", "error");
           return;
@@ -183,7 +156,7 @@ export function CaseStudyDeedNatureMatchReview({
     [caseStudyTaskId, draft, locked, showToast],
   );
 
-  // The deed's own kind (the issue gate's rule) â€” a traditional deed with a registration number
+  // The deed's own kind (the issue gate's rule) — a traditional deed with a registration number
   // still needs the match verdict, so the control must stay reachable.
   if (propertyDeedKindIsRegisteredTitle(property)) {
     return (
@@ -224,7 +197,7 @@ export function CaseStudyDeedNatureMatchReview({
           if (!proposal?.suggested) return;
           void persist({
             deedNatureMatchOutcome: proposal.suggested,
-            deedNatureMatchNotes: adoptedNotes(
+            deedNatureMatchNotes: adoptedDeedMatchNotes(
               proposal.suggested,
               draft.deedNatureMatchNotes,
               proposal.inspectorMismatchNotes,

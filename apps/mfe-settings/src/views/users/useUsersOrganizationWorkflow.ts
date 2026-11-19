@@ -60,6 +60,7 @@ import {
   type StaffReportSeat,
   type StaffStatusFilter,
 } from "./users-organization-state";
+import { ApiErrorKinds } from "@platform/api-client";
 
 export type UsersOrganizationWorkflow = ReturnType<typeof useUsersOrganizationWorkflow>;
 
@@ -182,7 +183,7 @@ export function useUsersOrganizationWorkflow() {
       const result = await submitCreateStaffUser(buildCreateStaffUserPayload(form));
 
       if (!result.ok) {
-        if (result.kind === "validation" && result.errors) {
+        if (result.kind === ApiErrorKinds.Validation && result.errors) {
           setErrors(result.errors);
           return;
         }

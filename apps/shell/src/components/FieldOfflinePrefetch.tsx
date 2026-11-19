@@ -32,6 +32,7 @@ import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tas
 import { prefetchKeyEnvelopesForOffline } from "@keys/mfe/lib/keys-envelope-api";
 import { useWorkflowTasksQuery } from "@/lib/query/app-data-queries";
 import { offlinePagePlan, warmOfflinePages } from "@/lib/offline-page-cache";
+import { Pages } from "@platform/types";
 
 function scopeKeyForProperty(poNumber: string, propertyId: string): string {
   return `${poNumber.trim()}:${propertyId}`;
@@ -156,7 +157,7 @@ export function FieldOfflinePrefetch() {
             ]);
           }
 
-          if (rolePages.includes("keys")) {
+          if (rolePages.includes(Pages.Keys)) {
             await prefetchKeyEnvelopesForOffline();
           }
 

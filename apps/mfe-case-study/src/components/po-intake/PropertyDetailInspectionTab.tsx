@@ -65,6 +65,7 @@ import {
   type InspectorPhotoAttachment,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
 import {
@@ -129,6 +130,7 @@ import {
 import { submitPropertyDetailInspection } from "./property-detail-inspection-submit";
 import { usePropertyDetailInspectionDraftLoad } from "./usePropertyDetailInspectionDraftLoad";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
+import { SubmissionStatuses, WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 export function PropertyDetailInspectionTab({
   property,
@@ -317,7 +319,7 @@ export function PropertyDetailInspectionTab({
 
   const locked = Boolean(
     draft &&
-      !(correctionOnly && draft.status === "submitted") &&
+      !(correctionOnly && draft.status === SubmissionStatuses.Submitted) &&
       isInspectorWorkspaceReviewLocked(draft, {
         specialistReview: serviceProofFromTransactionPhotos,
       }),
@@ -328,13 +330,13 @@ export function PropertyDetailInspectionTab({
     : "inspector";
   // The inspector's key answer: shown in step 3 and checked + sent on submit, as on the phone.
   const keyAvailability = useInspectorKeyAvailability(inspectionTask, {
-    enabled: mapActor === "inspector" && editMode,
+    enabled: mapActor === WorkspaceActors.Inspector && editMode,
   });
   // «تسجيل تعذّر المفتاح» opens the shared failure modal (the phone opens the same one).
   const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal();
 
   const canAdoptEngineeringMap = useMemo(() => {
-    if (mapActor !== "specialist" || !engineeringMapPin || !draft) return false;
+    if (mapActor !== WorkspaceActors.Specialist || !engineeringMapPin || !draft) return false;
     const active = parsePlacedMapPin(draft.mapLatitude, draft.mapLongitude);
     if (!active) return true;
     return (
@@ -345,7 +347,7 @@ export function PropertyDetailInspectionTab({
 
   const resolveLocationPinMismatchFailure = useCallback(
     async (choiceLabel: string) => {
-      if (mapActor !== "specialist") return;
+      if (mapActor !== WorkspaceActors.Specialist) return;
       const poNumber =
         inspectionTask?.poNumber?.trim() || surveyTask?.poNumber?.trim() || "";
       const propertyId = property.id?.trim() || "";
@@ -387,7 +389,7 @@ export function PropertyDetailInspectionTab({
 
   // Only the specialist sees the engineering pin, and only with a survey task — otherwise it
   // clears during render, before the effect would run.
-  const engineeringPinTaskId = mapActor === "specialist" ? (surveyTask?.id ?? "") : "";
+  const engineeringPinTaskId = mapActor === WorkspaceActors.Specialist ? (surveyTask?.id ?? "") : "";
   const [engineeringPinFor, setEngineeringPinFor] = useState(engineeringPinTaskId);
   if (engineeringPinFor !== engineeringPinTaskId) {
     setEngineeringPinFor(engineeringPinTaskId);
@@ -395,7 +397,7 @@ export function PropertyDetailInspectionTab({
   }
 
   useEffect(() => {
-    if (mapActor !== "specialist" || !surveyTask?.id) return;
+    if (mapActor !== WorkspaceActors.Specialist || !surveyTask?.id) return;
     let cancelled = false;
     void loadEngineeringSurveySubmissionAsync({
       taskId: surveyTask.id,
@@ -421,7 +423,7 @@ export function PropertyDetailInspectionTab({
     if (!inspectionTask || locked) return;
     // Staff change the sent inspection's type in its field (Omar 2026-11-16) — through its own
     // command, since the autosave never changes the type (timeline, survey rule, appraiser alert).
-    if (serviceProofFromTransactionPhotos && draft?.status === "submitted") {
+    if (serviceProofFromTransactionPhotos && draft?.status === SubmissionStatuses.Submitted) {
       const currentType = draft.featureValues.assetSubject ?? "";
       const nextType =
         resolveInspectorWorkspacePatch(draft, input).featureValues?.assetSubject ?? "";
@@ -586,7 +588,7 @@ export function PropertyDetailInspectionTab({
     const nextLat = engineeringMapPin.lat.toFixed(5);
     const nextLng = engineeringMapPin.lng.toFixed(5);
     patchDraft({
-      ...mapPinPatchForActor(draft, nextLat, nextLng, "specialist"),
+      ...mapPinPatchForActor(draft, nextLat, nextLng, WorkspaceActors.Specialist),
       mapPinned: true,
     });
     setMapPinEpoch((n) => n + 1);
@@ -667,7 +669,7 @@ export function PropertyDetailInspectionTab({
         </div>
       ) : null}
 
-      {draft?.status === "reopened" && draft.returnNote?.trim() ? (
+      {draft?.status === SubmissionStatuses.Reopened && draft.returnNote?.trim() ? (
         <ReturnedForCorrectionNote note={draft.returnNote} className="mb-3" />
       ) : null}
 
@@ -699,22 +701,22 @@ export function PropertyDetailInspectionTab({
           onMapMove={requestMapMove}
           canUndoMapMove={Boolean(mapBackup)}
           onUndoMapMove={undoMapMove}
-          keyAvailability={mapActor === "inspector" ? keyAvailability : undefined}
+          keyAvailability={mapActor === WorkspaceActors.Inspector ? keyAvailability : undefined}
           onRegisterKeyFailure={
-            mapActor === "inspector" && inspectionTask.propertyId
+            mapActor === WorkspaceActors.Inspector && inspectionTask.propertyId
               ? () =>
                   openFailureRaise({
                     poNumber: inspectionTask.poNumber,
                     propertyId: inspectionTask.propertyId ?? "",
                     deedNumber: property.deedNumber,
-                    taskKind: "field-inspection",
+                    taskKind: WorkflowTaskKinds.FieldInspection,
                   })
               : undefined
           }
           mapPinned={mapPinned}
           mapActor={mapActor}
           canRestoreInspectorMap={
-            mapActor === "specialist" &&
+            mapActor === WorkspaceActors.Specialist &&
             Boolean(draft && activeMapDiffersFromInspectorOriginal(draft))
           }
           onRestoreInspectorMap={restoreInspectorMap}
@@ -722,7 +724,7 @@ export function PropertyDetailInspectionTab({
           onAdoptEngineeringMap={adoptEngineeringMap}
           engineeringMapPin={engineeringMapPin}
           specialistComponents={
-            mapActor === "specialist" &&
+            mapActor === WorkspaceActors.Specialist &&
             componentsMode !== "hidden" &&
             inspectionTask.poNumber &&
             property.id ? (

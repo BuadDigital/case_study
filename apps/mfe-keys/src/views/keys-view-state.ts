@@ -11,6 +11,7 @@ import {
   isEnvelopeOutOfCustody,
   type KeyEnvelopeRow,
 } from "../lib/keys-envelope-types";
+import { Roles } from "@platform/types";
 
 export type StatusFilter =
   | "all"
@@ -56,19 +57,19 @@ export function keysViewPermissions({
   superAdmin: boolean;
   hasCapability: (capability: string) => boolean;
 }): KeysViewPermissions {
-  const viewOnly = !superAdmin && role === "general-manager";
+  const viewOnly = !superAdmin && role === Roles.GeneralManager;
   const canEditEnvelope =
     !viewOnly &&
     (superAdmin ||
-      role === "government-reviewer" ||
-      role === "section-supervisor" ||
-      role === "field-inspector" ||
-      role === "real-estate-appraiser");
+      role === Roles.GovernmentReviewer ||
+      role === Roles.SectionSupervisor ||
+      role === Roles.FieldInspector ||
+      role === Roles.RealEstateAppraiser);
   const canRegisterEnvelope =
     !viewOnly &&
     (superAdmin ||
-      role === "government-reviewer" ||
-      role === "section-supervisor");
+      role === Roles.GovernmentReviewer ||
+      role === Roles.SectionSupervisor);
   // Confirming collection belongs to finance, matching the manage-financial gate on
   // POST /api/key-envelopes/{id}/fee-collected.
   const canCollectFee = !viewOnly && hasCapability("manage-financial");

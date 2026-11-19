@@ -3,6 +3,7 @@ import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { PartyFieldProvenanceEntry } from "./party-task-submissions";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type BuildingStructureKind =
   | "floor"
@@ -71,12 +72,12 @@ export async function getBuildingInventory(
     const res = await fetch(url(base, poNumber, propertyId), {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as BuildingInventoryDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -99,18 +100,18 @@ export async function putPropertyPart<T>(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 403) {
-      return { ok: false, kind: "forbidden", errors: await parseFieldErrorsFromResponse(res) };
+      return { ok: false, kind: ApiErrorKinds.Forbidden, errors: await parseFieldErrorsFromResponse(res) };
     }
     if (!res.ok) {
       const errors = await parseFieldErrorsFromResponse(res);
       const rejected = res.status === 400 || res.status === 409 || res.status === 422;
-      return { ok: false, kind: rejected ? "validation" : "server", errors };
+      return { ok: false, kind: rejected ? ApiErrorKinds.Validation : ApiErrorKinds.Server, errors };
     }
     return { ok: true, data: (await res.json()) as T };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 

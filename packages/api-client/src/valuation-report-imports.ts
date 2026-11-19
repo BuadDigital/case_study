@@ -2,6 +2,7 @@ import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { readCommand } from "./transactions";
 import type { ApiErr, ApiOk } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 /**
  * Valuation reports imported from an external valuation program (مقياس first) — the import
@@ -124,7 +125,7 @@ async function read<T>(
     });
     return await readCommand<T>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -141,7 +142,7 @@ async function send<T>(
     });
     return await readCommand<T>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 

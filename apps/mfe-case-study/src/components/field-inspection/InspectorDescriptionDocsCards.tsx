@@ -20,6 +20,7 @@ import { MobileFieldLabel, mobileControlClassName } from "./InspectMobileControl
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorDescriptionPhoto } from "./InspectorDescriptionPhoto";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 export function InspectorDescriptionCard({
   activeStep,
@@ -171,7 +172,7 @@ export function InspectorDefinedPhotosCard({
           draft={draft}
           disabled={locked}
           onPatch={(patch) => persist(patch)}
-          layout={mobile ? "mobile" : "desktop"}
+          layout={mobile ? InspectorStepLayouts.Mobile : InspectorStepLayouts.Desktop}
           invalidSlotId={fieldErrors.missingDefinedPhotoSlotId}
         />
       </InspectorCard>

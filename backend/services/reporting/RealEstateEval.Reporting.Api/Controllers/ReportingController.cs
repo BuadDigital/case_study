@@ -25,8 +25,7 @@ public class ReportingController : ControllerBase
         (StaffRoleIds.EngineeringOffice, "مكتب هندسي", 10, 3),
     ];
 
-    private static readonly Dictionary<string, (string RoleLabel, int MaxLoad, int SortOrder)> TeamLoadRoleMap =
-        TeamLoadRoles.ToDictionary(x => x.RoleId, x => (x.RoleLabel, x.MaxLoad, x.SortOrder));
+    private static readonly Dictionary<string, (string RoleLabel, int MaxLoad, int SortOrder)> TeamLoadRoleMap = TeamLoadRoles.ToDictionary(x => x.RoleId, x => (x.RoleLabel, x.MaxLoad, x.SortOrder));
 
     private readonly IReportingUpstreamClient _upstream;
     private readonly ApiResponseCache _cache;

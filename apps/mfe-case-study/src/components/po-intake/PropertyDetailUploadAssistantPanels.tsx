@@ -9,6 +9,7 @@ import {
   attachmentIcon,
   attachmentReady,
   attachmentStatusLabel,
+  InfazIcons,
 } from "./property-detail-upload-assistant-state";
 
 export function InfathCollapseControls({
@@ -19,11 +20,11 @@ export function InfathCollapseControls({
   return (
     <div className="flex flex-wrap gap-2">
       <Button type="button" size="sm" onClick={() => onSetAllCollapsed(false)}>
-        <InfazIcon name="expand" />
+        <InfazIcon name={InfazIcons.Expand} />
         توسيع الكل
       </Button>
       <Button type="button" size="sm" onClick={() => onSetAllCollapsed(true)}>
-        <InfazIcon name="collapse" />
+        <InfazIcon name={InfazIcons.Collapse} />
         طي الكل
       </Button>
     </div>
@@ -67,7 +68,7 @@ function InfathAttachmentRow({
         onClick={() => onDownload(item)}
         aria-label={`تحميل ${item.name}`}
       >
-        <InfazIcon name="download" />
+        <InfazIcon name={InfazIcons.Download} />
       </Button>
     </div>
   );
@@ -89,7 +90,7 @@ export function InfathAttachmentsPanel({
     <section className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 p-3.5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs font-semibold text-text">
-          <InfazIcon name="paperclip" />
+          <InfazIcon name={InfazIcons.Paperclip} />
           مرفقات الرفع (PDF) — نزّلها ثم ارفعها في إنفاذ
         </div>
         {/* The glyph goes in `icon` so the spinner replaces it while files download (as a child it
@@ -99,7 +100,7 @@ export function InfathAttachmentsPanel({
           size="sm"
           variant="primary"
           loading={downloadingIds.size > 0}
-          icon={<InfazIcon name="download" />}
+          icon={<InfazIcon name={InfazIcons.Download} />}
           onClick={onDownloadAll}
         >
           تحميل الكل

@@ -98,3 +98,52 @@ export async function fetchGovernedPropertyDocuments(
     )
     .map(governedEntryFromMeta);
 }
+
+/** The scopes that keep the transaction's outputs, one file per version (Omar 2026-11-18). */
+const OUTPUT_SCOPES: Readonly<Record<string, string>> = {
+  "case-study-report": "تقرير دراسة الحالة",
+  "evaluator-report": "تقرير التقييم",
+  "evaluator-deposit-certificate": "شهادة الإيداع",
+};
+
+/** A kept output file: its version, and whether a newer version of the same output exists. */
+export type OutputVersionEntry = PropertyDetailDocumentEntry & { version: number; superseded: boolean };
+
+/**
+ * The deed's kept outputs — the case-study report as delivered, the final valuation report and the deposit
+ * certificate — every version, newest first per output; older ones are marked superseded.
+ *
+ * How it works: keeps the rows of the three output scopes whose key starts with the deed id and ends
+ * with «:v{n}», names them «{output} — النسخة n», and marks every version below the newest of its output.
+ * Edge cases: a key without «:v{n}» counts as version 1; other scopes are ignored. Pure.
+ */
+export function outputVersionEntries(
+  propertyId: string,
+  metas: readonly FileAttachmentMetaDto[],
+): OutputVersionEntry[] {
+  const rows = metas
+    .filter((m) => m.scope in OUTPUT_SCOPES && m.scopeKey.startsWith(`${propertyId}:`))
+    .map((m) => ({ meta: m, version: Number(/:v(\d+)$/.exec(m.scopeKey)?.[1] ?? "1") }));
+  const newest = new Map<string, number>();
+  for (const r of rows) newest.set(r.meta.scope, Math.max(newest.get(r.meta.scope) ?? 0, r.version));
+  return rows
+    .sort((a, b) =>
+      a.meta.scope === b.meta.scope ? b.version - a.version : a.meta.scope.localeCompare(b.meta.scope),
+    )
+    .map(({ meta, version }) => ({
+      ...governedEntryFromMeta(meta),
+      name: `${OUTPUT_SCOPES[meta.scope]} — النسخة ${version}`,
+      source: "مخرجات المعاملة",
+      version,
+      superseded: version < (newest.get(meta.scope) ?? version),
+    }));
+}
+
+/** The deed's kept outputs, every version (see `outputVersionEntries`). */
+export async function fetchPropertyOutputVersions(propertyId: string): Promise<OutputVersionEntry[]> {
+  const config = prototypeModulesApiConfig();
+  if (!config || !propertyId.trim()) return [];
+  const listed = await listAttachmentsForProperty(config, propertyId);
+  if (!listed.ok) throw new Error("تعذّر تحميل مخرجات المعاملة");
+  return outputVersionEntries(propertyId, listed.data);
+}

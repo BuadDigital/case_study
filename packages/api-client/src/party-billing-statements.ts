@@ -10,17 +10,24 @@ import {
 import { repositoryFetch as fetch } from "./write-repository";
 import { readErrorText } from "./parse-json";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type PartyBillingStatementsApiConfig = WorkOrdersApiConfig;
 
-export type PartyBillingStatementStatus =
-  | "draft"
-  | "issued"
-  | "invoice_received"
-  | "closed"
-  | "cancelled";
+export const PartyBillingStatementStatuses = {
+  Draft: "draft",
+  Issued: "issued",
+  InvoiceReceived: "invoice_received",
+  Closed: "closed",
+  Cancelled: "cancelled",
+} as const;
+export type PartyBillingStatementStatus = (typeof PartyBillingStatementStatuses)[keyof typeof PartyBillingStatementStatuses];
 
-export type PartyBillingPayeeType = "vendor" | "individual";
+export const PartyBillingPayeeTypes = {
+  Vendor: "vendor",
+  Individual: "individual",
+} as const;
+export type PartyBillingPayeeType = (typeof PartyBillingPayeeTypes)[keyof typeof PartyBillingPayeeTypes];
 
 export type PartyBillingReadyLineDto = {
   workflowTaskId: string;
@@ -146,7 +153,7 @@ function normalizeReadyLine(raw: Record<string, unknown>): PartyBillingReadyLine
     taskKind: String(raw.taskKind ?? raw.TaskKind ?? ""),
     payeeType,
     payeeTypeLabel: String(
-      raw.payeeTypeLabel ?? raw.PayeeTypeLabel ?? (payeeType === "individual" ? "فرد" : "مورّد"),
+      raw.payeeTypeLabel ?? raw.PayeeTypeLabel ?? (payeeType === PartyBillingPayeeTypes.Individual ? "فرد" : "مورّد"),
     ),
     agreedFeeSar: Number(raw.agreedFeeSar ?? raw.AgreedFeeSar ?? 0),
     supervisorDiscountSar: Number(
@@ -208,7 +215,7 @@ function normalizeStatement(raw: Record<string, unknown>): PartyBillingStatement
     payeeTypeLabel: String(
       raw.payeeTypeLabel ??
         raw.PayeeTypeLabel ??
-        (payeeType === "individual" ? "فرد" : "مورّد"),
+        (payeeType === PartyBillingPayeeTypes.Individual ? "فرد" : "مورّد"),
     ),
     taskKind: (raw.taskKind ?? raw.TaskKind ?? null) as string | null,
     status: String(raw.status ?? raw.Status ?? "draft") as PartyBillingStatementStatus,
@@ -276,9 +283,9 @@ function queryString(params: {
 }
 
 function httpErr(res: Response, message?: string): ApiErr {
-  if (res.status === 401) return { ok: false, kind: "auth", message };
-  if (res.status === 404) return { ok: false, kind: "not_found", message };
-  return { ok: false, kind: "server", message };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth, message };
+  if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound, message };
+  return { ok: false, kind: ApiErrorKinds.Server, message };
 }
 
 export async function listPartyBillingReadyLines(
@@ -300,7 +307,7 @@ export async function listPartyBillingReadyLines(
       data: raw.map((r) => normalizeReadyLine(asRecord(r))),
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -325,7 +332,7 @@ export async function listPartyBillingStatements(
       data: raw.map((r) => normalizeStatement(asRecord(r))),
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -439,7 +446,7 @@ export async function getPartyBillingStatement(
     if (!res.ok) return httpErr(res);
     return { ok: true, data: normalizeStatement(asRecord(await res.json())) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -474,7 +481,7 @@ export async function createPartyBillingStatement(
       },
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -498,7 +505,7 @@ async function postStatementAction(
     if (!res.ok) return httpErr(res, await readErrorText(res));
     return { ok: true, data: normalizeStatement(asRecord(await res.json())) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 

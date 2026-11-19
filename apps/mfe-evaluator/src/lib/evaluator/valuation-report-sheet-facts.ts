@@ -32,6 +32,7 @@ import {
   effectiveStructureKind,
 } from "@platform/app-shared/domain/cost-items";
 import { fmt, fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
+import { CostGroups } from "@platform/app-shared/domain/cost-items";
 
 export type SheetTableRow = {
   key: string;
@@ -443,8 +444,8 @@ export function buildDirectCostSheetRows(
     .filter((l) => l.isIncluded !== false)
     .sort((a, b) => a.sortOrder - b.sortOrder);
   const ordered = [
-    ...lines.filter((l) => costGroupOf(l) === "area"),
-    ...lines.filter((l) => costGroupOf(l) === "extra"),
+    ...lines.filter((l) => costGroupOf(l) === CostGroups.Area),
+    ...lines.filter((l) => costGroupOf(l) === CostGroups.Extra),
   ];
   const rows: SheetTableRow[] = ordered.map((line) => ({
     key: costLineLabel(line),

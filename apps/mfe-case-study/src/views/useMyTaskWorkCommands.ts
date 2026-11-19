@@ -75,6 +75,7 @@ import {
   savedEnfathProperty,
   type TaskWorkSteps,
 } from "./my-task-work-state";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 type MyTaskWorkCommandsInput = {
   task: WorkflowTask;
@@ -105,7 +106,7 @@ type EnfathSaveErrors = { errors: FieldErrors; message: string };
 
 /** The intake step a task phase stands for (null past the intake). */
 function phaseStep(phase: WorkflowTask["phase"]): "enfath" | "bourse" | "distribution" | null {
-  return phase === "enfath" || phase === "bourse" || phase === "distribution" ? phase : null;
+  return phase === CaseStudyTaskPhases.Enfath || phase === CaseStudyTaskPhases.Bourse || phase === CaseStudyTaskPhases.Distribution ? phase : null;
 }
 
 /** Field validation first, then the duplicate-deed check against the PO. */
@@ -424,9 +425,9 @@ export function useMyTaskWorkCommands({
       setSaving(true);
       try {
         let phase = activeTaskWorkStep(steps);
-        if (phase === "enfath") phase = phaseStep(await persistEnfath());
-        if (phase === "bourse") phase = phaseStep(await persistBourse());
-        if (phase === "distribution") await persistDistribution();
+        if (phase === CaseStudyTaskPhases.Enfath) phase = phaseStep(await persistEnfath());
+        if (phase === CaseStudyTaskPhases.Bourse) phase = phaseStep(await persistBourse());
+        if (phase === CaseStudyTaskPhases.Distribution) await persistDistribution();
         onRefresh();
       } finally {
         setSaving(false);
@@ -449,8 +450,8 @@ export function useMyTaskWorkCommands({
 
   function handlePrimarySave() {
     const step = activeTaskWorkStep(steps);
-    if (step === "enfath") void saveEnfath();
-    else if (step === "bourse") void saveBourse();
+    if (step === CaseStudyTaskPhases.Enfath) void saveEnfath();
+    else if (step === CaseStudyTaskPhases.Bourse) void saveBourse();
     else if (step === "distribution") void confirmDistribution();
   }
 

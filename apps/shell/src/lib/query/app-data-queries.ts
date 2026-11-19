@@ -7,7 +7,7 @@ import { loadPoListRows, loadPropertyListItems } from "@platform/app-shared/app-
 import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
 import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-reads";
 import {
-  loadPoRecordsWithTaskSync,
+  loadPoRecords,
   loadWorkflowTasksForQuery,
   poRecordsQueryKey,
 } from "@case-study/mfe/query/case-study-queries";
@@ -36,6 +36,7 @@ import {
   WORK_ORDERS_CHANGED_EVENT,
   WORK_ORDER_PROPERTY_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { Pages } from "@platform/types";
 
 const STALE_MS = 60_000;
 
@@ -56,7 +57,7 @@ export function prefetchPrototypePage(
     void queryClient.prefetchQuery({
       // The hook's own key (with the capabilities) — another key was fetched twice (2026-11-15).
       queryKey: poRecordsQueryKey(),
-      queryFn: loadPoRecordsWithTaskSync,
+      queryFn: loadPoRecords,
       ...opts,
     });
     void queryClient.prefetchQuery({
@@ -77,14 +78,14 @@ export function prefetchPrototypePage(
   };
 
   switch (page) {
-    case "dashboard":
+    case Pages.Dashboard:
       void queryClient.prefetchQuery({
         queryKey: ["reporting", "dashboard"],
         queryFn: loadReportingDashboard,
         ...opts,
       });
       break;
-    case "po":
+    case Pages.Po:
       if (!readsWorkOrders) break;
       void queryClient.prefetchQuery({
         queryKey: appDataKeys.poListRows(),
@@ -98,7 +99,7 @@ export function prefetchPrototypePage(
       });
       prefetchTasksAndPos();
       break;
-    case "failures":
+    case Pages.Failures:
       void queryClient.prefetchQuery({
         queryKey: appDataKeys.failures(),
         queryFn: loadFailuresQuery,
@@ -106,7 +107,7 @@ export function prefetchPrototypePage(
       });
       prefetchTasksAndPos();
       break;
-    case "keys":
+    case Pages.Keys:
       // KeysView lists envelopes only (`keyEnvelopes`). Do NOT warm PO/workflow
       // or the legacy property-keys page here — that used to starve the real
       // list request with sync + 4-5 concurrent APIs the screen never shows.
@@ -116,21 +117,21 @@ export function prefetchPrototypePage(
         ...opts,
       });
       break;
-    case "active-primary-data":
-    case "all-transactions":
-    case "property-map":
-    case "favorites":
-    case "active-distribution":
-    case "active-receipt":
-    case "active-case-study":
-    case "system-upload":
-    case "active-inspection":
-    case "property-appraisal":
-    case "active-survey":
-    case "party-fees":
+    case Pages.ActivePrimaryData:
+    case Pages.AllTransactions:
+    case Pages.PropertyMap:
+    case Pages.Favorites:
+    case Pages.ActiveDistribution:
+    case Pages.ActiveReceipt:
+    case Pages.ActiveCaseStudy:
+    case Pages.SystemUpload:
+    case Pages.ActiveInspection:
+    case Pages.PropertyAppraisal:
+    case Pages.ActiveSurvey:
+    case Pages.PartyFees:
       prefetchActiveTransactionsSituation();
       break;
-    case "bourse-inquiry":
+    case Pages.BourseInquiry:
       prefetchActiveTransactionsSituation();
       if (!canManageWorkOrders()) break;
       void queryClient.prefetchQuery({
@@ -139,14 +140,14 @@ export function prefetchPrototypePage(
         ...opts,
       });
       break;
-    case "case-study-info-roles":
+    case Pages.CaseStudyInfoRoles:
       void queryClient.prefetchQuery({
         queryKey: appDataKeys.caseStudyInfoRoles(),
         queryFn: loadCaseStudyInfoRolesConfig,
         ...opts,
       });
       break;
-    case "suspended-transactions":
+    case Pages.SuspendedTransactions:
       prefetchActiveTransactionsSituation();
       if (!canManageFailures()) break;
       void queryClient.prefetchQuery({
@@ -155,14 +156,14 @@ export function prefetchPrototypePage(
         ...opts,
       });
       break;
-    case "failure-types":
+    case Pages.FailureTypes:
       void queryClient.prefetchQuery({
         queryKey: appDataKeys.failureTypes(),
         queryFn: loadFailureTypesCatalog,
         ...opts,
       });
       break;
-    case "fee-pricing": {
+    case Pages.FeePricing: {
       // Default category matches FinancePartyFeePricing initial state.
       const category = "engineering-survey" as const;
       void queryClient
@@ -188,7 +189,7 @@ export function prefetchPrototypePage(
         });
       break;
     }
-    case "financial":
+    case Pages.Financial:
       break;
     default:
       break;
@@ -212,7 +213,7 @@ export function prefetchCorePrototypeData(
   if (readsWorkOrders) {
     void queryClient.prefetchQuery({ queryKey: appDataKeys.poListRows(), queryFn: loadPoListRows, ...opts });
     void queryClient.prefetchQuery({ queryKey: appDataKeys.propertyListItems(), queryFn: loadPropertyListItems, ...opts });
-    void queryClient.prefetchQuery({ queryKey: poRecordsQueryKey(), queryFn: loadPoRecordsWithTaskSync, ...opts });
+    void queryClient.prefetchQuery({ queryKey: poRecordsQueryKey(), queryFn: loadPoRecords, ...opts });
     void queryClient.prefetchQuery({ queryKey: appDataKeys.workflowTasks(), queryFn: () => loadWorkflowTasksForQuery(), ...opts });
   }
   void queryClient.prefetchQuery({ queryKey: appDataKeys.failures(), queryFn: loadFailuresQuery, ...opts });
@@ -224,7 +225,7 @@ export function prefetchCorePrototypeData(
     }
     void queryClient.prefetchQuery({ queryKey: appDataKeys.failureTypes(), queryFn: loadFailureTypesCatalog, ...opts });
     // Only the CDO holds «لوحة التحكم» (Omar 2026-11-09) — no one else fetches its figures.
-    if (!rolePages || rolePages.includes("dashboard")) {
+    if (!rolePages || rolePages.includes(Pages.Dashboard)) {
       void queryClient.prefetchQuery({ queryKey: ["reporting", "dashboard"], queryFn: loadReportingDashboard, ...opts });
     }
   }, 1_500);

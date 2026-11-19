@@ -4,6 +4,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Mapping;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
@@ -312,6 +314,55 @@ public class TransactionStateEnfazTests
         Assert.Null(result);
         Assert.Equal(TransactionStateService.ReturnNothingChosenAr, errors!["_"]);
         Assert.NotNull((await rig.Property()).EnfazHandoverAtUtc);
+    }
+
+    [Fact]
+    public async Task A_value_change_reopens_the_valuation_report()
+    {
+        await using var rig = Arrange(handedOver: true);
+
+        var (result, errors) = await rig.Service.ReturnFromEnfazAsync(
+            WorkOrderId,
+            PropertyId,
+            new ReturnFromEnfazRequest { Reason = Reason, ReopenStudy = true, ChangesValue = true },
+            Specialist);
+
+        Assert.Null(result);
+        Assert.Equal(EditLevelRules.ValueChangeNeedsValuationAr, errors!["_"]);
+    }
+
+    [Fact]
+    public async Task A_study_only_edit_that_changed_the_deed_number_does_not_go_back_to_enfaz()
+    {
+        await using var rig = Arrange(studyIssued: true);
+        var property = await rig.Property();
+        // The reopening kept the deed as it was; the deed number changed since.
+        var before = WorkOrderMapper.ToPropertyDto(property);
+        before.DeedNumber = "111111111111";
+        if (property.TransactionId == Guid.Empty)
+        {
+            var tracked = rig.Db.WorkOrderProperties.Single(p => p.Id == PropertyId);
+            tracked.TransactionId = property.TransactionId = Guid.NewGuid();
+        }
+        rig.Db.TransactionReopenings.Add(new TransactionReopening
+        {
+            Id = Guid.NewGuid(),
+            TransactionId = property.TransactionId,
+            PropertyId = PropertyId,
+            Source = TransactionReopeningSources.Enfaz,
+            Reason = Reason,
+            ReopensStudy = true,
+            ValuationInputsJson = EditLevelRules.Snapshot(before),
+            OpenedAtUtc = DateTime.UtcNow,
+        });
+        await rig.Db.SaveChangesAsync();
+
+        var (_, error) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.NotNull(error);
+        Assert.StartsWith(EditLevelRules.ValuationInputsChangedAr, error);
+        Assert.Contains("الصك", error);
+        Assert.Null((await rig.Property()).EnfazHandoverAtUtc);
     }
 
     [Fact]
@@ -749,6 +800,11 @@ public class TransactionStateEnfazTests
             Calls.Add((propertyId, reason));
             return Task.FromResult<(bool Reopened, string? Error)>(Error is null ? (true, null) : (false, Error));
         }
+
+        public Task<string?> WithdrawApprovalForReturnAsync(
+            Guid propertyId,
+            string note,
+            CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
     }
 
     private sealed class Rig(
@@ -839,6 +895,9 @@ public class TransactionStateEnfazTests
                 : null);
 
         public Task<IReadOnlyList<ValuationRequestDto>> ListAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<PagedResultDto<ValuationRequestDto>> ListPagedAsync(int? page, int? pageSize, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<ValuationRequestDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>

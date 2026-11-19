@@ -15,6 +15,7 @@ import {
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 type InspectorSaveChipSection = "location" | "access" | "photos";
 
@@ -191,7 +192,7 @@ export function deedVerdictPatch(
   for (const key of INSPECTOR_BOUNDARY_KEYS) {
     const row = boundaryMatches[key];
     boundaryMatches[key] =
-      verdict === "yes"
+      verdict === ChecklistAnswers.Yes
         ? { ...row, matches: true, mismatchNote: "" }
         : { ...row, matches: row.matches ?? true };
   }

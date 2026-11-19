@@ -290,6 +290,115 @@ public class PartyTaskSubmissionStudyReportGateTests
             (await rig.Contexts.CaseStudy.PartyTaskSubmissions.AsNoTracking().SingleAsync(s => s.WorkflowTaskId == AppraisalA)).Status);
     }
 
+    // ------------------------------------------------------------ review's return (Omar 2026-11-18)
+
+    private static readonly PartySubmissionActor Reviewer = new()
+    {
+        UserId = "reviewer-user",
+        DisplayName = "المراجع",
+        PrototypeRole = "case-specialist",
+        SubRoles = [CaseSpecialistSubRoles.Review],
+    };
+
+    [Fact]
+    public async Task Review_returns_the_valuation_to_another_appraiser_in_one_step()
+    {
+        await using var rig = Arrange(reportStatusA: "issued", valuationOpenForProperty: true, withDistribution: true);
+        await rig.Service.SubmitAsync(AppraisalA, Appraiser);
+
+        var (result, errors) = await rig.Service.ReopenAsync(
+            AppraisalA,
+            new ReopenPartyTaskSubmissionRequest
+            {
+                ReturnNote = "المقيّم غائب — عدّل التسويات",
+                NewAssigneeId = "dist-appraiser-2",
+                NewAssigneeName = "مقيّم آخر",
+            },
+            Reviewer);
+
+        Assert.Null(errors);
+        Assert.Equal(PartyTaskSubmissionStatus.Reopened, result!.Status);
+        var task = await rig.Contexts.CaseStudy.WorkflowTasks.AsNoTracking().SingleAsync(t => t.Id == AppraisalA);
+        Assert.Equal("dist-appraiser-2", task.AssigneeId);
+        Assert.Equal(WorkflowTaskStatus.Open, task.Status);
+        // Only the appraiser moved.
+        var inspection = await rig.Contexts.CaseStudy.WorkflowTasks.AsNoTracking().SingleAsync(t => t.Id == InspectionA);
+        Assert.Equal("dist-inspector", inspection.AssigneeId);
+    }
+
+    [Fact]
+    public async Task A_returned_valuation_still_unsent_moves_to_another_appraiser_alone()
+    {
+        await using var rig = Arrange(reportStatusA: "issued", valuationOpenForProperty: true, withDistribution: true);
+        await rig.Service.SubmitAsync(AppraisalA, Appraiser);
+        await rig.Service.ReopenAsync(AppraisalA, new ReopenPartyTaskSubmissionRequest { ReturnNote = "تصحيح" }, Reviewer);
+
+        var (result, errors) = await rig.Service.ReopenAsync(
+            AppraisalA,
+            new ReopenPartyTaskSubmissionRequest { ReturnNote = "المقيّم غائب", NewAssigneeId = "dist-appraiser-2" },
+            Reviewer);
+
+        Assert.Null(errors);
+        Assert.Equal(PartyTaskSubmissionStatus.Reopened, result!.Status);
+        Assert.Equal(
+            "dist-appraiser-2",
+            (await rig.Contexts.CaseStudy.WorkflowTasks.AsNoTracking().SingleAsync(t => t.Id == AppraisalA)).AssigneeId);
+    }
+
+    [Fact]
+    public async Task Review_voids_the_approval_before_the_deposit_and_returns_the_valuation()
+    {
+        var valuation = new RecordingWithdraw();
+        await using var rig = Arrange(
+            reportStatusA: "issued", valuationOpenForProperty: true, valuationReportStage: "deposit_issued",
+            valuationReopen: valuation);
+        await rig.Service.SubmitAsync(AppraisalA, Appraiser);
+
+        var (result, errors) = await rig.Service.ReopenAsync(
+            AppraisalA, new ReopenPartyTaskSubmissionRequest { ReturnNote = "القيمة تحتاج مراجعة" }, Reviewer);
+
+        Assert.Null(errors);
+        Assert.Equal(PartyTaskSubmissionStatus.Reopened, result!.Status);
+        Assert.Equal([(PropertyA, "القيمة تحتاج مراجعة")], valuation.Calls);
+    }
+
+    [Fact]
+    public async Task A_recorded_deposit_code_refuses_the_return_and_nothing_moves()
+    {
+        var valuation = new RecordingWithdraw { Error = "سُجّل رمز الإيداع — التعديل بعد الإيداع عبر «التعديل»" };
+        await using var rig = Arrange(
+            reportStatusA: "issued", valuationOpenForProperty: true, valuationReportStage: "deposit_issued",
+            valuationReopen: valuation);
+        await rig.Service.SubmitAsync(AppraisalA, Appraiser);
+
+        var (result, errors) = await rig.Service.ReopenAsync(
+            AppraisalA, new ReopenPartyTaskSubmissionRequest { ReturnNote = "تصحيح" }, Reviewer);
+
+        Assert.Null(result);
+        Assert.Equal(valuation.Error, errors!["_"]);
+        Assert.Equal(
+            PartyTaskSubmissionStatus.Submitted,
+            (await rig.Contexts.CaseStudy.PartyTaskSubmissions.AsNoTracking().SingleAsync(s => s.WorkflowTaskId == AppraisalA)).Status);
+    }
+
+    /// <summary>Valuation's approval withdrawal for a return: records the calls, can be told to refuse.</summary>
+    private sealed class RecordingWithdraw : IValuationReportReopenCommands
+    {
+        public List<(Guid PropertyId, string Note)> Calls { get; } = [];
+        public string? Error { get; init; }
+
+        public Task<(bool Reopened, string? Error)> ReopenDepositedReportAsync(
+            Guid propertyId, string reason, CancellationToken cancellationToken = default) =>
+            Task.FromResult<(bool, string?)>((false, "not used"));
+
+        public Task<string?> WithdrawApprovalForReturnAsync(
+            Guid propertyId, string note, CancellationToken cancellationToken = default)
+        {
+            Calls.Add((propertyId, note));
+            return Task.FromResult(Error);
+        }
+    }
+
     // ------------------------------------------------------------ the new version (n+1)
 
     [Fact]
@@ -328,6 +437,26 @@ public class PartyTaskSubmissionStudyReportGateTests
             Assert.Null(result);
             Assert.Equal(PartyTaskSubmissionService.NewVersionForbiddenAr, errors!["_"]);
         }
+    }
+
+    // Omar 2026-11-18: the coordinator opens «التعديل»; a value change reopens the appraiser's package here.
+    [Fact]
+    public async Task The_coordinator_reopens_the_appraisal_for_an_edit()
+    {
+        await using var rig = Arrange(reportStatusA: "issued");
+        await rig.Service.SubmitAsync(AppraisalA, Appraiser);
+
+        var (result, errors) = await rig.Service.ReopenForNewVersionAsync(
+            AppraisalA,
+            new ReopenForNewVersionRequest { Reason = "إنفاذ تطلب تعديل القيمة" },
+            new PartySubmissionActor
+            {
+                UserId = "c", DisplayName = "منسق", PrototypeRole = "case-specialist",
+                SubRoles = [CaseSpecialistSubRoles.Coordination],
+            });
+
+        Assert.Null(errors);
+        Assert.Equal(PartyTaskSubmissionStatus.Reopened, result!.Status);
     }
 
     [Fact]
@@ -389,7 +518,9 @@ public class PartyTaskSubmissionStudyReportGateTests
         string? reportStatusB = "draft",
         string? currentRole = null,
         bool? valuationOpenForProperty = null,
-        string? valuationReportStage = null)
+        string? valuationReportStage = null,
+        IValuationReportReopenCommands? valuationReopen = null,
+        bool withDistribution = false)
     {
         var contexts = TestDatabases.Create("study-report-gate");
         var db = contexts.CaseStudy;
@@ -452,7 +583,9 @@ public class PartyTaskSubmissionStudyReportGateTests
             recipients,
             new AuditLogWriter(),
             new RecordingAuditLogAppend(),
-            valuationRequests: valuationOpenForProperty is { } open ? new StubValuationRequests(open, valuationReportStage) : null);
+            valuationRequests: valuationOpenForProperty is { } open ? new StubValuationRequests(open, valuationReportStage) : null,
+            valuationReopen: valuationReopen,
+            distribution: withDistribution ? TestInspectorFeeServiceFactory.CreateWorkflow(db) : null);
         return new Rig(contexts, service);
     }
 
@@ -461,6 +594,9 @@ public class PartyTaskSubmissionStudyReportGateTests
     {
         public Task<IReadOnlyList<ValuationRequestDto>> ListAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<ValuationRequestDto>>([]);
+
+        public Task<PagedResultDto<ValuationRequestDto>> ListPagedAsync(int? page, int? pageSize, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new PagedResultDto<ValuationRequestDto> { Items = [], TotalCount = 0, Page = 1, PageSize = 0 });
 
         public Task<ValuationRequestDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<ValuationRequestDto?>(null);

@@ -4,6 +4,7 @@ import {
   setAttachmentDocumentType,
   uploadAttachment,
   type PrototypeModulesResult,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { freshPrototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
@@ -32,8 +33,8 @@ export type GovernedDocumentTypeInput = {
 function failure(result: PrototypeModulesResult<unknown>, fallback: string): GovernedDocumentCommandResult {
   if (result.ok) return { ok: true };
   if (result.message) return { ok: false, error: result.message };
-  if (result.kind === "forbidden") return { ok: false, error: "لا تملك صلاحية هذا الإجراء" };
-  if (result.kind === "network") {
+  if (result.kind === ApiErrorKinds.Forbidden) return { ok: false, error: "لا تملك صلاحية هذا الإجراء" };
+  if (result.kind === ApiErrorKinds.Network) {
     return { ok: false, error: "تعذّر الاتصال بالخادم — حاول مجدداً" };
   }
   return { ok: false, error: fallback };

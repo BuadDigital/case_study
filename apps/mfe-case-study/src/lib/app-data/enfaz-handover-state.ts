@@ -73,6 +73,7 @@ type TransactionReopenPlan =
  * How it works: a trimmed reason of at least 10 characters; Enfaz as the source needs its reference;
  * at least one of the study report, the valuation report or field work (which reopens the study).
  * Edge cases: the reference is dropped for an internal reopening; the server re-checks everything.
+ * A value / forced-sale ratio change (Omar 2026-11-18) always reopens the valuation report.
  */
 export function planTransactionReopen(args: {
   source: "enfaz" | "internal";
@@ -81,6 +82,7 @@ export function planTransactionReopen(args: {
   reopenStudy: boolean;
   reopenValuation: boolean;
   needsFieldWork: boolean;
+  changesValue?: boolean;
 }): TransactionReopenPlan {
   const reason = args.reason.trim();
   if (!reason) {
@@ -97,7 +99,8 @@ export function planTransactionReopen(args: {
   if (args.source === "enfaz" && !enfazReference) {
     return { ok: false, field: "reference", error: "اكتب رقم ملاحظة إنفاذ أو مرجعها." };
   }
-  if (!args.reopenStudy && !args.reopenValuation && !args.needsFieldWork) {
+  const reopenValuation = args.reopenValuation || Boolean(args.changesValue);
+  if (!args.reopenStudy && !reopenValuation && !args.needsFieldWork) {
     return {
       ok: false,
       field: "choice",
@@ -111,8 +114,9 @@ export function planTransactionReopen(args: {
       source: args.source,
       ...(args.source === "enfaz" ? { enfazReference } : {}),
       reopenStudy: args.reopenStudy || args.needsFieldWork,
-      reopenValuation: args.reopenValuation,
+      reopenValuation,
       needsFieldWork: args.needsFieldWork,
+      ...(args.changesValue ? { changesValue: true } : {}),
     },
   };
 }

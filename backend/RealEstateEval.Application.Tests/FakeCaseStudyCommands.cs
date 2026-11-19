@@ -12,6 +12,8 @@ public sealed class FakeCaseStudyCommands : ICaseStudyCommands
     public const string Reference = "PR-2026-00001";
 
     public int ConfirmCalls { get; private set; }
+    /// <summary>The version the last confirm-reference call carried (1 unless a later report version).</summary>
+    public int LastConfirmVersion { get; private set; }
 
     public string? FailWith { get; set; }
 
@@ -29,9 +31,11 @@ public sealed class FakeCaseStudyCommands : ICaseStudyCommands
 
     public Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
         Guid propertyId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int version = 1)
     {
         ConfirmCalls++;
+        LastConfirmVersion = version;
         if (FailWith is not null)
             return Task.FromResult<(CaseStudyTransactionNumbersDto?, string?)>((null, FailWith));
         return Task.FromResult<(CaseStudyTransactionNumbersDto?, string?)>((new CaseStudyTransactionNumbersDto

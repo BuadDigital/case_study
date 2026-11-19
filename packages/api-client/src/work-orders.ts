@@ -1,6 +1,7 @@
 import type { PropertyPhotoMarksDto } from "./property-photo-marks";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { authHeaders, getApiBase } from "./api-base";
+import { ApiErrorKinds, type ApiErrorKind } from "./api-error-kinds";
 import { repositoryFetch as fetch } from "./write-repository";
 import {
   buildListQueryString,
@@ -344,7 +345,7 @@ export type PendingBoursePropertyDto = {
 export type ApiOk<T> = { ok: true; data: T };
 export type ApiErr = {
   ok: false;
-  kind: "auth" | "forbidden" | "network" | "validation" | "server" | "not_found";
+  kind: ApiErrorKind;
   message?: string;
   errors?: Record<string, string>;
 };
@@ -359,7 +360,7 @@ async function parseForbidden(res: Response): Promise<ApiErr> {
   } catch {
     // Status alone is enough when the body is empty (policy Forbid).
   }
-  return { ok: false, kind: "forbidden", message, errors: { _: message } };
+  return { ok: false, kind: ApiErrorKinds.Forbidden, message, errors: { _: message } };
 }
 
 async function parseFieldErrors(res: Response): Promise<Record<string, string>> {
@@ -500,30 +501,22 @@ export async function getWorkOrderListCounts(
     const res = await fetch(`${base}/api/work-orders/counts${qs}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: normalizeWorkOrderListCounts(await res.json()) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
-/** Full work orders with properties — one round-trip (replaces N+1 getWorkOrder calls). */
+/**
+ * Full work orders with properties (replaces N+1 getWorkOrder calls), every page of them: the
+ * unpaged read stopped at 500 orders and said nothing of the rest (2026-11-19).
+ */
 export async function listWorkOrdersWithDetails(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<WorkOrderDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/work-orders/details`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as WorkOrderDto[];
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchAllListPages<WorkOrderDto>(config, "/api/work-orders/details");
 }
 
 export type PropertyListRowDto = {
@@ -545,39 +538,21 @@ export type PropertyListItemDto = {
   propertyId: string;
 };
 
-/** Flat property rows for dashboard tables — avoids the full work-order details payload. */
+/**
+ * Flat property rows for dashboard tables — avoids the full work-order details payload. Every page
+ * (pages count work orders, one row per deed): the unpaged read stopped at 500 orders (2026-11-19).
+ */
 export async function listPropertyListItems(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<PropertyListItemDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/work-orders/property-rows`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as PropertyListItemDto[];
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchAllListPages<PropertyListItemDto>(config, "/api/work-orders/property-rows");
 }
 
+/** The deeds waiting on the bourse inquiry, every page (the unpaged read stopped at 500). */
 export async function listPendingBourseProperties(
   config: WorkOrdersApiConfig,
 ): Promise<ApiOk<PendingBoursePropertyDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/work-orders/properties/pending-bourse`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as PendingBoursePropertyDto[];
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchAllListPages<PendingBoursePropertyDto>(config, "/api/work-orders/properties/pending-bourse");
 }
 
 export async function getWorkOrder(
@@ -590,12 +565,12 @@ export async function getWorkOrder(
     const res = await fetch(`${base}/api/work-orders/${encoded}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as WorkOrderDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -612,13 +587,13 @@ export async function getPropertyTimeline(
       `${base}/api/work-orders/${po}/properties/${prop}/timeline`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = (await res.json()) as PropertyTimelineEventDto[];
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -632,11 +607,11 @@ export async function workOrderExists(
       `${base}/api/work-orders/exists?poNumber=${encodeURIComponent(poNumber.trim())}`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as boolean };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -656,14 +631,14 @@ export async function findPriorDeed(
     const res = await fetch(`${base}/api/work-orders/deeds/prior?${params}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 403) return parseForbidden(res);
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = (await res.json()) as PriorDeedRegistrationDto | null;
     return { ok: true, data: data ?? null };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -689,13 +664,13 @@ export async function listPriorDeeds(
       `${base}/api/work-orders/deeds/prior/history?${params}`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 403) return parseForbidden(res);
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = (await res.json()) as PriorDeedRegistrationDto[];
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -715,19 +690,19 @@ export async function createWorkOrder(
       headers: authHeaders(config.token, { idempotencyKey }),
       body: JSON.stringify(payload),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 403) return parseForbidden(res);
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: await parseFieldErrors(res),
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as WorkOrderDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -746,19 +721,19 @@ export async function updateWorkOrderHeader(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: await parseFieldErrors(res),
       };
     }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as WorkOrderDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -778,20 +753,20 @@ export async function updateWorkOrderAssignmentSpecialist(
         body: JSON.stringify({ assignmentSpecialist }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 403) return parseForbidden(res);
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: await parseFieldErrors(res),
       };
     }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as WorkOrderDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -805,17 +780,17 @@ export async function deleteWorkOrder(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}`,
       { method: "DELETE", headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) {
       const message =
         res.status === 400
           ? ((await res.json()) as { message?: string }).message
           : undefined;
-      return { ok: false, kind: "server", message };
+      return { ok: false, kind: ApiErrorKinds.Server, message };
     }
     return { ok: true, data: undefined };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -830,17 +805,17 @@ async function postWorkOrderLifecycleAction(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/${action}`,
       { method: "POST", headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) {
       const message =
         res.status === 400
           ? ((await res.json()) as { message?: string }).message
           : undefined;
-      return { ok: false, kind: "server", message };
+      return { ok: false, kind: ApiErrorKinds.Server, message };
     }
     return { ok: true, data: undefined };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -872,19 +847,19 @@ export async function addWorkOrderProperty(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: await parseFieldErrors(res),
       };
     }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as WorkOrderPropertyDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -906,19 +881,19 @@ export async function updateWorkOrderProperty(
         body: JSON.stringify(property),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: await parseFieldErrors(res),
       };
     }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as WorkOrderPropertyDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -938,20 +913,20 @@ export async function updateSpecialistReportExtras(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: await parseFieldErrors(res),
       };
     }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as WorkOrderPropertyDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1002,10 +977,10 @@ export async function getWorkOrderFieldSources(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/field-sources`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     return {
       ok: true,
@@ -1016,7 +991,7 @@ export async function getWorkOrderFieldSources(
       },
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1037,8 +1012,8 @@ export async function notifyIntakeFieldGap(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
         error?: string;
@@ -1046,20 +1021,20 @@ export async function notifyIntakeFieldGap(
       } | null;
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: {
           _: payload?.error ?? payload?.title ?? "تعذّر إرسال الإشعار",
         },
       };
     }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return {
       ok: true,
       data: (await res.json()) as NotifyIntakeFieldGapResultDto,
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1080,19 +1055,19 @@ export async function completePropertyBourseData(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         errors: await parseFieldErrors(res),
       };
     }
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as WorkOrderPropertyDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1112,17 +1087,17 @@ export async function deleteWorkOrderProperty(
         body: JSON.stringify({ reason }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) {
       const message =
         res.status === 400
           ? ((await res.json()) as { message?: string }).message
           : undefined;
-      return { ok: false, kind: "server", message };
+      return { ok: false, kind: ApiErrorKinds.Server, message };
     }
     return { ok: true, data: undefined };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1231,7 +1206,7 @@ async function transactionStateFailure(
     errors?._?.trim() ||
     (errors ? Object.values(errors).find((v) => typeof v === "string" && v.trim()) : undefined) ||
     payload?.message;
-  return { ok: false, kind: res.status === 403 ? "forbidden" : "server", message };
+  return { ok: false, kind: res.status === 403 ? ApiErrorKinds.Forbidden : ApiErrorKinds.Server, message };
 }
 
 /** Transaction status grid — UI shows who waits on whom. */
@@ -1249,12 +1224,12 @@ export async function getTransactionState(
       `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: normalizeTransactionState(await res.json()) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1278,11 +1253,11 @@ async function postTransactionStateAction(
       `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/${action}`,
       { method: "POST", headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) return transactionStateFailure(res);
     return { ok: true, data: normalizeTransactionState(await res.json()) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1342,6 +1317,8 @@ export type EnfazReturnRequest = {
   enfazReference?: string;
   /** Field work is needed: the study is reopened and a task is made for the visit. */
   needsFieldWork?: boolean;
+  /** Enfaz asks to change the value or the forced-sale ratio — the valuation report reopens (2026-11-18). */
+  changesValue?: boolean;
 };
 
 /**
@@ -1366,11 +1343,11 @@ export async function returnFromEnfaz(
         body: JSON.stringify(request),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) return transactionStateFailure(res);
     return { ok: true, data: normalizeTransactionState(await res.json()) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -1381,10 +1358,10 @@ export async function listActiveReopenings(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/transaction-reopenings/active`, { headers: authHeaders(config.token) });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) return transactionStateFailure(res);
     return { ok: true, data: (await res.json()) as TransactionReopeningDto[] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

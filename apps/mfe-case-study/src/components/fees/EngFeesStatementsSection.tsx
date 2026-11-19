@@ -27,6 +27,7 @@ import {
   StatementRowCells,
   statementCardFields,
 } from "./FeeLedgerParts";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 const STATEMENTS_FOOTER =
   "دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها للمالية.";
@@ -42,7 +43,7 @@ function StatementPayout({
 }) {
   return (
     <>
-    {s.status === "closed" && s.paidAtUtc ? (
+    {s.status === PartyBillingStatementStatuses.Closed && s.paidAtUtc ? (
       <span className="inline-flex min-w-0 flex-col gap-px text-start">
         <span>
           صُرف {formatYmd(s.paidAtUtc)}

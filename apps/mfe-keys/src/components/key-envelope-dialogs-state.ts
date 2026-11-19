@@ -19,6 +19,7 @@ import {
   displayPersonName,
   type DeliverHandoffBody,
 } from "./key-envelope-detail-state";
+import { Roles } from "@platform/types";
 
 /** Note stored with a full match — the field confirmation wording. */
 export const MATCHED_DEFAULT_NOTE = "فُتح العقار بالمفاتيح (تأكيد ميداني)";
@@ -76,7 +77,7 @@ export function validateMatchResult(
 
 /** Roles that receive the envelope back as its custodian; everyone else hands it to the reviewer. */
 export function receivesAsReviewer(role: RoleId): boolean {
-  return role === "government-reviewer" || role === "section-supervisor";
+  return role === Roles.GovernmentReviewer || role === Roles.SectionSupervisor;
 }
 
 /**

@@ -16,6 +16,7 @@ import {
   transactionPickerLabel,
   type DefinedPhotoSlotCell,
 } from "./inspector-wizard-state";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 export function InspectorDefinedPhotoSlotList({
   cells,
@@ -58,7 +59,7 @@ export function InspectorDefinedPhotoSlotList({
     );
   }
 
-  if (layout === "mobile") {
+  if (layout === InspectorStepLayouts.Mobile) {
     return (
       <div className="grid grid-cols-3 gap-2.5">
         {cells.map(({ id, label, slot, done, first }) => (

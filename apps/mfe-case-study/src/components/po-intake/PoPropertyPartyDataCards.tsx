@@ -7,6 +7,7 @@ import {
   savePartyTaskSubmission,
   type PartyFieldProvenanceEntry,
   type PartyTaskSubmissionDto,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   RegField,
@@ -364,7 +365,7 @@ function PartyDataCard({
       if (res.ok) {
         setDto(res.data);
         setLoadError(null);
-      } else if (res.kind !== "not_found") {
+      } else if (res.kind !== ApiErrorKinds.NotFound) {
         setLoadError(
           resolveApiError(res.kind, undefined, `تعذّر تحميل ${section.title}`),
         );

@@ -6,6 +6,7 @@
  */
 import type { WorkflowTask } from "./tasks";
 
+import { WorkflowTaskStatuses, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 export type CoordinationSectionId =
   | "intake"
   | "bourse"
@@ -52,15 +53,15 @@ const PHASE_STEP: Partial<Record<WorkflowTask["phase"], number>> = {
  */
 export function coordinationStep(task: WorkflowTask | null | undefined): number {
   if (!task) return 0;
-  if (task.status === "cancelled") return COORDINATION_DONE_STEP;
+  if (task.status === WorkflowTaskStatuses.Cancelled) return COORDINATION_DONE_STEP;
   const byPhase =
     PHASE_STEP[
-      task.phase === "obstruction"
-        ? (task.obstructionPriorPhase ?? "enfath")
+      task.phase === CaseStudyTaskPhases.Obstruction
+        ? (task.obstructionPriorPhase ?? CaseStudyTaskPhases.Enfath)
         : task.phase
     ];
   if (byPhase !== undefined) return byPhase;
-  if (task.phase === "case-study" && task.transactionReceived !== true)
+  if (task.phase === CaseStudyTaskPhases.CaseStudy && task.transactionReceived !== true)
     return FOLLOW_UP_STEP;
   return COORDINATION_DONE_STEP;
 }

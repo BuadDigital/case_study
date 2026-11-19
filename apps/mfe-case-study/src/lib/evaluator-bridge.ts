@@ -11,6 +11,7 @@ import {
 import type { EvaluatorRuntimeBridge } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 /** The appraiser's valuation report (read-only), or null before the shell registers it. */
 export function evaluatorValuationReportPreview(): EvaluatorRuntimeBridge["ValuationReportPreview"] | null {
   return tryGetEvaluatorRuntimeBridge()?.ValuationReportPreview ?? null;
@@ -27,7 +28,7 @@ export function filterAppraiserListedTasks(
 ): WorkflowTask[] {
   return withEvaluatorBridge(
     (b) => b.filterAppraiserListedTasks(tasks, options),
-    tasks.filter((t) => t.kind === "property-appraisal"),
+    tasks.filter((t) => t.kind === WorkflowTaskKinds.PropertyAppraisal),
   );
 }
 
@@ -37,7 +38,7 @@ export function appraiserQueueStatusGroup(
 ): string {
   return withEvaluatorBridge(
     (b) => b.appraiserQueueStatusGroup(task, allTasks),
-    task.status === "completed" ? "closed" : "drafting",
+    task.status === WorkflowTaskStatuses.Completed ? "closed" : "drafting",
   );
 }
 

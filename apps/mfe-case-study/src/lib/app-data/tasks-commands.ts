@@ -12,7 +12,6 @@ import {
   skipWorkflowTaskEngineeringSurvey,
   reopenCompletedWorkflowTask,
   revertWorkflowTaskPhase,
-  syncWorkflowTasks,
 } from "@platform/api-client";
 import { apiErrorMessage, resolveApiError, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import { notifyWorkOrdersChanged } from "@platform/app-shared/app-data/work-orders-api-config";
@@ -24,7 +23,7 @@ import type {
   TaskDistributionDraft,
   WorkflowTask,
 } from "@platform/app-shared/workflow/task-types";
-import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
+import { notifyTasksChanged, WorkflowTaskStatuses, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 import {
   buildAssigneeNames,
   defaultDistribution,
@@ -35,8 +34,6 @@ import {
   type RedistributePartiesResult,
   type ReopenCompletedTaskResult,
   type RevertTaskPhaseResult,
-  type SyncTaskSlotsResult,
-  type SyncTasksResult,
 } from "./tasks-model";
 import {
   caseStudyTaskForProperty,
@@ -46,30 +43,15 @@ import {
   poCaseTasks,
 } from "./tasks-reads";
 
-export async function syncTaskSlotsForPo(
-  poNumber: string,
-): Promise<SyncTaskSlotsResult> {
-  const sync = await syncTasksFromPoRecords();
-  if (!sync.ok) return { ok: false, error: sync.error };
-  // This PO's tasks only — not the whole list (2026-11-15).
-  const list = await loadWorkflowTasksForPo(poNumber);
-  return {
-    ok: true,
-    tasks: poCaseTasks(list, poNumber.trim()),
-  };
-}
-
 /** Link a property registered in primary data to the next empty workflow slot. */
 export async function linkNewPropertyToTaskSlot(
   poNumber: string,
   property: PoPropertyIntake,
 ): Promise<AdvanceTaskResult | null> {
   if (!property.id) return null;
-  const slots = await syncTaskSlotsForPo(poNumber);
-  if (!slots.ok) return { ok: false, error: slots.error };
-  // slots.tasks is the same poCaseTasks result from a list just loaded —
-  // calling loadWorkflowTasks again was a duplicate identical GET.
-  const tasks = slots.tasks;
+  // The server linked the deed to a free slot when it was saved (2026-11-19); this finds it, and
+  // links it here only when that did not happen.
+  const tasks = poCaseTasks(await loadWorkflowTasksForPo(poNumber), poNumber.trim());
   const existing = caseStudyTaskForProperty(poNumber, property.id, tasks);
   if (existing) return { ok: true, task: existing };
   const slot = tasks
@@ -411,7 +393,7 @@ export async function suspendWorkflowTasksForProperty(
     (t) =>
       t.poNumber.trim() === n &&
       t.propertyId === propertyId &&
-      t.status !== "completed",
+      t.status !== WorkflowTaskStatuses.Completed,
   );
   const config = workOrdersApiConfig();
   if (!config) return false;
@@ -437,11 +419,11 @@ export async function resolveTaskObstruction(
 ): Promise<WorkflowTask | null> {
   const resolved =
     task ?? (await loadWorkflowTasks()).find((t) => t.id === taskId);
-  if (!resolved || resolved.phase !== "obstruction") return null;
+  if (!resolved || resolved.phase !== CaseStudyTaskPhases.Obstruction) return null;
 
   const resumePhase =
     resolved.obstructionPriorPhase ??
-    (resolved.propertyId ? "bourse" : "enfath");
+    (resolved.propertyId ? CaseStudyTaskPhases.Bourse : CaseStudyTaskPhases.Enfath);
 
   const config = workOrdersApiConfig();
   if (!config) return null;
@@ -470,69 +452,6 @@ export async function completeChildTask(
   if (!result.ok) return null;
   notifyTasksChanged();
   return dtoToTask(result.data);
-}
-
-/**
- * Single-flight + cooldown for the slot sync. Cache warm-ups fire from several
- * query keys on every navigation (see `loadPoRecordsWithTaskSync` and the shell
- * prefetches), and overlapping POST /workflow-tasks/sync calls used to race on
- * the same rows server-side. Concurrent callers collapse onto one request, and
- * quiet warm-ups (`notify: false`) skip entirely inside the cooldown window.
- * Mutating paths (default `notify: true`) always run a fresh sync.
- */
-
-const SYNC_COOLDOWN_MS = 60_000;
-let syncInFlight: Promise<SyncTasksResult> | null = null;
-let lastSyncOkAtMs = 0;
-
-async function syncTasksOnce(): Promise<SyncTasksResult> {
-  const config = workOrdersApiConfig();
-  if (!config) {
-    return { ok: false, error: apiErrorMessage("auth") };
-  }
-  if (!hasRuntimeCapability("manage-work-orders")) {
-    return { ok: true };
-  }
-  const result = await syncWorkflowTasks(config);
-  if (!result.ok) {
-    console.warn("[workflow-tasks] sync failed:", result.kind);
-    return {
-      ok: false,
-      error: apiErrorMessage(
-        result.kind,
-        "تعذّر مزامنة خانات البيانات الأولية",
-      ),
-    };
-  }
-  lastSyncOkAtMs = Date.now();
-  return { ok: true };
-}
-
-export async function syncTasksFromPoRecords(options?: {
-  /** Default true — set false when warming the PO cache so reads don't fan out. */
-  notify?: boolean;
-}): Promise<SyncTasksResult> {
-  const quiet = options?.notify === false;
-  if (quiet) {
-    if (syncInFlight) return syncInFlight;
-    if (Date.now() - lastSyncOkAtMs < SYNC_COOLDOWN_MS) {
-      return { ok: true };
-    }
-  } else if (syncInFlight) {
-    // Serialize behind the in-flight warm-up, then run fresh — a mutation may
-    // have landed after that sync started.
-    await syncInFlight.catch(() => undefined);
-  }
-
-  const flight = syncTasksOnce().finally(() => {
-    syncInFlight = null;
-  });
-  syncInFlight = flight;
-  const result = await flight;
-  if (result.ok && !quiet) {
-    notifyTasksChanged();
-  }
-  return result;
 }
 
 export async function patchTaskDistribution(

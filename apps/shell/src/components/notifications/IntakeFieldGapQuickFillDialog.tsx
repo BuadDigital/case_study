@@ -9,6 +9,7 @@ import {
   type IntakeQuickFillField,
   type IntakeQuickFillFieldKey,
 } from "@platform/app-shared/app-data/intake-field-gap-quick-fill";
+import { ApiErrorKinds } from "@platform/api-client";
 
 /**
  * Opened from a «missing field» notification for one of the short list of simple, ungated
@@ -55,11 +56,11 @@ export function IntakeFieldGapQuickFillDialog({
     setSaving(false);
     if (!result.ok) {
       setError(
-        result.kind === "validation"
+        result.kind === ApiErrorKinds.Validation
           ? (Object.values(result.errors ?? {})[0]?.trim() ?? "تعذّر الحفظ")
-          : result.kind === "auth"
+          : result.kind === ApiErrorKinds.Auth
             ? "انتهت الجلسة — سجّل الدخول من جديد ثم أعد المحاولة"
-            : result.kind === "not_found"
+            : result.kind === ApiErrorKinds.NotFound
               ? "تعذّر إيجاد العقار — قد يكون حُذف من أمر العمل"
               : "تعذّر الحفظ — أعد المحاولة",
       );

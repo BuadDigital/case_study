@@ -4,6 +4,7 @@ import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./protot
 import type { FinancialRevenueRowStatus } from "./property-list-wire";
 import { fetchListPage, type PagedResultDto } from "./pagination";
 import type { ApiErr, ApiOk } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 type FinancialRevenueRowDto = {
   po: string;
@@ -96,10 +97,10 @@ function baseUrl(config: PrototypeModulesApiConfig): string {
 async function readResult<T>(
   res: Response,
 ): Promise<PrototypeModulesResult<T>> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 403) return { ok: false, kind: "forbidden" };
-  if (res.status === 404) return { ok: false, kind: "server" };
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+  if (res.status === 404) return { ok: false, kind: ApiErrorKinds.Server };
+  if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
   if (res.status === 204) return { ok: true, data: undefined as T };
   return { ok: true, data: (await res.json()) as T };
 }
@@ -113,7 +114,7 @@ export async function fetchFinancialSummary(
     });
     return readResult<FinancialSummaryDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -129,7 +130,7 @@ export async function fetchPartyFeePricingTables(
     );
     return readResult<PartyFeePricingTableSummaryDto[]>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -144,7 +145,7 @@ export async function fetchPartyFeePricingById(
     );
     return readResult<PartyFeePricingDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -160,7 +161,7 @@ export async function createPartyFeePricing(
     });
     return readResult<PartyFeePricingDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -180,7 +181,7 @@ export async function savePartyFeePricing(
     );
     return readResult<PartyFeePricingDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -200,7 +201,7 @@ export async function revisePartyFeePricing(
     );
     return readResult<PartyFeePricingDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -215,7 +216,7 @@ export async function activatePartyFeePricing(
     );
     return readResult<PartyFeePricingDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -235,7 +236,7 @@ export async function setPartyFeePricingAssignments(
     );
     return readResult<PartyFeePricingDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -250,7 +251,7 @@ export async function deletePartyFeePricing(
     );
     return readResult<void>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 

@@ -43,6 +43,7 @@ import {
   restoreFailuresSnapshot,
 } from "../query/failures-queries";
 import { useFailuresListPage } from "./useFailuresListPage";
+import { FailureStatuses } from "@platform/app-shared/failures/failures-types";
 
 /**
  * Workflow of the failures queue: the paged rows (`useFailuresListPage`), the
@@ -208,7 +209,7 @@ export function useFailuresViewWorkflow() {
   function handleSubmit(id: string) {
     const note = (escalateNote[id] ?? "").trim();
     if (!note) return;
-    void runOptimisticStatus(id, "review", () => submitFailureForReview(id, note), {
+    void runOptimisticStatus(id, FailureStatuses.Review, () => submitFailureForReview(id, note), {
       busyKey: failureBusyKey(id, "submit"),
       successToast: "تم تصعيد التعذّر إلى المشرف",
       errorToast: "تعذّر تصعيد التعذّر — حاول مرة أخرى",
@@ -228,7 +229,7 @@ export function useFailuresViewWorkflow() {
   }
 
   function handleUpgrade(id: string) {
-    void runOptimisticStatus(id, "internal", () => upgradeFailureToInternal(id), {
+    void runOptimisticStatus(id, FailureStatuses.Internal, () => upgradeFailureToInternal(id), {
       busyKey: failureBusyKey(id, "upgrade"),
       successToast: "تم تأكيد التعذّر الداخلي",
       errorToast: "تعذّر ترقية التعذّر — حاول مرة أخرى",
@@ -238,7 +239,7 @@ export function useFailuresViewWorkflow() {
 
   function handleReturn(id: string) {
     const note = supervisorNote[id] ?? "";
-    void runOptimisticStatus(id, "returned", () => returnFailure(id, note), {
+    void runOptimisticStatus(id, FailureStatuses.Returned, () => returnFailure(id, note), {
       busyKey: failureBusyKey(id, "return"),
       successToast: "أُعيد التعذّر للأخصائي",
       errorToast: "تعذّر إرجاع التعذّر — حاول مرة أخرى",
@@ -251,7 +252,7 @@ export function useFailuresViewWorkflow() {
     if (!failure) return;
     await runOptimisticStatus(
       id,
-      "suspended",
+      FailureStatuses.Suspended,
       async () => {
         const result = await getFailuresCaseStudyBridge().suspendPropertyTransaction({
           failure,
@@ -277,7 +278,7 @@ export function useFailuresViewWorkflow() {
     const failure = rows.find((f) => f.id === id);
     void runOptimisticStatus(
       id,
-      "resolved",
+      FailureStatuses.Resolved,
       () =>
         resolveFailure(id, {
           resolutionReason: draft.reason,

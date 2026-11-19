@@ -49,7 +49,10 @@ x-database-env: &database-env
   # The first deploy that introduces the cap still overlaps the previous generation's
   # 20-connection pools: 13×20 + 13×6 = 338, plus the migrator and 40 reserved.
   # max_connections=500 covers that transition; later deploys only need 26×6.
-  Database__MaxPoolSize: "6"
+  # 2026-11-19: raised to 16 (26×16 = 416 ≤ 500 − 40; the budget allows 17). At 6 a service
+  # ran out of connections at about 20–50 concurrent users and requests queued until the
+  # 15-second connection timeout while the server was idle; production used 12 of 500.
+  Database__MaxPoolSize: "16"
   Database__ServerMaxConnections: "500"
   Database__ReservedServerConnections: "40"
   Database__PeakApplicationPoolCount: "26"

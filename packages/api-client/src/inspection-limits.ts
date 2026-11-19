@@ -2,6 +2,7 @@ import { parseFieldErrorsFromResponse } from "./field-errors";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 /** Inspection scope: full · external only · desktop remote. */
 export type InspectionScopeKey = "full" | "external" | "desktop";
@@ -48,12 +49,12 @@ export async function getInspectionLimits(
     const res = await fetch(url(base, poNumber, propertyId), {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as InspectionLimitsDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -70,13 +71,13 @@ export async function saveInspectionLimits(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (!res.ok) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "server", errors };
+      return { ok: false, kind: ApiErrorKinds.Server, errors };
     }
     return { ok: true, data: (await res.json()) as InspectionLimitsDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

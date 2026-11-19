@@ -16,6 +16,7 @@ import { useState } from "react";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { cn } from "@platform/ui-kit";
+import { CostGroups, type CostGroup } from "@platform/app-shared/domain/cost-items";
 
 import {
   COST_GROUP1_KEYS,
@@ -31,7 +32,6 @@ import type { CostApproachWorkflow } from "./useCostApproachWorkflow";
  * (`CostApproachLinesTable`) and the phone cards (`CostApproachLinesPhone`).
  */
 
-type CostGroup = "area" | "extra";
 export const COST_GROUPS = [
   ["area", "مسطحات المبنى والأدوار", false],
   ["extra", "تكاليف وتجهيزات إضافية", true],
@@ -76,7 +76,7 @@ export function costLineEditor(
       o.key === line.itemKey ||
       o.key === "custom" ||
       (!usedItemKeys.has(o.key) &&
-        (group === "area"
+        (group === CostGroups.Area
           ? COST_GROUP1_KEYS.has(o.key)
           : !COST_GROUP1_KEYS.has(o.key))),
   );
@@ -387,7 +387,7 @@ export function AddCostLineSelect({
       onChange={(e) => {
         if (!e.target.value) return;
         if (e.target.value === "__custom") {
-          addCostLine({ structureKind: group === "area" ? "floor" : "other" });
+          addCostLine({ structureKind: group === CostGroups.Area ? "floor" : "other" });
           return;
         }
         const opt = COST_ITEM_OPTIONS.find((o) => o.key === e.target.value);

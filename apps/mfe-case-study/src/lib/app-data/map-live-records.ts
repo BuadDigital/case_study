@@ -26,6 +26,8 @@ import type {
   MapPropertyRecord,
   WorkflowStatusKey,
 } from "./map-locations-logic";
+import { FailureStatuses } from "@platform/app-shared/failures/failures-types";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 export { coordsFromLocationMapUrl };
 
@@ -80,8 +82,8 @@ export function inspectionTaskIdForMapRecord(
   if (!poNumber || !propertyId) return null;
   const task = resolveInspectionTaskForProperty({
     tasks,
-    appraisalTask: partyChildTaskForProperty("property-appraisal", poNumber, propertyId, tasks),
-    surveyTask: partyChildTaskForProperty("engineering-survey", poNumber, propertyId, tasks),
+    appraisalTask: partyChildTaskForProperty(WorkflowTaskKinds.PropertyAppraisal, poNumber, propertyId, tasks),
+    surveyTask: partyChildTaskForProperty(WorkflowTaskKinds.EngineeringSurvey, poNumber, propertyId, tasks),
     poNumber,
     propertyId,
   });
@@ -185,7 +187,7 @@ function openFailureFor(
     propertyId: property.id,
     deedNumber: property.deedNumber,
   });
-  return matched.find((failure) => failure.status !== "resolved") ?? null;
+  return matched.find((failure) => failure.status !== FailureStatuses.Resolved) ?? null;
 }
 
 /**
@@ -198,7 +200,7 @@ function workflowForProperty(
   failure: FailureRecord | null,
 ): WorkflowStatusKey {
   if (property.isRemoved) return "infeasible";
-  if (failure?.status === "approved" || failure?.status === "suspended") return "infeasible";
+  if (failure?.status === FailureStatuses.Approved || failure?.status === FailureStatuses.Suspended) return "infeasible";
   if (failure) return "infeasible_candidate";
   const vitality = property.deedStatus.trim();
   if (vitality === "غير فعال" || vitality.toLowerCase() === "inactive") {

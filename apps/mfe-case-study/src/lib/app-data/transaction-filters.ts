@@ -4,6 +4,7 @@ import type { PoIntakeRecord } from "./po-intake-data";
 import { findPropertyForTask } from "./my-task-row";
 import type { WorkflowTask } from "./tasks";
 
+import { WorkflowTaskKinds, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 function hasActiveFailureOnTask(task: WorkflowTask): boolean {
   const propertyId = task.propertyId?.trim();
   if (!propertyId) return false;
@@ -26,19 +27,19 @@ export function taskMatchesPrimaryData(
   task: WorkflowTask,
   poByNumber?: Map<string, PoIntakeRecord>,
 ): boolean {
-  if (task.kind !== "case-study-property") return false;
+  if (task.kind !== WorkflowTaskKinds.CaseStudyProperty) return false;
   if (isLinkedToRemovedProperty(task, poByNumber)) return false;
-  return task.phase === "enfath";
+  return task.phase === CaseStudyTaskPhases.Enfath;
 }
 
 function taskMatchesDistribution(
   task: WorkflowTask,
   poByNumber?: Map<string, PoIntakeRecord>,
 ): boolean {
-  if (task.kind !== "case-study-property") return false;
+  if (task.kind !== WorkflowTaskKinds.CaseStudyProperty) return false;
   if (isLinkedToRemovedProperty(task, poByNumber)) return false;
-  if (task.phase === "obstruction") return false;
-  if (task.phase !== "distribution") return false;
+  if (task.phase === CaseStudyTaskPhases.Obstruction) return false;
+  if (task.phase !== CaseStudyTaskPhases.Distribution) return false;
   if (hasActiveFailureOnTask(task)) return false;
   return true;
 }
@@ -54,12 +55,12 @@ function taskMatchesBourseInquiry(
   task: WorkflowTask,
   record: PoIntakeRecord | undefined,
 ): boolean {
-  if (task.kind !== "case-study-property") return false;
+  if (task.kind !== WorkflowTaskKinds.CaseStudyProperty) return false;
   const property = findPropertyForTask(record, task);
   if (property?.isRemoved) return false;
   // Revert to enfath must leave bourse inquiry — do not keep enfath rows here
   // even for identifierType = bourse_inquiry (those are edited from primary data).
-  return task.phase === "bourse";
+  return task.phase === CaseStudyTaskPhases.Bourse;
 }
 
 export function filterTasksForPrimaryData(

@@ -19,15 +19,17 @@ import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import type { PropertyDetailPartySubmission } from "../../lib/app-data/property-detail-party-submissions";
+import { ValuationReportDraftStatuses } from "@platform/api-client";
+import { Roles } from "@platform/types";
 
 /** The draft's state as the study reads it (the work page's layout, Omar 2026-11-09). */
 function draftStateLine(propertyId: string): string {
   const draft = getReportDraftState(propertyId);
-  if (!draft || draft.status === "none" || draft.status === "preparing")
+  if (!draft || draft.status === ValuationReportDraftStatuses.None || draft.status === ValuationReportDraftStatuses.Preparing)
     return "لم يُصدر المراجع مسودة التقرير بعد.";
   if (draft.reportStage !== "draft") return "أُودع التقرير وصدرت نسخته النهائية.";
-  if (draft.status === "approved") return "اعتمد المقيّم مسودة التقرير.";
-  if (draft.status === "sent") return "المسودة لدى المقيّم لاعتمادها.";
+  if (draft.status === ValuationReportDraftStatuses.Approved) return "اعتمد المقيّم مسودة التقرير.";
+  if (draft.status === ValuationReportDraftStatuses.Sent) return "المسودة لدى المقيّم لاعتمادها.";
   return "المسودة لدى المراجع.";
 }
 
@@ -172,7 +174,7 @@ export function PropertyDetailAppraisalTab({
             allTasks: tasks,
             property,
             // The report's data is every specialist's (Omar 2026-11-08); its decisions are review's.
-            canEdit: canPrepareReportDraft(access) || access.role === "case-specialist",
+            canEdit: canPrepareReportDraft(access) || access.role === Roles.CaseSpecialist,
             canDeposit: canRecordValuationDeposit(access),
             canReview: isReview,
           })

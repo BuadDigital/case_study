@@ -9,6 +9,7 @@ import type {
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { feeRowMatchesSearch, feeStatementMeta } from "./fee-screen-state";
+import { InspectorFeeBillingStatuses } from "@platform/api-client";
 
 export {
   deedParts,
@@ -36,16 +37,16 @@ export type EngFeeUiStatus =
  */
 export function engFeeUiStatus(row: InspectorFeeRowDto): EngFeeUiStatus {
   switch (row.billingStatus) {
-    case "sup-review":
+    case InspectorFeeBillingStatuses.SupReview:
       return "under_review";
-    case "deferred":
+    case InspectorFeeBillingStatuses.Deferred:
       return "carried";
-    case "at-finance":
-    case "disb-req":
+    case InspectorFeeBillingStatuses.AtFinance:
+    case InspectorFeeBillingStatuses.DisbReq:
       return "ready";
-    case "in-statement":
+    case InspectorFeeBillingStatuses.InStatement:
       return "listed";
-    case "disbursed":
+    case InspectorFeeBillingStatuses.Disbursed:
       return "paid";
     default:
       return "other";

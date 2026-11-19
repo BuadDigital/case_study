@@ -41,6 +41,20 @@ public interface IWorkflowTaskDistributionCommands
         string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Review's return to another appraiser: the appraisal task's seat moves with the work kept (the
+    /// caller authorises). Null on success.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string>?> ReassignAppraiserAsync(
+        Guid appraisalTaskId,
+        string newAssigneeId,
+        string? newAssigneeName,
+        string reason,
+        StaffActor actor,
+        string? actorName,
+        string? actorUserId = null,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Updates case-study party assignment (existing subtasks) without fully reopening distribution.</summary>
     Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
         Guid id,

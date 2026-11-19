@@ -526,6 +526,21 @@
       "note": "Decision 2026-10-29: «إلغاء المعاملة» — the specialist's request, the supervisor's approve / reject and reactivation; cancelled deeds point at the approved row. Write path CaseStudyDbContext."
     },
     {
+      "table": "AppraiserHandoverRequests",
+      "schema": "case_study",
+      "dbSet": "AppraiserHandoverRequests",
+      "entity": "AppraiserHandoverRequest",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Decision 2026-11-18: the appraiser's reassignment request (to whoever handed him the transaction, then the team) and peer transfer (accepted by the colleague); one open per appraisal task. Write path CaseStudyDbContext."
+    },
+    {
       "table": "WorkOrderProperties",
       "schema": "case_study",
       "dbSet": "WorkOrderProperties",

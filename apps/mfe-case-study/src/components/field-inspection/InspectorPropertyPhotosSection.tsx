@@ -22,6 +22,7 @@ import {
   type InspectorFreePhoto,
   type InspectorFreePhotoUploader,
   type InspectorWorkspaceDraft,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import {
@@ -46,7 +47,7 @@ type ParentKey =
 export function InspectorPropertyPhotosSection({
   draft,
   disabled,
-  actor = "inspector",
+  actor = WorkspaceActors.Inspector,
   onPatch,
   onDirty,
   mobile,
@@ -156,7 +157,7 @@ export function InspectorPropertyPhotosSection({
   }, [photos]);
 
   const readOnlyOtherPartyLabel =
-    actor === "specialist" ? "المعاين" : "الأخصائي";
+    actor === WorkspaceActors.Specialist ? "المعاين" : "الأخصائي";
   const hasReadOnlyPhotos = photos.some(
     (photo) => !canDeleteInspectorFreePhoto(photo, actor),
   );
@@ -201,7 +202,7 @@ export function InspectorPropertyPhotosSection({
       }
       if (added) {
         onDirty?.();
-        if (firstId !== null && actor === "inspector") {
+        if (firstId !== null && actor === WorkspaceActors.Inspector) {
           setClassifyParent(parent);
           setClassifyPhotoId(firstId);
         }
@@ -515,7 +516,7 @@ export function InspectorPropertyPhotosSection({
 
       {photos.length === 0 && canUpload ? (
         <p className="m-0 mt-2.5 text-[11px] leading-relaxed text-text-3">
-          {actor === "specialist"
+          {actor === WorkspaceActors.Specialist
             ? "لم تُضف صور بعد — صور المعاين تظهر هنا للمراجعة، ويمكنك إضافة صورك في القسم المناسب."
             : "ارفع في «صور خارجية» أو «صور داخلية»، ثم حدّد نوع كل صورة."}
         </p>

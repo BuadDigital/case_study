@@ -3,6 +3,7 @@ import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson } from "./parse-json";
 import { fetchListPage, type PagedResultDto } from "./pagination";
 import type { ApiErr, ApiOk } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type ComparableSourceCardDto = {
   intakeChannel: string;
@@ -222,12 +223,12 @@ export async function listComparableProperties(
       `${base}/api/comparable-properties?${qs}`,
       { headers: authHeaders(config.token, { accept: true }) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<ComparablePropertyDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -267,14 +268,14 @@ export async function suggestComparablePropertiesByProximity(
       `${base}/api/comparable-properties/proximity-suggestions?${qs}`,
       { headers: authHeaders(config.token, { accept: true }) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return {
       ok: true,
       data: await parseJson<ComparableProximitySuggestionListDto>(res),
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -289,7 +290,7 @@ export async function createComparableProperty(
       headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
         errors?: Record<string, string>;
@@ -297,7 +298,7 @@ export async function createComparableProperty(
       } | null;
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message:
           payload?.errors
             ? Object.values(payload.errors)[0]
@@ -314,7 +315,7 @@ export async function createComparableProperty(
       } | null;
       return {
         ok: false,
-        kind: "server",
+        kind: ApiErrorKinds.Server,
         message:
           payload?.detail ??
           payload?.title ??
@@ -325,7 +326,7 @@ export async function createComparableProperty(
     }
     return { ok: true, data: await parseJson<ComparablePropertyDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -342,24 +343,24 @@ export async function setComparableQualityTags(
       headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
         errors?: Record<string, string>;
       } | null;
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message: payload?.errors
           ? Object.values(payload.errors)[0]
           : "بيانات الوسم غير صالحة",
         errors: payload?.errors,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: await parseJson<ComparablePropertyDto>(res) };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -375,11 +376,11 @@ async function postComparableAction(
       `${base}/api/comparable-properties/${id}/${action}`,
       { method: "POST", headers: authHeaders(config.token, { accept: true }) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: null };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 

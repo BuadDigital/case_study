@@ -251,11 +251,18 @@ async function putEncrypted<T>(
   );
 }
 
-/** Legacy plaintext row: decode, then write it back encrypted (same meta minus the flag). */
-async function upgradePlainRow<T>(
+/**
+ * Legacy plaintext row: decode, then write it back encrypted (same meta minus the flag).
+ * How it works: decodes the row now and returns the value; the encrypted write-back runs
+ * in the background and its failure is ignored (the plain row is simply upgraded next read).
+ * Edge cases: it was `async` with no await, so the decoded value came back wrapped in a
+ * promise for nothing; it is now synchronous and a bad row still throws inside the
+ * callers' try blocks.
+ */
+function upgradePlainRow<T>(
   store: "drafts" | "outbox" | "prefetch",
   row: EncryptedRow,
-): Promise<T> {
+): T {
   const value = decodePlainJson<T>(row);
   const meta = { ...row.meta };
   delete meta.encoding;
@@ -272,7 +279,7 @@ async function getEncrypted<T>(
   if (!row || row.userId !== userId) return null;
 
   try {
-    if (isPlainRow(row)) return await upgradePlainRow<T>(store, row);
+    if (isPlainRow(row)) return upgradePlainRow<T>(store, row);
     const key = await ensureOfflineKey(userId);
     return await decryptJson<T>(key, {
       iv: row.iv,
@@ -296,7 +303,7 @@ async function listEncrypted<T>(
   for (const row of rows) {
     try {
       if (isPlainRow(row)) {
-        out.push(await upgradePlainRow<T>(store, row));
+        out.push(upgradePlainRow<T>(store, row));
         continue;
       }
       if (!cryptoKey) cryptoKey = await ensureOfflineKey(userId);

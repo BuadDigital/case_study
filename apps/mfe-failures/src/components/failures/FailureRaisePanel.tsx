@@ -32,6 +32,7 @@ import {
   FAILURE_PROBLEM_TYPES,
 } from "../../lib/failure-types-data";
 import { useFailureTypesQuery } from "../../query/failure-types-queries";
+import { FailureStatuses } from "@platform/app-shared/failures/failures-types";
 
 const noteWarnClass = cn(
   "rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text",
@@ -123,7 +124,7 @@ export function FailureRaisePanel({
 
   const approvedFailure = useMemo(
     () =>
-      propertyFailures.find((failure) => failure.status === "approved") ?? null,
+      propertyFailures.find((failure) => failure.status === FailureStatuses.Approved) ?? null,
     [propertyFailures],
   );
 
@@ -349,9 +350,9 @@ function FailureHistoryList({
         const text =
           failure.internalNote?.trim() || failureRecordTitle(failure);
         const open =
-          failure.status === "internal" ||
-          failure.status === "review" ||
-          failure.status === "suspended";
+          failure.status === FailureStatuses.Internal ||
+          failure.status === FailureStatuses.Review ||
+          failure.status === FailureStatuses.Suspended;
         return (
           <div
             key={failure.id}

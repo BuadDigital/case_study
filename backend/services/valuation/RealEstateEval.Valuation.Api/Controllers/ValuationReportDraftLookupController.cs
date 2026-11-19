@@ -44,6 +44,26 @@ public class ValuationReportDraftLookupController(
     }
 
     /// <summary>
+    /// Review voids the appraiser's approval while returning the valuation to an appraiser (Omar
+    /// 2026-11-18). Called by Case Study's return with the reviewer's forwarded bearer. Before a
+    /// deposit code only; no open request → 204.
+    /// </summary>
+    [HttpPost("by-property/{propertyId:guid}/withdraw-approval-for-return")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<ValuationReportDraftDto>> WithdrawApprovalForReturn(
+        Guid propertyId,
+        [FromBody] WithdrawReportDraftRequest request,
+        CancellationToken ct)
+    {
+        var actor = await ReportDraftActors.ResolveAsync(permissions, User, ct);
+        var (result, errors) = await drafts.WithdrawApprovalForReturnAsync(propertyId, request, actor, ct);
+        if (errors is null) return result is null ? NoContent() : Ok(result);
+        return errors.TryGetValue(ReportDraftErrorKeys.Forbidden, out var forbidden)
+            ? this.ForbiddenProblem(forbidden)
+            : this.FieldErrorsProblem(errors);
+    }
+
+    /// <summary>
     /// Reopens the property's deposited report as a new version (n+1) — what an Enfaz return and an approved
     /// recall of a deposited report do. The case specialist only (the forwarded bearer is his).
     /// </summary>

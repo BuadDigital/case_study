@@ -2,6 +2,7 @@ import type { PageId } from "@platform/types";
 import { ALL_PROTOTYPE_PAGES } from "@platform/app-shared/app-data/constants";
 import { SYSTEM_FIELDS_PAGE_IDS } from "@platform/app-shared/app-data/system-fields-nav";
 import { defaultLandingPage } from "./page-access";
+import { Pages } from "@platform/types";
 
 const ALL_PAGE_SET = new Set<string>([
   ...ALL_PROTOTYPE_PAGES,
@@ -47,7 +48,7 @@ export function pagesFromPermissions(
   const role = options?.prototypeRole?.trim().toLowerCase();
   // "All transactions" — hidden from every role.
   if (!roleSeesAllTransactionsPage(role)) {
-    merged.delete("all-transactions");
+    merged.delete(Pages.AllTransactions);
   }
 
   if (merged.size === 0) merged.add(defaultLandingPage([]));

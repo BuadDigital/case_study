@@ -31,6 +31,7 @@ import {
 } from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { WorkflowTaskStatuses, WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 type RedistributeRoleKey =
   | "inspector"
@@ -51,9 +52,9 @@ const PARTY_TASK_KIND: Record<
   RedistributeRoleKey,
   WorkflowTask["kind"]
 > = {
-  inspector: "field-inspection",
-  valuator: "property-appraisal",
-  engineeringOffice: "engineering-survey",
+  inspector: WorkflowTaskKinds.FieldInspection,
+  valuator: WorkflowTaskKinds.PropertyAppraisal,
+  engineeringOffice: WorkflowTaskKinds.EngineeringSurvey,
 };
 
 /** Only an open party task can be handed to someone else — the server refuses the rest. */
@@ -63,9 +64,9 @@ function partyLockReason(
   label: string,
 ): string | null {
   const child = children.find((t) => t.kind === PARTY_TASK_KIND[key]);
-  if (!child || child.status === "open") return null;
+  if (!child || child.status === WorkflowTaskStatuses.Open) return null;
   const state =
-    child.status === "completed" ? "مكتملة" : child.status === "cancelled" ? "مُلغاة" : "متوقفة";
+    child.status === WorkflowTaskStatuses.Completed ? "مكتملة" : child.status === WorkflowTaskStatuses.Cancelled ? "مُلغاة" : "متوقفة";
   return `مهمة ${label} ${state} — لا يمكن إعادة إسنادها.`;
 }
 

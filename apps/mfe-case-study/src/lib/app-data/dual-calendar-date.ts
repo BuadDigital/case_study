@@ -1,4 +1,5 @@
 import { pad2 } from "@platform/app-shared/format/date";
+import { DualCalendarKinds, type DualCalendarKind } from "@platform/app-shared/format/hijri";
 import {
   formatHijriDate,
   gregorianToHijri,
@@ -8,7 +9,6 @@ import {
 } from "@platform/app-shared/format/hijri";
 import { toLatinDigits } from "@platform/ui-kit";
 
-export type DualCalendarKind = "gregorian" | "hijri";
 
 export type DualCalendarDateParts = {
   kind: DualCalendarKind;
@@ -23,16 +23,16 @@ function parseSlashTriplet(
   c: number,
 ): DualCalendarDateParts | null {
   if (a >= 1300 && a <= 1600 && b >= 1 && b <= 12 && c >= 1 && c <= 30) {
-    return { kind: "hijri", year: a, month: b, day: c };
+    return { kind: DualCalendarKinds.Hijri, year: a, month: b, day: c };
   }
   if (c >= 1300 && c <= 1600 && b >= 1 && b <= 12 && a >= 1 && a <= 31) {
-    return { kind: "hijri", year: c, month: b, day: a };
+    return { kind: DualCalendarKinds.Hijri, year: c, month: b, day: a };
   }
   if (a >= 1900 && b >= 1 && b <= 12 && c >= 1 && c <= 31) {
-    return { kind: "gregorian", year: a, month: b, day: c };
+    return { kind: DualCalendarKinds.Gregorian, year: a, month: b, day: c };
   }
   if (c >= 1900 && b >= 1 && b <= 12 && a >= 1 && a <= 31) {
-    return { kind: "gregorian", year: c, month: b, day: a };
+    return { kind: DualCalendarKinds.Gregorian, year: c, month: b, day: a };
   }
   return null;
 }
@@ -59,9 +59,9 @@ export function parseDualCalendarDate(raw: string): DualCalendarDateParts | null
     const month = Number(isoMatch[2]);
     const day = Number(isoMatch[3]);
     if (hijriMarked || (!gregorianMarked && year >= 1300 && year < 1600)) {
-      return { kind: "hijri", year, month, day };
+      return { kind: DualCalendarKinds.Hijri, year, month, day };
     }
-    return { kind: "gregorian", year, month, day };
+    return { kind: DualCalendarKinds.Gregorian, year, month, day };
   }
 
   const slashMatch = /^(\d{1,4})[/.\-](\d{1,2})[/.\-](\d{1,4})$/.exec(withoutMarker);
@@ -72,8 +72,8 @@ export function parseDualCalendarDate(raw: string): DualCalendarDateParts | null
       Number(slashMatch[3]),
     );
     if (!parsed) return null;
-    if (hijriMarked) return { ...parsed, kind: "hijri" };
-    if (gregorianMarked) return { ...parsed, kind: "gregorian" };
+    if (hijriMarked) return { ...parsed, kind: DualCalendarKinds.Hijri };
+    if (gregorianMarked) return { ...parsed, kind: DualCalendarKinds.Gregorian };
     return parsed;
   }
 
@@ -81,7 +81,7 @@ export function parseDualCalendarDate(raw: string): DualCalendarDateParts | null
 }
 
 export function formatDualCalendarDate(parts: DualCalendarDateParts): string {
-  if (parts.kind === "hijri") return formatHijriDate(parts);
+  if (parts.kind === DualCalendarKinds.Hijri) return formatHijriDate(parts);
   return `${pad2(parts.day)}/${pad2(parts.month)}/${parts.year} م`;
 }
 
@@ -95,7 +95,7 @@ function gregorianIsoFromParts(
 }
 
 function dualCalendarGregorianIso(parts: DualCalendarDateParts): string | null {
-  if (parts.kind === "gregorian") {
+  if (parts.kind === DualCalendarKinds.Gregorian) {
     return gregorianIsoFromParts(parts.year, parts.month, parts.day);
   }
   return hijriToGregorianIso(parts.year, parts.month, parts.day);
@@ -108,12 +108,12 @@ export function convertDualCalendarDate(
   if (parts.kind === target) return parts;
   const iso = dualCalendarGregorianIso(parts);
   if (!iso) return null;
-  if (target === "gregorian") {
+  if (target === DualCalendarKinds.Gregorian) {
     const [year, month, day] = iso.split("-").map(Number);
-    return { kind: "gregorian", year, month, day };
+    return { kind: DualCalendarKinds.Gregorian, year, month, day };
   }
   const hijri = gregorianToHijri(iso);
-  return hijri ? { kind: "hijri", ...hijri } : null;
+  return hijri ? { kind: DualCalendarKinds.Hijri, ...hijri } : null;
 }
 
 type CalendarDayCell = {
@@ -143,7 +143,7 @@ export function buildGregorianMonthGrid(
   for (let day = 1; day <= daysInMonth; day += 1) {
     cells.push({
       day,
-      parts: { kind: "gregorian", year: viewYear, month: viewMonth, day },
+      parts: { kind: DualCalendarKinds.Gregorian, year: viewYear, month: viewMonth, day },
     });
   }
   while (cells.length % 7 !== 0) cells.push(null);
@@ -163,7 +163,7 @@ export function buildHijriMonthGrid(
     if (!hijri || hijri.year !== viewYear || hijri.month !== viewMonth) break;
     monthDays.push({
       day: hijri.day,
-      parts: { kind: "hijri", year: viewYear, month: viewMonth, day: hijri.day },
+      parts: { kind: DualCalendarKinds.Hijri, year: viewYear, month: viewMonth, day: hijri.day },
     });
     cursor = new Date(cursor.getTime() + 86_400_000);
   }
@@ -198,7 +198,7 @@ export function stepDualCalendarMonth(
 
 export function listDualCalendarYears(kind: DualCalendarKind): number[] {
   const current = todayDualCalendarParts(kind).year;
-  if (kind === "hijri") {
+  if (kind === DualCalendarKinds.Hijri) {
     const max = Math.min(1600, current + 5);
     const min = 1300;
     return Array.from({ length: max - min + 1 }, (_, index) => max - index);
@@ -213,7 +213,7 @@ export function dualCalendarMonthLabel(
   year: number,
   month: number,
 ): string {
-  if (kind === "gregorian") {
+  if (kind === DualCalendarKinds.Gregorian) {
     return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
       month: "long",
       calendar: "gregory",
@@ -226,7 +226,7 @@ export function dualCalendarYearLabel(
   kind: DualCalendarKind,
   year: number,
 ): string {
-  return kind === "hijri" ? `${year} هـ` : `${year} م`;
+  return kind === DualCalendarKinds.Hijri ? `${year} هـ` : `${year} م`;
 }
 
 export function normalizeDualCalendarView(
@@ -241,7 +241,7 @@ export function normalizeDualCalendarView(
 
   const monthClamped = Math.min(12, Math.max(1, month));
   const grid =
-    calendar === "gregorian"
+    calendar === DualCalendarKinds.Gregorian
       ? buildGregorianMonthGrid(year, monthClamped)
       : buildHijriMonthGrid(year, monthClamped);
 
@@ -265,17 +265,17 @@ export function dualCalendarViewAnchor(
 
 export function todayDualCalendarParts(kind: DualCalendarKind): DualCalendarDateParts {
   const now = new Date();
-  if (kind === "gregorian") {
+  if (kind === DualCalendarKinds.Gregorian) {
     return {
-      kind: "gregorian",
+      kind: DualCalendarKinds.Gregorian,
       year: now.getFullYear(),
       month: now.getMonth() + 1,
       day: now.getDate(),
     };
   }
   const hijri = gregorianToHijri(now);
-  if (!hijri) return { kind: "hijri", year: 1446, month: 1, day: 1 };
-  return { kind: "hijri", ...hijri };
+  if (!hijri) return { kind: DualCalendarKinds.Hijri, year: 1446, month: 1, day: 1 };
+  return { kind: DualCalendarKinds.Hijri, ...hijri };
 }
 
 export function sameDualCalendarDate(

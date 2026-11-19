@@ -18,6 +18,7 @@ import {
   returnReportDraftToReviewer,
   withdrawReportDraftApproval,
   type ValuationReportDraftDto,
+  ValuationReportDraftStatuses,
 } from "@platform/api-client";
 import { confirmIgnoringDoubleClick } from "../../lib/evaluator/confirm-ignoring-double-click";
 import { FinalReportDownload } from "./FinalReportDownload";
@@ -79,7 +80,7 @@ export function ReportDraftApprovalBar({
     return () => window.removeEventListener("beforeunload", warn);
   }, [guardUnload]);
 
-  if (draft.status !== "sent" && draft.status !== "approved") return null;
+  if (draft.status !== ValuationReportDraftStatuses.Sent && draft.status !== ValuationReportDraftStatuses.Approved) return null;
 
   const finalIssued = draft.reportStage === "final_issued";
   const anyBusy = busy !== null;
@@ -196,7 +197,7 @@ export function ReportDraftApprovalBar({
       aria-busy={anyBusy || undefined}
     >
       {refusal ? <RefusalPanel refusal={refusal} onClose={() => setRefusal(null)} /> : null}
-      {draft.status === "sent" ? (
+      {draft.status === ValuationReportDraftStatuses.Sent ? (
         <>
           <p className="m-0 text-[12.5px] font-semibold text-heading">
             أصدر المراجع مسودة تقرير التقييم — راجع التقرير أدناه ثم اعتمده اعتمادًا نهائيًا، أو أرجعه للمراجع مع

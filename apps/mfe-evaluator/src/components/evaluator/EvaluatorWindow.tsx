@@ -105,6 +105,7 @@ import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   WORK_ORDER_PROPERTY_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 
 const EMPTY_FIELD_ERRORS: EvaluatorValidationErrors = {};
 
@@ -651,7 +652,7 @@ export function EvaluatorWindow({
           surveyed={surveyed}
           locked={locked}
           studyReportPending={studyReportPending || studyReportBlocked}
-          finalIssued={task.status === "completed"}
+          finalIssued={task.status === WorkflowTaskStatuses.Completed}
           formError={formError}
         />
         <InspectorChangedBanner

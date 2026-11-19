@@ -14,6 +14,17 @@ public sealed class WorkflowTaskSlotRepository(CaseStudyDbContext db) : IWorkflo
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+    public Task<WorkOrder?> GetWorkOrderWithPropertiesAsync(
+        string poNumber,
+        CancellationToken cancellationToken)
+    {
+        var po = IWorkOrderLoader.NormalizePo(poNumber);
+        return db.WorkOrders
+            .Include(w => w.Properties)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.PoNumber == po, cancellationToken);
+    }
+
     public Task<List<WorkflowTask>> ListTasksForPoNumbersAsync(
         IReadOnlyCollection<string> poNumbers,
         CancellationToken cancellationToken) =>

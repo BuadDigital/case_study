@@ -39,6 +39,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
     /// <summary>Absent in test compositions — usage names are then not counted on the list.</summary>
     private readonly IValuationListsService? _usageList;
     private readonly ILogger<PartyTaskSubmissionService>? _logger;
+    private readonly IValuationReportReopenCommands? _valuationReopen;
+    private readonly IWorkflowTaskDistributionCommands? _distribution;
 
     public PartyTaskSubmissionService(
         IPartyTaskSubmissionRepository repo,
@@ -56,9 +58,13 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IValuationRequestService? valuationRequests = null,
         ICaseStudyReportService? reports = null,
         IValuationListsService? usageList = null,
-        ILogger<PartyTaskSubmissionService>? logger = null)
+        ILogger<PartyTaskSubmissionService>? logger = null,
+        IValuationReportReopenCommands? valuationReopen = null,
+        IWorkflowTaskDistributionCommands? distribution = null)
     {
         _time = time ?? TimeProvider.System;
+        _valuationReopen = valuationReopen;
+        _distribution = distribution;
         _valuationRequests = valuationRequests;
         _reports = reports;
         _usageList = usageList;
@@ -488,16 +494,59 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         // request behind an open package. That change is a new version (n+1) by the specialist.
         if (task.Kind == WorkflowTaskKind.PropertyAppraisal && await AppraisalFinalIssuedAsync(task, cancellationToken))
             return (null, Error(AppraisalFinalIssuedReopenForbiddenAr));
-        // Between the appraiser's approval and the final issuance the report is frozen as the deposit copy:
-        // returning the package would unlock numbers behind a frozen report — he withdraws his approval first.
-        if (task.Kind == WorkflowTaskKind.PropertyAppraisal && await AppraisalReportApprovedAsync(task, cancellationToken))
-            return (null, Error(AppraisalReportApprovedReopenForbiddenAr));
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(returnNote))
             return (null, new Dictionary<string, string> { ["returnNote"] = "ملاحظة الإرجاع مطلوبة" });
 
-        var reopened = await ReopenCoreAsync(taskId, task, returnNote, actor, cancellationToken);
+        // Review's return to another appraiser (Omar 2026-11-18): one step that also moves the seat.
+        var newAssigneeId = task.Kind == WorkflowTaskKind.PropertyAppraisal
+            ? WorkflowTaskDistributionRules.NormalizeAssigneeId(request.NewAssigneeId)
+            : null;
+        var movesSeat = newAssigneeId is not null
+                        && !string.Equals(newAssigneeId, task.AssigneeId?.Trim(), StringComparison.Ordinal);
+        if (movesSeat && (actor is null || _distribution is null))
+            return (null, Error(MoveAppraiserUnavailableAr));
+
+        // Already returned and not sent again: only the appraiser changes (the reviewer learnt of the
+        // absence after the return).
+        if (movesSeat)
+        {
+            var existing = await _repo.GetSubmissionAsync(taskId, track: false, cancellationToken);
+            if (existing?.Status == PartyTaskSubmissionStatus.Reopened)
+            {
+                var moveError = await MoveReturnedAppraisalAsync(
+                    task, newAssigneeId!, request.NewAssigneeName, returnNote, actor!, cancellationToken);
+                return moveError is null ? (await ToDtoAsync(existing, cancellationToken), null) : (null, moveError);
+            }
+        }
+
+        // Between the appraiser's approval and the deposit code the report is frozen as the deposit copy.
+        // Review's return voids that approval first (Omar 2026-11-18); with no valuation link here the
+        // appraiser still withdraws it himself.
+        if (task.Kind == WorkflowTaskKind.PropertyAppraisal && await AppraisalReportApprovedAsync(task, cancellationToken))
+        {
+            if (_valuationReopen is null || task.PropertyId is not Guid approvedPropertyId)
+                return (null, Error(AppraisalReportApprovedReopenForbiddenAr));
+            var withdrawError = await _valuationReopen.WithdrawApprovalForReturnAsync(
+                approvedPropertyId, returnNote, cancellationToken);
+            if (withdrawError is not null)
+                return (null, Error(withdrawError));
+        }
+
+        var reopened = await ReopenCoreAsync(taskId, task, returnNote, actor, cancellationToken, notify: !movesSeat);
+        if (reopened.Errors is null && movesSeat)
+        {
+            var moveError = await MoveReturnedAppraisalAsync(
+                task, newAssigneeId!, request.NewAssigneeName, returnNote, actor!, cancellationToken);
+            if (moveError is not null)
+            {
+                // The return stands with the current appraiser: he is told, and the reviewer is told why
+                // the seat did not move.
+                await NotifyPartyReturnedForCorrectionAsync(task, returnNote, cancellationToken);
+                return (null, Error($"{MoveAppraiserFailedPrefixAr}{moveError.Values.FirstOrDefault()}"));
+            }
+        }
         if (reopened.Errors is null && task.PropertyId is Guid propertyId)
         {
             var at = _time.UtcNow();
@@ -524,7 +573,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         WorkflowTask task,
         string returnNote,
         PartySubmissionActor? actor,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool notify = true)
     {
         // Delivered to Enfaz: nothing reopens until the specialist takes the transaction back.
         if (await IsHandedOverToEnfazAsync(task, cancellationToken))
@@ -565,9 +615,45 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             },
             cancellationToken);
 
-        await NotifyPartyReturnedForCorrectionAsync(task, returnNote, cancellationToken);
+        if (notify)
+            await NotifyPartyReturnedForCorrectionAsync(task, returnNote, cancellationToken);
 
         return (await ToDtoAsync(entity, cancellationToken), null);
+    }
+
+    /// <summary>Review asked for another appraiser, but this host cannot move the seat.</summary>
+    public const string MoveAppraiserUnavailableAr =
+        "تعذّر نقل التقييم لمقيّم آخر من هنا — أرجعه للمقيّم الحالي ثم أعد الإسناد.";
+
+    /// <summary>Prefix of the refusal when the return went through but the seat did not move.</summary>
+    public const string MoveAppraiserFailedPrefixAr = "أُرجع التقييم لمقيّمه الحالي وتعذّر نقله لمقيّم آخر: ";
+
+    /// <summary>Moves a returned appraisal to another appraiser and tells him it is back for correction.</summary>
+    /// <remarks>
+    /// How it works: the seat move is the one «تعديل الأطراف» uses
+    /// (<see cref="IWorkflowTaskDistributionCommands.ReassignAppraiserAsync"/>: timeline, audit, the new
+    /// appraiser told of the assignment, the outgoing one told with the reason). The task is then read
+    /// again so the return notice («إعادة التقييم للتصحيح» with the reviewer's note) reaches the new
+    /// appraiser, not the outgoing one.
+    /// Edge cases: the work (package and valuation) stays as it is — the new appraiser carries on from it.
+    /// </remarks>
+    private async Task<Dictionary<string, string>?> MoveReturnedAppraisalAsync(
+        WorkflowTask task,
+        string newAssigneeId,
+        string? newAssigneeName,
+        string returnNote,
+        PartySubmissionActor actor,
+        CancellationToken cancellationToken)
+    {
+        var errors = await _distribution!.ReassignAppraiserAsync(
+            task.Id, newAssigneeId, newAssigneeName, returnNote, actor.Staff, actor.DisplayName, actor.UserId,
+            cancellationToken);
+        if (errors is { Count: > 0 })
+            return new Dictionary<string, string>(errors);
+
+        var moved = await _repo.GetTaskAsync(task.Id, cancellationToken) ?? task;
+        await NotifyPartyReturnedForCorrectionAsync(moved, returnNote, cancellationToken);
+        return null;
     }
 
     // B2: Acceptance stamp Go to root — PartyTaskSubmission.Accept.

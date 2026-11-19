@@ -34,10 +34,11 @@ import {
   finSearch,
 } from "../lib/finance-tw";
 import { SearchIcon } from "./FinanceRevenueTableParts";
+import { PartyBillingPayeeTypes } from "@platform/api-client";
 
 
 function PayeeChip({ party }: { party: FinanceCostParty }) {
-  const isInd = party.payeeType === "individual";
+  const isInd = party.payeeType === PartyBillingPayeeTypes.Individual;
   return (
     <StatusPill
       label={party.payeeTypeLabel || (isInd ? "فرد" : "مورّد")}

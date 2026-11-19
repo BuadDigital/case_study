@@ -30,6 +30,7 @@ import {
 import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorSiteLocationAckButton } from "./InspectorSiteLocationAckButton";
 import { useInsControlClass } from "../po-intake/PropertyDetailInspectionFields";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 const NEW_CONTACT_VALUE = "__new__";
 
@@ -70,7 +71,7 @@ export function InspectorAccessContactFields({
   onAckClick,
   ackDisabled = false,
   ackTitle,
-  layout = "desktop",
+  layout = InspectorStepLayouts.Desktop,
 }: {
   draft: InspectorWorkspaceDraft;
   /** Property / transaction contacts (بيانات الاتصال). */
@@ -256,15 +257,15 @@ export function InspectorAccessContactFields({
   const controlClass = (invalid?: boolean) =>
     cn(
       insCtl,
-      layout === "desktop" && "h-[38px]",
-      layout === "mobile" && "h-12",
+      layout === InspectorStepLayouts.Desktop && "h-[38px]",
+      layout === InspectorStepLayouts.Mobile && "h-12",
       invalid && invalidControlClass,
     );
 
   const actionBtnClass = cn(
     INS_WIZARD_PIN_BUTTON_CLASS,
     "shrink-0",
-    layout === "mobile" &&
+    layout === InspectorStepLayouts.Mobile &&
       "h-12 min-h-12 rounded-xl border-[1.5px] px-4 text-[14px]",
   );
 
@@ -437,7 +438,7 @@ export function InspectorAccessContactFields({
               title={ackTitle}
               className={cn(
                 "shrink-0",
-                layout === "mobile"
+                layout === InspectorStepLayouts.Mobile
                   ? "h-12 min-h-12 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] px-4 text-[14px] text-heading"
                   : undefined,
               )}

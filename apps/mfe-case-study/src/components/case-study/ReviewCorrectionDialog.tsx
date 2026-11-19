@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AppModal, Badge, Button, Note, cn, useToast } from "@platform/ui-kit";
+import { RegSelect } from "@platform/app-shared/registration/FormFields";
+import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
+import { assigneeLoadOptions } from "../../lib/app-data/distribution-assignee-options";
+import { buildAssigneeOpenLoadMap } from "../../lib/app-data/distribution-load";
+import { getValuators } from "../../lib/app-data/distribution-parties";
+import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import {
   planCaseStudyReopenSubmit,
   type CaseStudyReopenOutcome,
@@ -14,6 +20,48 @@ import { EnfazClearConfirm, ReopenReasonField } from "./CaseStudyReportReopenDia
 
 /** What a return answers the window with: done, or the refusal as the server words it. */
 export type ReviewCorrectionResult = { ok: true } | { ok: false; error: string };
+
+/** The appraiser a valuation return goes to: the current one, or another eligible appraiser. */
+export type ReviewCorrectionAppraiser = { id: string; name: string };
+
+/**
+ * «المقيّم» for a valuation return: the current appraiser, or another from the list «تعديل الأطراف»
+ * offers for the appraiser seat, each with his open load. The lists are read only while it shows.
+ * Picking the current one again answers null (a plain return).
+ */
+function AppraiserChoice({
+  currentId,
+  movedTo,
+  disabled,
+  onChange,
+}: {
+  currentId: string;
+  movedTo: ReviewCorrectionAppraiser | null;
+  disabled: boolean;
+  onChange: (next: ReviewCorrectionAppraiser | null) => void;
+}) {
+  const { data: staffResult } = useDistributionAssigneesQuery();
+  const { data: tasks } = useWorkflowTasksQuery();
+  const options = useMemo(() => {
+    const people = getValuators(staffResult?.users ?? []);
+    const labelled = assigneeLoadOptions(people, buildAssigneeOpenLoadMap(tasks ?? []));
+    return labelled.map((option, i) => ({ ...option, name: people[i]!.name }));
+  }, [staffResult, tasks]);
+  return (
+    <RegSelect
+      id="review-correction-appraiser"
+      label="المقيّم"
+      options={options}
+      value={movedTo?.id ?? currentId}
+      disabled={disabled}
+      hint="يبقى المقيّم الحالي، أو اختر مقيّمًا آخر (مثلاً عند غيابه): تنتقل إليه المعاملة بعملها كما هو."
+      onChange={(next) => {
+        const option = options.find((o) => o.value === next);
+        onChange(next !== currentId && option ? { id: option.value, name: option.name } : null);
+      }}
+    />
+  );
+}
 
 const DONE_TOAST: Record<ReviewCorrectionSource, string> = {
   study: "أُعيدت الدراسة لدارس العقار",
@@ -30,7 +78,9 @@ const DONE_TOAST: Record<ReviewCorrectionSource, string> = {
  * Edge cases: a choice that cannot be made now is listed with its reason and cannot be ticked; a
  * study already handed over to Enfaz asks for «إلغاء تسليم إنفاذ» (up-front when the page knows it,
  * else after the server's refusal); when one return went through and the next was refused, the
- * first is marked done and is not sent again on the retry.
+ * first is marked done and is not sent again on the retry. With `appraisers`, the valuation return
+ * may go to another appraiser in the same step (Omar 2026-11-18: «المقيّم» defaults to the current
+ * one); the server moves the task with the work kept and tells the new appraiser.
  */
 export function ReviewCorrectionDialog({
   options,
@@ -40,6 +90,7 @@ export function ReviewCorrectionDialog({
   onClose,
   onReturnStudy,
   onReturnValuation,
+  currentAppraiserId,
 }: {
   options: readonly ReviewCorrectionOption[];
   /** The choice ticked when the window opens (the section it was opened from). */
@@ -48,7 +99,12 @@ export function ReviewCorrectionDialog({
   enfazHandedOver?: boolean;
   onClose: () => void;
   onReturnStudy: (reason: string, clearEnfazHandover: boolean) => Promise<CaseStudyReopenOutcome>;
-  onReturnValuation: (reason: string) => Promise<ReviewCorrectionResult>;
+  onReturnValuation: (
+    reason: string,
+    newAppraiser: ReviewCorrectionAppraiser | null,
+  ) => Promise<ReviewCorrectionResult>;
+  /** The valuation's current appraiser; given → «المقيّم» lets review pick another one. */
+  currentAppraiserId?: string | null;
 }) {
   const { showToast } = useToast();
   const available = (source: ReviewCorrectionSource) =>
@@ -65,6 +121,8 @@ export function ReviewCorrectionDialog({
   const [enfazError, setEnfazError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const currentAppraiser = currentAppraiserId?.trim() ?? "";
+  const [movedTo, setMovedTo] = useState<ReviewCorrectionAppraiser | null>(null);
 
   const toggle = (source: ReviewCorrectionSource) => {
     setPickError(null);
@@ -103,7 +161,7 @@ export function ReviewCorrectionDialog({
         const outcome =
           source === "study"
             ? await onReturnStudy(plan.reason, plan.clearEnfazHandover)
-            : await onReturnValuation(plan.reason);
+            : await onReturnValuation(plan.reason, movedTo);
         if (!outcome.ok) {
           if ("needsEnfazConfirmation" in outcome && outcome.needsEnfazConfirmation) {
             setEnfazPrompted(true);
@@ -203,6 +261,15 @@ export function ReviewCorrectionDialog({
           })}
           {pickError ? <Note tone="danger" className="mb-0">{pickError}</Note> : null}
         </fieldset>
+
+        {currentAppraiser && picked.has("valuation") && !done.has("valuation") ? (
+          <AppraiserChoice
+            currentId={currentAppraiser}
+            movedTo={movedTo}
+            disabled={busy}
+            onChange={setMovedTo}
+          />
+        ) : null}
 
         <ReopenReasonField
           label="سبب طلب التصحيح (10 أحرف على الأقل) — يصل لكل طرف متأثر"

@@ -105,6 +105,7 @@ export {
   type NotifyIntakeFieldGapRequest,
   type NotifyIntakeFieldGapResultDto,
 } from "./work-orders";
+export { ApiErrorKinds, type ApiErrorKind } from "./api-error-kinds";
 
 export {
   createAdminCourt,
@@ -172,7 +173,6 @@ export {
   skipWorkflowTaskEngineeringSurvey,
   reopenCompletedWorkflowTask,
   revertWorkflowTaskPhase,
-  syncWorkflowTasks,
   type ConfirmTaskDistributionResponseDto,
   type TaskDistributionDraftDto,
   type WorkflowTaskDto,
@@ -468,6 +468,7 @@ export {
   type ResolveDiscountProposalRequest,
   type WaivePartyFeesRequest,
   type WaivePartyFeesResultDto,
+  InspectorFeeBillingStatuses,
 } from "./inspector-fees";
 
 export {
@@ -531,6 +532,8 @@ export {
   type SubmitVendorInvoiceRequest,
   type RejectVendorInvoiceRequest,
   type CancelPartyBillingStatementRequest,
+  PartyBillingStatementStatuses,
+  PartyBillingPayeeTypes,
 } from "./party-billing-statements";
 
 export {
@@ -689,6 +692,18 @@ export {
 } from "./transactions";
 
 export {
+  acceptAppraiserPeerTransfer,
+  cancelAppraiserHandoverRequest,
+  completeAppraiserReassignment,
+  declineAppraiserPeerTransfer,
+  listAppraiserHandoverRequests,
+  requestAppraiserPeerTransfer,
+  requestAppraiserReassignment,
+  takeAppraiserReassignment,
+  type AppraiserHandoverRequestDto,
+} from "./appraiser-handover-requests";
+
+export {
   listPropertyComparableLinks,
   type PropertyComparableLinkItemDto,
   type PropertyComparableLinkListDto,
@@ -768,6 +783,7 @@ export {
   type ValuationReportDraftDto,
   type ValuationReportDraftStatus,
   type ValuationReportNumberDto,
+  ValuationReportDraftStatuses,
 } from "./valuation-report-drafts";
 export {
   renderPrintPdf,

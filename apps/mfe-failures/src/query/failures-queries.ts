@@ -30,10 +30,11 @@ const failuresKey = appDataKeys.failures();
 /** Every cached page shares this prefix (`appDataKeys.failuresPage`). */
 const failuresPagePrefix = [...failuresKey, "page"] as const;
 
-export function useFailuresQuery() {
+export function useFailuresQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: failuresKey,
     queryFn: loadFailuresQuery,
+    enabled: options?.enabled ?? true,
     ...queryDefaults,
   });
 }

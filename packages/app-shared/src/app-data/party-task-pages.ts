@@ -3,6 +3,8 @@ import type {
   WorkflowTask,
   WorkflowTaskKind,
 } from "../workflow/task-types";
+import { Pages, Roles } from "@platform/types";
+import { WorkflowTaskKinds } from "../workflow/task-types";
 
 export type PartyTaskPageDef = {
   pageId: PageId;
@@ -27,9 +29,9 @@ export type PartyTaskPageDef = {
 const PARTY_TASK_PAGES_MAP = {
   /** Official queue under Active Transactions (field-inspector). */
   "active-inspection": {
-    pageId: "active-inspection",
-    kind: "field-inspection",
-    roleId: "field-inspector",
+    pageId: Pages.ActiveInspection,
+    kind: WorkflowTaskKinds.FieldInspection,
+    roleId: Roles.FieldInspector,
     pageTitle: "معاينة العقار",
     emptyLine: "لا توجد معاينات ميدانية بانتظار التنفيذ.",
     emptyHint:
@@ -48,9 +50,9 @@ const PARTY_TASK_PAGES_MAP = {
     useFieldForm: true,
   },
   "property-appraisal": {
-    pageId: "property-appraisal",
-    kind: "property-appraisal",
-    roleId: "real-estate-appraiser",
+    pageId: Pages.PropertyAppraisal,
+    kind: WorkflowTaskKinds.PropertyAppraisal,
+    roleId: Roles.RealEstateAppraiser,
     pageTitle: "تقييم العقار",
     emptyLine: "لا توجد مهام تقييم عقاري بانتظار التنفيذ.",
     emptyHint:
@@ -67,9 +69,9 @@ const PARTY_TASK_PAGES_MAP = {
     icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
   },
   "active-survey": {
-    pageId: "active-survey",
-    kind: "engineering-survey",
-    roleId: "engineering-office",
+    pageId: Pages.ActiveSurvey,
+    kind: WorkflowTaskKinds.EngineeringSurvey,
+    roleId: Roles.EngineeringOffice,
     pageTitle: "الرفع المساحي",
     emptyLine: "لا توجد مهام رفع مساحي بانتظار التنفيذ.",
     emptyHint:
@@ -111,10 +113,10 @@ export function filterTasksForPartyKind(
 
 /** Distributed party workflow roles (inspector, engineering office, appraiser, reviewer). */
 const PARTY_WORKFLOW_ROLE_IDS: RoleId[] = [
-  "field-inspector",
-  "engineering-office",
-  "real-estate-appraiser",
-  "government-reviewer",
+  Roles.FieldInspector,
+  Roles.EngineeringOffice,
+  Roles.RealEstateAppraiser,
+  Roles.GovernmentReviewer,
 ];
 
 export function isPartyWorkflowRole(role: RoleId): boolean {

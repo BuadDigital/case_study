@@ -59,24 +59,18 @@ export function effArea(item: ValuationComparableSelectionDto): number {
 }
 
 /* ─── Module-level static classes — design-system tokens (brand + dark mode) via Tailwind ─── */
-export const thBandClass =
-  "border-b-2 border-b-gold bg-surface-2 px-4 py-[13px] text-start text-[12px] font-bold text-heading";
-export const thCompBaseClass =
-  "min-w-[126px] border-b-2 border-b-gold px-3 py-[11px] text-center text-[12px] font-bold text-heading";
+export const thBandClass = "border-b-2 border-b-gold bg-surface-2 px-4 py-[13px] text-start text-[12px] font-bold text-heading";
+export const thCompBaseClass = "min-w-[126px] border-b-2 border-b-gold px-3 py-[11px] text-center text-[12px] font-bold text-heading";
 export const thCompClass = cn(
   thCompBaseClass,
   "border-s border-s-border bg-surface-2",
 );
-export const tdLabelClass =
-  "border-b border-border px-4 py-[9px] text-start align-top";
-export const tdSubjClass =
-  "min-w-[150px] border-x border-b border-border bg-surface-2 px-2.5 py-[7px] text-center align-middle";
+export const tdLabelClass = "border-b border-border px-4 py-[9px] text-start align-top";
+export const tdSubjClass = "min-w-[150px] border-x border-b border-border bg-surface-2 px-2.5 py-[7px] text-center align-middle";
 export const tdCellClass = "border-b border-s border-border px-2.5 py-[7px] text-center align-middle";
 export const tdJustClass = "min-w-[230px] border-b border-s border-border px-3 py-[7px] text-start align-middle";
 export const noteClass = "mt-[3px] text-[10px] font-normal text-text-3";
-export const cellInputBaseClass =
-  "w-24 rounded-[7px] border px-2 py-[7px] text-center text-[13px] font-bold";
+export const cellInputBaseClass = "w-24 rounded-[7px] border px-2 py-[7px] text-center text-[13px] font-bold";
 /** Phone card input: full width, 44px tall, 16px text so iOS never zooms on focus. */
-export const cellInputTouchClass =
-  "min-h-11 w-full rounded-[9px] border px-3 py-2 text-center text-[16px] font-bold";
+export const cellInputTouchClass = "min-h-11 w-full rounded-[9px] border px-3 py-2 text-center text-[16px] font-bold";
 export const panelCardClass = cn(opsLetterCard, "mb-6");

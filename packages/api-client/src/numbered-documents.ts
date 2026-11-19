@@ -1,6 +1,7 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson } from "./parse-json";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 // Numbered documents register (numbering workshop): LT letters and
 // CS case-study reports — allocate at print time and record in the register.
@@ -41,11 +42,11 @@ export async function allocateNumberedDocument(
       headers: authHeaders(config.token),
       body: JSON.stringify(input),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = await parseJson<NumberedDocumentDto>(res);
     return { ok: true, data };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

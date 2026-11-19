@@ -13,6 +13,7 @@ import {
 } from "@failures/mfe/lib/failure-party-roles";
 import { FailureReportForm } from "@failures/mfe/components/failures/FailureReportForm";
 import { usePoRecordQuery } from "../../query/case-study-queries";
+import { Roles } from "@platform/types";
 
 export function PoPropertyFailureRoute({
   poNumber,
@@ -29,15 +30,15 @@ export function PoPropertyFailureRoute({
   const partyRaiser = failureRaiserLabelForPartyRole(role);
   const raisedByRole =
     partyRaiser ??
-    (role === "section-supervisor"
+    (role === Roles.SectionSupervisor
       ? FAILURE_RAISER_SUPERVISOR
       : FAILURE_RAISER_SPECIALIST);
   const afterPath =
-    role === "engineering-office"
+    role === Roles.EngineeringOffice
       ? "/active-survey"
-      : role === "field-inspector"
+      : role === Roles.FieldInspector
         ? "/active-inspection"
-        : role === "real-estate-appraiser"
+        : role === Roles.RealEstateAppraiser
           ? "/property-appraisal"
           : poPropertiesPath(poNumber);
 

@@ -43,4 +43,10 @@ public class CaseStudyReport
     public DateTime? SavedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+
+    /// <summary>
+    /// The report's version (Omar 2026-11-18, «التعديل»): 1, and +1 each time a report that reached Enfaz is
+    /// reopened. Above 1 the printed number is PRC-…/N; the valuation report keeps its own version.
+    /// </summary>
+    public int ReportVersion { get; set; } = 1;
 }

@@ -3,6 +3,7 @@ import {
   isVisibleInEngineeringSurveyQueue,
   loadEngineeringSurveySubmission,
 } from "./engineering-survey-submission-model";
+import { WorkflowTaskKinds, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 export function filterEngineeringSurveyListedTasks(
   tasks: WorkflowTask[],
@@ -10,7 +11,7 @@ export function filterEngineeringSurveyListedTasks(
 ): WorkflowTask[] {
   return tasks.filter(
     (t) =>
-      t.kind === "engineering-survey" &&
+      t.kind === WorkflowTaskKinds.EngineeringSurvey &&
       isVisibleInEngineeringSurveyQueue(t.id, t.status, options),
   );
 }
@@ -27,10 +28,10 @@ export function engineeringSurveyTaskStatusBadge(
     return { label: "مكتمل", className: "b-done" };
   }
   const sub = loadEngineeringSurveySubmission(taskId);
-  if (sub?.status === "submitted") {
+  if (sub?.status === SubmissionStatuses.Submitted) {
     return { label: "مكتمل", className: "b-done" };
   }
-  if (sub?.status === "reopened") {
+  if (sub?.status === SubmissionStatuses.Reopened) {
     return { label: "معادة للتصحيح", className: "b-returned" };
   }
   if (sub && sub.latitude && sub.surveyReportFileName) {

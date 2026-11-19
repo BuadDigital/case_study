@@ -150,6 +150,9 @@ public partial class CaseStudyReportService
 
                 if (handedOver)
                 {
+                    // A report that reached Enfaz comes back as its next version (Omar 2026-11-18): printed
+                    // PRC-…/N; the delivered version stays as it was printed.
+                    entity.ReportVersion++;
                     // The tracker was cleared above: re-read the deeds tracked and clear every stamp.
                     var deeds = await _db.ListTransactionPropertiesForUpdateAsync(taskId, ct);
                     if (deeds.Count == 0 && propertyId is Guid clearPropertyId)

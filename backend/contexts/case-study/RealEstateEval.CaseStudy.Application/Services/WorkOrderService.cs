@@ -26,6 +26,7 @@ public partial class WorkOrderService : IWorkOrderService
     private readonly IWorkOrderQuery _query;
     private readonly IWorkOrderPropertyCommands _properties;
     private readonly IOrganizationSettingsService? _organizationSettings;
+    private readonly IWorkflowTaskSlotSynchronizer? _slots;
     private readonly ILogger<WorkOrderService>? _logger;
     private readonly TimeProvider _time;
 
@@ -39,9 +40,11 @@ public partial class WorkOrderService : IWorkOrderService
         IWorkOrderPropertyCommands properties,
         IOrganizationSettingsService? organizationSettings = null,
         TimeProvider? time = null,
-        ILogger<WorkOrderService>? logger = null)
+        ILogger<WorkOrderService>? logger = null,
+        IWorkflowTaskSlotSynchronizer? slots = null)
     {
         _time = time ?? TimeProvider.System;
+        _slots = slots;
 
         _db = db;
         _timeline = timeline;
@@ -94,6 +97,20 @@ public partial class WorkOrderService : IWorkOrderService
         CancellationToken cancellationToken = default) =>
         _query.ListPropertyListItemsAsync(actor, cancellationToken);
 
+    public Task<PagedResultDto<WorkOrderDto>> ListDetailsPagedAsync(
+        int? page,
+        int? pageSize,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        _query.ListDetailsPagedAsync(page, pageSize, actor, cancellationToken);
+
+    public Task<PagedResultDto<PropertyListItemDto>> ListPropertyListItemsPagedAsync(
+        int? page,
+        int? pageSize,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        _query.ListPropertyListItemsPagedAsync(page, pageSize, actor, cancellationToken);
+
     public Task<WorkOrderDto?> GetByPoNumberAsync(
         string poNumber,
         PermissionsDto? actor = null,
@@ -121,6 +138,12 @@ public partial class WorkOrderService : IWorkOrderService
     public Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
         CancellationToken cancellationToken) =>
         _query.ListPendingBourseAsync(cancellationToken);
+
+    public Task<PagedResultDto<PendingBoursePropertyDto>> ListPendingBoursePagedAsync(
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken) =>
+        _query.ListPendingBoursePagedAsync(page, pageSize, cancellationToken);
 
     public async Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateWorkOrderRequest request,
@@ -221,6 +244,7 @@ public partial class WorkOrderService : IWorkOrderService
             newEmail: workOrder.AssignmentSpecialistEmail,
             cancellationToken);
         await NotifyCdoWorkOrderCreatedAsync(po, workOrder.Properties.Count, cancellationToken);
+        await SyncSlotsAsync(po, cancellationToken);
 
         var loaded = await _loader.LoadAsync(po, cancellationToken, asNoTracking: true);
         return (loaded is null
@@ -282,8 +306,17 @@ public partial class WorkOrderService : IWorkOrderService
             previousSpecialistEmail,
             entity.AssignmentSpecialistEmail,
             cancellationToken);
+        // The expected count and the assignment type shape the slots.
+        await SyncSlotsAsync(entity.PoNumber, cancellationToken);
         return (await _query.WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken), null);
     }
+
+    /// <summary>
+    /// The work order's task slots follow its expected count and deeds once it is saved
+    /// (2026-11-19 — the browser used to ask for a whole-table sync after the save, and again on reads).
+    /// </summary>
+    private Task SyncSlotsAsync(string poNumber, CancellationToken cancellationToken) =>
+        _slots?.SyncPoAsync(poNumber, cancellationToken) ?? Task.CompletedTask;
 
     public async Task<WorkOrderDto?> UpdateAssignmentSpecialistAsync(
         string poNumber,

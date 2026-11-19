@@ -2,12 +2,15 @@ import { parseFieldErrorsFromResponse } from "./field-errors";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type CaseStudyReportDto = {
   taskId: string;
   propertyId?: string;
   poNumber?: string;
   status: string;
+  /** 1, then +1 each time the report is reopened after reaching Enfaz (printed PRC-…/N, 2026-11-18). */
+  version?: number;
   currentStep: number;
   requestNumber: string;
   requestDate: string;
@@ -56,12 +59,12 @@ export async function getCaseStudyReport(
     const res = await fetch(`${base}/api/case-study-reports/${taskId}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as CaseStudyReportDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -70,16 +73,16 @@ async function forbiddenError(res: Response): Promise<ApiErr> {
   const errors = await parseFieldErrorsFromResponse(res);
   const message =
     errors._?.trim() || "ليس لديك صلاحية لهذا الإجراء";
-  return { ok: false, kind: "forbidden", message, errors: { _: message, ...errors } };
+  return { ok: false, kind: ApiErrorKinds.Forbidden, message, errors: { _: message, ...errors } };
 }
 
 /** A report save's answer (specialist or party): 409 means another session saved first. */
 async function readReportSave(res: Response): Promise<ApiOk<CaseStudyReportDto> | ApiErr> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
   if (res.status === 403) return forbiddenError(res);
   if (res.status === 400) {
     const errors = await parseFieldErrorsFromResponse(res);
-    return { ok: false, kind: "validation", errors };
+    return { ok: false, kind: ApiErrorKinds.Validation, errors };
   }
   if (res.status === 409) {
     const errors = await parseFieldErrorsFromResponse(res);
@@ -88,12 +91,12 @@ async function readReportSave(res: Response): Promise<ApiOk<CaseStudyReportDto> 
       "تم تحديث التقرير من جلسة أخرى. حدّث الصفحة ثم أعد الحفظ.";
     return {
       ok: false,
-      kind: "validation",
+      kind: ApiErrorKinds.Validation,
       message,
       errors: { _: message, ...errors },
     };
   }
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
   return { ok: true, data: (await res.json()) as CaseStudyReportDto };
 }
 
@@ -112,7 +115,7 @@ export async function saveCaseStudyReport(
     });
     return await readReportSave(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -143,17 +146,17 @@ async function postCaseStudyReportAction<T>(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 403) return await forbiddenError(res);
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
     if (res.status === 400 || res.status === 409) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
+      return { ok: false, kind: ApiErrorKinds.Validation, errors };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as T };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -205,12 +208,12 @@ export async function getPartyCaseStudyReport(
     const res = await fetch(`${base}/api/case-study-reports/party/${taskId}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as CaseStudyReportDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -250,15 +253,15 @@ export async function getCaseStudyReportsBatch(
     const res = await fetch(`${base}/api/case-study-reports/batch?${params}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
     if (res.status === 400) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
+      return { ok: false, kind: ApiErrorKinds.Validation, errors };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data: (await res.json()) as CaseStudyReportBatchDto };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -276,6 +279,6 @@ export async function savePartyCaseStudyReport(
     });
     return await readReportSave(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

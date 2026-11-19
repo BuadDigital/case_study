@@ -14,6 +14,8 @@ import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { loadPartyCaseStudyReportDraft } from "./case-study-report-reads";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
+import { CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 
 export type PartyQuestionContribution = {
   partyId: CaseStudyInfoPartyId | null;
@@ -50,7 +52,7 @@ export function childTasksForCaseStudyParent(
   tasks: WorkflowTask[],
 ): WorkflowTask[] {
   const byParentLink = tasks.filter(
-    (t) => t.parentTaskId === parentTaskId && t.kind !== "case-study-property",
+    (t) => t.parentTaskId === parentTaskId && t.kind !== WorkflowTaskKinds.CaseStudyProperty,
   );
   if (byParentLink.length > 0) return byParentLink;
 
@@ -60,7 +62,7 @@ export function childTasksForCaseStudyParent(
   return tasks.filter(
     (t) =>
       t.id !== parentTaskId &&
-      t.kind !== "case-study-property" &&
+      t.kind !== WorkflowTaskKinds.CaseStudyProperty &&
       t.poNumber === parent.poNumber &&
       t.propertyId === parent.propertyId,
   );
@@ -97,7 +99,7 @@ export async function collectPartyAnswersByQuestion(
     const partyId = meta.partyId ?? partyFromRole;
 
     for (const [key, answer] of Object.entries(draft.answers)) {
-      if (answer !== "A" && answer !== "B") continue;
+      if (answer !== CaseStudyReportAnswers.A && answer !== CaseStudyReportAnswers.B) continue;
 
       const partyDef = partyId
         ? CASE_STUDY_INFO_PARTIES.find((p) => p.id === partyId)

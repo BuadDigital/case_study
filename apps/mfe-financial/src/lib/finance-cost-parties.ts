@@ -8,6 +8,7 @@ import type {
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { sumSar, vatSar } from "@platform/app-shared/format/money";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { PartyBillingPayeeTypes, PartyBillingStatementStatuses } from "@platform/api-client";
 
 export type FinanceCostParty = {
   assigneeId: string;
@@ -41,7 +42,7 @@ export function costTaxSar(
   net: number,
   payeeType: "vendor" | "individual" | null,
 ): number {
-  return payeeType === "vendor" ? vatSar(net) : 0;
+  return payeeType === PartyBillingPayeeTypes.Vendor ? vatSar(net) : 0;
 }
 
 /** Net + its VAT, from the same rounding as `costTaxSar` (net 1.5 → VAT 0.23, total 1.73). */
@@ -115,9 +116,9 @@ export function buildFinanceCostParties(input: {
         s.payeeTypeLabel || row.payeeTypeLabel || row.payeeType;
     }
     if (s.taskKind) row.taskKind = s.taskKind;
-    if (s.status === "closed") {
+    if (s.status === PartyBillingStatementStatuses.Closed) {
       row.paidSar += s.totalNetSar || 0;
-    } else if (s.status !== "cancelled") {
+    } else if (s.status !== PartyBillingStatementStatuses.Cancelled) {
       row.inStatementSar += s.totalNetSar || 0;
       row.openStatements += 1;
     }
@@ -132,7 +133,7 @@ export function buildFinanceCostParties(input: {
         payeeType: row.payeeType,
         payeeTypeLabel:
           row.payeeTypeLabel ||
-          (row.payeeType === "individual" ? "فرد" : "مورّد"),
+          (row.payeeType === PartyBillingPayeeTypes.Individual ? "فرد" : "مورّد"),
         taskKindLabel: costTaskKindLabel(row.taskKind),
         phone: null,
         dueSar: row.dueSar,
@@ -152,7 +153,7 @@ export function statementDisplayTotal(s: {
 }): number {
   return applyCostTax(
     s.totalNetSar || 0,
-    s.payeeType === "individual" ? "individual" : "vendor",
+    s.payeeType === "individual" ? PartyBillingPayeeTypes.Individual : PartyBillingPayeeTypes.Vendor,
   );
 }
 

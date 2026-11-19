@@ -24,6 +24,9 @@ import {
   allTransactionsPhaseLabel,
   buildAllTransactionsRowMoreItems,
 } from "../lib/app-data/all-transactions-queue";
+import { Pages } from "@platform/types";
+import { ActiveTransactionQueueTableLayouts } from "./active-transaction-queue-state";
+import { TaskWorkLayouts } from "./my-task-work-state";
 
 export function FavoriteTransactionsView() {
   const { role } = useAppAccess();
@@ -35,10 +38,10 @@ export function FavoriteTransactionsView() {
 
   const config = useMemo((): ActiveTransactionQueueConfig => {
     return {
-      pageId: "favorites",
+      pageId: Pages.Favorites,
       pageTitle: "المفضلة",
       hidePageTitle: true,
-      tableLayout: "all-transactions",
+      tableLayout: ActiveTransactionQueueTableLayouts.AllTransactions,
       emptyLine: "لا توجد معاملات في المفضلة.",
       emptyHint:
         "اضغط النجمة في بداية صف المعاملة في «أعمالي»، أو بجانب رقم الصك في تفاصيل العقار، لإضافتها هنا.",
@@ -112,7 +115,7 @@ export function FavoriteTransactionsView() {
                 key={task.id}
                 task={task}
                 onRefresh={onRefresh}
-                layout="panel"
+                layout={TaskWorkLayouts.Panel}
                 onClose={onClose}
               />
             )

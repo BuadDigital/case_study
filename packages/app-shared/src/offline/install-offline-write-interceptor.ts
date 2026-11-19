@@ -92,10 +92,16 @@ function parseBody(request: ApiWriteRequest): Record<string, unknown> {
   return {};
 }
 
-/** Exported for tests only — the interceptor is the single caller. */
-export async function classifyWrite(
+/**
+ * Exported for tests only — the interceptor is the single caller.
+ * How it works: matches the request path and method against the offline-queueable writes
+ * and parses the body; it does no I/O.
+ * Edge cases: it was `async` with no await, so every offline write waited on a promise
+ * for pure parsing; it is now synchronous.
+ */
+export function classifyWrite(
   request: ApiWriteRequest,
-): Promise<ClassifiedWrite | null> {
+): ClassifiedWrite | null {
   const url = requestUrl(request);
   const path = url.replace(/^https?:\/\/[^/]+/i, "");
 
@@ -339,7 +345,7 @@ export function installOfflineWriteInterceptor(): () => void {
       typeof navigator !== "undefined" && navigator.onLine === false;
 
     if (offline) {
-      const classified = await classifyWrite(request);
+      const classified = classifyWrite(request);
       if (classified) {
         await enqueueClassified(userId, classified);
         throw new TypeError("Failed to fetch");

@@ -13,7 +13,14 @@ import type { ValuationSelectionsApiConfig } from "./valuation-comparable-select
  * `in_review` (Omar 2026-11-05): the study handed the draft and the issued study report to review in one
  * batch; review alone edits, then sends it to the appraiser or returns it to the study.
  */
-export type ValuationReportDraftStatus = "none" | "preparing" | "in_review" | "sent" | "approved";
+export const ValuationReportDraftStatuses = {
+  None: "none",
+  Preparing: "preparing",
+  InReview: "in_review",
+  Sent: "sent",
+  Approved: "approved",
+} as const;
+export type ValuationReportDraftStatus = (typeof ValuationReportDraftStatuses)[keyof typeof ValuationReportDraftStatuses];
 
 /**
  * The valuation-report draft of a request. After the appraiser hands his package over, the case
@@ -66,6 +73,8 @@ export type ReportDraftStateDto = {
   reportStage: "draft" | "deposit_issued" | "final_issued";
   /** The appraiser's progress ladder 0–100 (hand-over to the specialist, 75, is raised by the reader). */
   progressPct?: number;
+  /** The current draft's version (1, then n+1 after «التعديل», 2026-11-18). */
+  version?: number;
 };
 
 type Result<T> =

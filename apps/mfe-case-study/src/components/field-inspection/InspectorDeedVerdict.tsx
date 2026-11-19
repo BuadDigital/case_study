@@ -14,6 +14,7 @@ import {
   deedVerdictPatch,
   type DeedMatchVerdict,
 } from "./field-inspection-work-state";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 const VERDICT_LABELS: Record<Exclude<DeedMatchVerdict, "">, string> = {
   yes: "مطابق",
@@ -56,7 +57,7 @@ export function InspectorDeedVerdict({
           <MobilePills
             options={[VERDICT_LABELS.yes, VERDICT_LABELS.no]}
             value={selected ? VERDICT_LABELS[selected] : ""}
-            onChange={(next) => pick(next === VERDICT_LABELS.yes ? "yes" : "no")}
+            onChange={(next) => pick(next === VERDICT_LABELS.yes ? ChecklistAnswers.Yes : ChecklistAnswers.No)}
           />
         </>
       ) : (
@@ -75,9 +76,9 @@ export function InspectorDeedVerdict({
                   aria-checked={on}
                   className={cn(
                     "rounded-full border px-3.5 py-1 text-[12px] font-semibold",
-                    on && verdict === "yes" &&
+                    on && verdict === ChecklistAnswers.Yes &&
                       "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading",
-                    on && verdict === "no" &&
+                    on && verdict === ChecklistAnswers.No &&
                       "border-[color-mix(in_srgb,var(--danger)_35%,transparent)] bg-danger-bg text-danger-text",
                     !on && "border-border bg-surface-2 text-text-3",
                     !on && errorMessage && "border-danger-text",

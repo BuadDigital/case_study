@@ -11,6 +11,7 @@ import { InlineLoadingSkeleton, useWorkDensity } from "@platform/ui-kit";
 import { DocumentFileLine } from "../po-intake/PropertyDocumentChecklistParts";
 import { InsCard } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorCard } from "./FieldInspectionWorkParts";
+import { InspectorStepLayouts } from "../../lib/app-data/inspector-workspace-validation";
 
 /** Everything but the inspector's own photos — those live in their own cards. */
 export function inspectorReferenceDocuments(
@@ -27,7 +28,7 @@ export function inspectorReferenceDocuments(
 export function InspectorTransactionDocumentsCard({
   documents,
   loading = false,
-  layout = "desktop",
+  layout = InspectorStepLayouts.Desktop,
   hidden = false,
 }: {
   documents: PropertyDetailDocumentEntry[];
@@ -51,12 +52,12 @@ export function InspectorTransactionDocumentsCard({
       <InspectorTransactionDocumentsList documents={documents} loading={loading} />
     </>
   );
-  if (layout === "mobile") {
+  if (layout === InspectorStepLayouts.Mobile) {
     return (
       <InspectorCard
         title="مستندات المعاملة"
         icon="ti-files"
-        layout="mobile"
+        layout={InspectorStepLayouts.Mobile}
         step={1}
         hidden={hidden}
         subtitle={documents.length > 0 ? `${documents.length} مستند` : "لا مستندات بعد"}

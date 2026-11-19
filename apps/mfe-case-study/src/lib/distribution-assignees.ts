@@ -1,5 +1,6 @@
 import type { RoleId } from "@platform/types";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { Roles } from "@platform/types";
 
 export type DistributionAssignee = {
   id: string;
@@ -12,19 +13,19 @@ export type DistributionAssignee = {
  * No fuzzy / contains matching (except soft fallbacks below).
  */
 const EXACT_JOB_TITLE_TO_ROLE: Record<string, RoleId> = {
-  "مسؤول التحول الرقمي (CDO)": "cdo",
-  "المدير التنفيذي": "cdo",
-  "مدير إدارة التقييم العقاري": "general-manager",
-  "مشرف قسم دراسة الحالة": "section-supervisor",
-  "أخصائي دراسة حالة": "case-specialist",
-  "مراجع حكومي": "government-reviewer",
-  "مقيم عقاري": "real-estate-appraiser",
-  "معاين ميداني": "field-inspector",
-  "موظف الشؤون المالية": "financial-officer",
-  "مقدم خدمة — جهة": "engineering-office",
+  "مسؤول التحول الرقمي (CDO)": Roles.Cdo,
+  "المدير التنفيذي": Roles.Cdo,
+  "مدير إدارة التقييم العقاري": Roles.GeneralManager,
+  "مشرف قسم دراسة الحالة": Roles.SectionSupervisor,
+  "أخصائي دراسة حالة": Roles.CaseSpecialist,
+  "مراجع حكومي": Roles.GovernmentReviewer,
+  "مقيم عقاري": Roles.RealEstateAppraiser,
+  "معاين ميداني": Roles.FieldInspector,
+  "موظف الشؤون المالية": Roles.FinancialOfficer,
+  "مقدم خدمة — جهة": Roles.EngineeringOffice,
   // en-dash / hyphen variants from HR import
-  "مقدم خدمة - جهة": "engineering-office",
-  "مقدم خدمة – جهة": "engineering-office",
+  "مقدم خدمة - جهة": Roles.EngineeringOffice,
+  "مقدم خدمة – جهة": Roles.EngineeringOffice,
 };
 
 /** Roles that can appear in distribution / ops assignment pickers. */
@@ -60,7 +61,7 @@ function employmentSubtitle(user: StaffUser): string | undefined {
 
 export function partyRoleForStaffUser(user: StaffUser): RoleId | null {
   if (user.distributionAssigneeId?.startsWith("eo-")) {
-    return "engineering-office";
+    return Roles.EngineeringOffice;
   }
   // Prefer RoleId (source of truth); job title is display metadata only.
   const roleId = user.roleId?.trim();
@@ -71,11 +72,11 @@ export function partyRoleForStaffUser(user: StaffUser): RoleId | null {
   if (!t) return null;
   if (EXACT_JOB_TITLE_TO_ROLE[t]) return EXACT_JOB_TITLE_TO_ROLE[t];
   // Soft match common labels (API/job title drift)
-  if (t.includes("معاين")) return "field-inspector";
-  if (t.includes("مراجع")) return "government-reviewer";
-  if (t.includes("مقيم")) return "real-estate-appraiser";
+  if (t.includes("معاين")) return Roles.FieldInspector;
+  if (t.includes("مراجع")) return Roles.GovernmentReviewer;
+  if (t.includes("مقيم")) return Roles.RealEstateAppraiser;
   if (t.includes("مكتب") || t.includes("مساح") || t.includes("جهة")) {
-    return "engineering-office";
+    return Roles.EngineeringOffice;
   }
   return null;
 }
@@ -112,26 +113,26 @@ export function staffUserForViewer(
 }
 
 export function getGovernmentAuditors(users: StaffUser[]): DistributionAssignee[] {
-  return staffUsersForPartyRole(users, "government-reviewer");
+  return staffUsersForPartyRole(users, Roles.GovernmentReviewer);
 }
 
 export function getFieldInspectors(users: StaffUser[]): DistributionAssignee[] {
-  return staffUsersForPartyRole(users, "field-inspector");
+  return staffUsersForPartyRole(users, Roles.FieldInspector);
 }
 
 export function getValuators(users: StaffUser[]): DistributionAssignee[] {
-  return staffUsersForPartyRole(users, "real-estate-appraiser");
+  return staffUsersForPartyRole(users, Roles.RealEstateAppraiser);
 }
 
 export function getEngineeringOffices(
   users: StaffUser[],
 ): DistributionAssignee[] {
-  return staffUsersForPartyRole(users, "engineering-office");
+  return staffUsersForPartyRole(users, Roles.EngineeringOffice);
 }
 
 /** Normal case specialists only — supervisors are never listed. */
 export function getCaseSpecialists(users: StaffUser[]): DistributionAssignee[] {
-  return staffUsersForPartyRole(users, "case-specialist");
+  return staffUsersForPartyRole(users, Roles.CaseSpecialist);
 }
 
 export function getRoleAssigneeId(

@@ -23,6 +23,7 @@ import {
   ThirdPartyFields,
 } from "./RegisterKeyEnvelopeSections";
 import { useRegisterKeyEnvelopeWorkflow } from "./useRegisterKeyEnvelopeWorkflow";
+import { SourceKinds } from "./register-key-envelope-state";
 
 export function RegisterKeyEnvelopeModal({
   open,
@@ -150,11 +151,11 @@ function RegisterKeyEnvelopeForm({
 
             <SourceSelector source={source} onSelect={setSource} />
 
-            {source === "third_party" ? (
+            {source === SourceKinds.ThirdParty ? (
               <ThirdPartyFields form={form} onText={setText} />
             ) : null}
 
-            {source === "missing" ? (
+            {source === SourceKinds.Missing ? (
               <MissingPhonesField
                 value={form.missingPhones}
                 onChange={(v) => setText("missingPhones", v)}
@@ -167,14 +168,14 @@ function RegisterKeyEnvelopeForm({
               onText={setText}
             />
 
-            {source !== "missing" ? (
+            {source !== SourceKinds.Missing ? (
               <KeysCountField
                 value={form.keysCountActual}
                 onChange={setKeysCount}
               />
             ) : null}
 
-            {source !== "missing" ? (
+            {source !== SourceKinds.Missing ? (
               <EnvelopePhotoField
                 source={source}
                 photo={form.photo}
@@ -184,7 +185,7 @@ function RegisterKeyEnvelopeForm({
               />
             ) : null}
 
-            {source === "court" ? (
+            {source === SourceKinds.Court ? (
               <AttachmentFileField
                 id="kf-receipt"
                 label="خطاب الاستلام *"
@@ -196,7 +197,7 @@ function RegisterKeyEnvelopeForm({
               />
             ) : null}
 
-            {source === "third_party" ? (
+            {source === SourceKinds.ThirdParty ? (
               <AttachmentFileField
                 id="kf-letter"
                 label="خطاب الطرف الثالث *"

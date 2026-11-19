@@ -10,6 +10,7 @@ import {
 } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import { usePropertyDetailDocuments } from "../query/property-detail-documents-query";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 /**
  * The deed's party tasks and its documents, for the work page's sections that need the files
@@ -36,8 +37,8 @@ export function useWorkDeedDocuments({
     () => (task ? childTasksForCaseStudyParent(task.id, tasks) : []),
     [task, tasks],
   );
-  const appraisalTask = children.find((t) => t.kind === "property-appraisal") ?? null;
-  const surveyTask = children.find((t) => t.kind === "engineering-survey") ?? null;
+  const appraisalTask = children.find((t) => t.kind === WorkflowTaskKinds.PropertyAppraisal) ?? null;
+  const surveyTask = children.find((t) => t.kind === WorkflowTaskKinds.EngineeringSurvey) ?? null;
   const inspectionTask = resolveInspectionTaskForProperty({
     tasks,
     parentTask: task,

@@ -55,6 +55,7 @@ import { costLoadedStamp } from "./lib/cost-autosave";
 import { useCostAutosave } from "./useCostAutosave";
 import { useCostInspectorSync } from "./useCostInspectorSync";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
+import { CostGroups } from "@platform/app-shared/domain/cost-items";
 
 type CostApproachWorkflowArgs = {
   valuationRequestId: string | null;
@@ -354,7 +355,7 @@ export function useCostApproachWorkflow({
         (o) =>
           o.key !== "custom" &&
           !usedItemKeys.has(o.key) &&
-          (group === "area"
+          (group === CostGroups.Area
             ? COST_GROUP1_KEYS.has(o.key)
             : !COST_GROUP1_KEYS.has(o.key)),
       ),
@@ -413,7 +414,7 @@ export function useCostApproachWorkflow({
         idx + 1,
         0,
         blankCostLine(prev.length, {
-          structureKind: costGroupOf(anchor) === "area" ? "floor" : "other",
+          structureKind: costGroupOf(anchor) === CostGroups.Area ? "floor" : "other",
         }),
       );
       return next;

@@ -9,6 +9,7 @@ import type { RefObject } from "react";
 import { Spinner, cn, useFileDropZone } from "@platform/ui-kit";
 import type { FilePick, SourceKind } from "./register-key-envelope-state";
 import { Fld, FldLabel } from "./RegisterKeyEnvelopeSections";
+import { SourceKinds } from "./register-key-envelope-state";
 
 function CameraIcon() {
   return (
@@ -130,7 +131,7 @@ export function EnvelopePhotoField({
           <div className="grid place-items-center gap-1.5 text-text-3">
             <CameraIcon />
             <span className="text-[12.5px] font-bold text-heading">
-              صورة الظرف {source === "court" ? "*" : ""}
+              صورة الظرف {source === SourceKinds.Court ? "*" : ""}
             </span>
             <span className="text-[11px]">التقط الظرف وعليه رقم الطلب</span>
           </div>

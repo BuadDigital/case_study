@@ -1,5 +1,6 @@
 import { getPropertyFailureFromCache } from "@failures/mfe/lib/failures-api";
 import { SUSPENDED_TRANSACTIONS_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
+import { FailureStatuses } from "@platform/app-shared/failures/failures-types";
 
 export type SuspendedTransaction = {
   id: string;
@@ -69,7 +70,7 @@ export function isPropertySuspended(
 ): boolean {
   if (!propertyId) return false;
   const failure = getPropertyFailureFromCache(poNumber, propertyId);
-  if (failure?.status === "suspended") return true;
+  if (failure?.status === FailureStatuses.Suspended) return true;
   const key = propertySuspensionKey(poNumber, propertyId);
   return memoryList.some(
     (item) => propertySuspensionKey(item.poNumber, item.propertyId) === key,

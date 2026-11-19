@@ -2,12 +2,14 @@ import { getFieldDictionary, type FieldDictionaryFieldDto } from "@platform/api-
 import { PROPERTY_FIELDS_CATALOG } from "@platform/app-shared/app-data/property-fields-catalog";
 import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 
-export type CaseStudyQuestionSection =
-  | "deed"
-  | "survey"
-  | "comp"
-  | "occ"
-  | "extra";
+export const CaseStudyQuestionSections = {
+  Deed: "deed",
+  Survey: "survey",
+  Comp: "comp",
+  Occ: "occ",
+  Extra: "extra",
+} as const;
+export type CaseStudyQuestionSection = (typeof CaseStudyQuestionSections)[keyof typeof CaseStudyQuestionSections];
 
 const SECTION_GROUP_IDS: Record<CaseStudyQuestionSection, string> = {
   deed: "case-study-deed",
@@ -113,13 +115,13 @@ export function caseStudyAnswerKey(
   return `${section}_${index}`;
 }
 
-/** Wizard steps for the case-study form. */
+/** Wizard steps for the case-study form, each with the question section it shows. */
 export const CASE_STUDY_REPORT_STEPS = [
-  { id: 1, label: "بيانات الصك والعقار" },
-  { id: 2, label: "الرفع المساحي والطبيعة" },
-  { id: 3, label: "مكونات العقار" },
-  { id: 4, label: "الإشغال والإيجار" },
-  { id: 5, label: "ملاحظات إضافية" },
+  { id: 1, label: "بيانات الصك والعقار", section: CaseStudyQuestionSections.Deed },
+  { id: 2, label: "الرفع المساحي والطبيعة", section: CaseStudyQuestionSections.Survey },
+  { id: 3, label: "مكونات العقار", section: CaseStudyQuestionSections.Comp },
+  { id: 4, label: "الإشغال والإيجار", section: CaseStudyQuestionSections.Occ },
+  { id: 5, label: "ملاحظات إضافية", section: CaseStudyQuestionSections.Extra },
 ] as const;
 
 /** Default question bank per section. */

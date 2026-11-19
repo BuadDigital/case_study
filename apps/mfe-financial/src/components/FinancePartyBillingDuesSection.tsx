@@ -30,6 +30,7 @@ import {
 } from "../lib/finance-cost-parties";
 import { finSearch, finSearchIcon } from "../lib/finance-tw";
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
+import { PartyBillingPayeeTypes } from "@platform/api-client";
 
 type DueLine = PartyBillingStatementsWorkflow["filteredDues"][number];
 
@@ -208,14 +209,14 @@ export function FinancePartyBillingDuesSection({
           onClick={() => void createStatement()}
         >
           تجهيز{" "}
-          {readyLines[0]?.payeeType === "individual" ? "أمر صرف" : "مسير صرف"}
+          {readyLines[0]?.payeeType === PartyBillingPayeeTypes.Individual ? "أمر صرف" : "مسير صرف"}
           {selected.size > 0
             ? ` (${selected.size} — ${fmtSar(
                 applyCostTax(
                   selectedTotal,
-                  readyLines[0]?.payeeType === "individual"
-                    ? "individual"
-                    : "vendor",
+                  readyLines[0]?.payeeType === PartyBillingPayeeTypes.Individual
+                    ? PartyBillingPayeeTypes.Individual
+                    : PartyBillingPayeeTypes.Vendor,
                 ),
                 { trim: true },
               )})`

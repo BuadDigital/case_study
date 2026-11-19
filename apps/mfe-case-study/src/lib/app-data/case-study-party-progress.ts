@@ -7,7 +7,7 @@ import {
   isPartyQuestionVisible,
   type CaseStudyInfoRolesMatrix,
 } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
-import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
+import { DEFAULT_CASE_STUDY_QUESTION_CATALOG, CaseStudyQuestionSections } from "@platform/app-shared/domain/case-study/question-catalog";
 import {
   type CaseStudyReportAnswer,
   type CaseStudyQuestionSection,
@@ -19,13 +19,14 @@ import {
   type CaseStudyReportDraftsForParent,
 } from "./case-study-report-reads";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks";
+import { CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
 
 const FORM_SECTIONS: CaseStudyQuestionSection[] = [
-  "deed",
-  "survey",
-  "comp",
-  "occ",
-  "extra",
+  CaseStudyQuestionSections.Deed,
+  CaseStudyQuestionSections.Survey,
+  CaseStudyQuestionSections.Comp,
+  CaseStudyQuestionSections.Occ,
+  CaseStudyQuestionSections.Extra,
 ];
 
 const CHILD_KIND_PARTY: Partial<
@@ -109,10 +110,10 @@ export function computePartyCaseStudyProgress(
     const partyAnswers = answersByParty[party.id] ?? {};
     const answered = visibleKeys.filter((key) => {
       const value = partyAnswers[key];
-      if (value === "A" || value === "B" || value === "NA") return true;
+      if (value === CaseStudyReportAnswers.A || value === CaseStudyReportAnswers.B || value === "NA") return true;
       if (party.id === "specA" || !includeSpecialistAnswers) return false;
       const official = specialistAnswers[key];
-      return official === "A" || official === "B" || official === "NA";
+      return official === CaseStudyReportAnswers.A || official === CaseStudyReportAnswers.B || official === "NA";
     }).length;
     const total = visibleKeys.length;
     const pct = total > 0 ? Math.round((answered / total) * 100) : 0;

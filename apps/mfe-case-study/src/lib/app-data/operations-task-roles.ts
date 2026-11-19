@@ -3,6 +3,7 @@ import {
   holdsSubRole,
   type StaffAccess,
 } from "@platform/app-shared/app-data/case-specialist-sub-roles";
+import { Roles } from "@platform/types";
 
 /**
  * Matches backend `OperationsTaskLifecycleRules.IsManager`: management, the appraiser and the
@@ -12,9 +13,9 @@ export function canManageOperationsTasks(access: StaffAccess): boolean {
   const { role } = access;
   return (
     isSuperAdmin(role) ||
-    role === "section-supervisor" ||
-    role === "general-manager" ||
-    role === "real-estate-appraiser" ||
+    role === Roles.SectionSupervisor ||
+    role === Roles.GeneralManager ||
+    role === Roles.RealEstateAppraiser ||
     holdsSubRole(access, "coordination")
   );
 }

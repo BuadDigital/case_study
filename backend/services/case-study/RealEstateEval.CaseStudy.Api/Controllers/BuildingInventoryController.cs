@@ -49,8 +49,9 @@ public class BuildingInventoryController : ControllerBase
         [FromBody] SaveBuildingInventoryRequest request,
         CancellationToken cancellationToken)
     {
-        // The inventory table is written by case staff and by the field inspector assigned to this
-        // property (until he submits); the «مكونات العقار» text stays the specialist's.
+        // The inventory table is written by case staff, by the field inspector assigned to this
+        // property (until he submits) and by the transaction's appraiser (2026-11-18); the «مكونات العقار»
+        // text stays the specialist's.
         var actor = await ResolveActorAsync(cancellationToken);
         var access = await _inventory.ResolveWriteAccessAsync(
             poNumber, propertyId, actor, cancellationToken);
@@ -69,6 +70,5 @@ public class BuildingInventoryController : ControllerBase
         return Ok(result);
     }
 
-    private Task<PartySubmissionActor> ResolveActorAsync(CancellationToken ct) =>
-        PartySubmissionActors.ResolveAsync(User, _permissions, ct);
+    private Task<PartySubmissionActor> ResolveActorAsync(CancellationToken ct) => PartySubmissionActors.ResolveAsync(User, _permissions, ct);
 }

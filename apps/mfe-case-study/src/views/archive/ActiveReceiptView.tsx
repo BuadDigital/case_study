@@ -9,6 +9,8 @@ import {
 } from "../ActiveTransactionQueueView";
 import { buildCaseStudyQueueRowMoreItems } from "../../lib/app-data/active-queue-row-menu";
 import { activeReceiptPath, caseStudyWorkspacePath } from "../../lib/my-task-routes";
+import { Pages } from "@platform/types";
+import { ActiveTransactionQueueTableLayouts } from "../active-transaction-queue-state";
 
 /**
  * «الاستلام من الأطراف» — coordination's queue (ruling 2026-11-02): distributed transactions whose
@@ -18,10 +20,10 @@ import { activeReceiptPath, caseStudyWorkspacePath } from "../../lib/my-task-rou
 export function ActiveReceiptView() {
   const config = useMemo(
     (): ActiveTransactionQueueConfig => ({
-      pageId: "active-receipt",
+      pageId: Pages.ActiveReceipt,
       pageTitle: "الاستلام من الأطراف",
       hidePageTitle: true,
-      tableLayout: "case-study",
+      tableLayout: ActiveTransactionQueueTableLayouts.CaseStudy,
       emptyLine: "لا توجد معاملات بانتظار الاستلام.",
       emptyHint:
         "تظهر هنا المعاملات بعد التوزيع حتى يسلّم المعاين والمكتب الهندسي عملهما ويرسلها أخصائي التنسيق للدراسة؛ بعدها تنتقل إلى «دراسة حالة العقارات».",

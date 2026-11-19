@@ -1,6 +1,7 @@
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { ApiAuthError } from "./permissions";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type OrganizationSettingsApiConfig = {
   baseUrl?: string;
@@ -602,14 +603,14 @@ export async function getOrganizationSettings(
         Authorization: `Bearer ${config.token}`,
       },
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeSettings(raw) };
   } catch (err) {
-    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
-    return { ok: false, kind: "network" };
+    if (err instanceof ApiAuthError) return { ok: false, kind: ApiErrorKinds.Auth };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -617,8 +618,8 @@ export async function getOrganizationSettings(
 async function readSettingsWrite(
   res: Response,
 ): Promise<OrganizationSettingsResult<OrganizationSettingsDto>> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 403) return { ok: false, kind: "forbidden" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
   if (res.status === 400) {
     const payload = (await res.json().catch(() => null)) as {
       detail?: string;
@@ -626,11 +627,11 @@ async function readSettingsWrite(
     } | null;
     return {
       ok: false,
-      kind: "validation",
+      kind: ApiErrorKinds.Validation,
       message: payload?.detail ?? payload?.error ?? "بيانات غير صالحة",
     };
   }
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
   const raw = (await res.json()) as Record<string, unknown>;
   return { ok: true, data: normalizeSettings(raw) };
 }
@@ -651,8 +652,8 @@ export async function saveOrganizationSettings(
     });
     return await readSettingsWrite(res);
   } catch (err) {
-    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
-    return { ok: false, kind: "network" };
+    if (err instanceof ApiAuthError) return { ok: false, kind: ApiErrorKinds.Auth };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -692,8 +693,8 @@ export async function syncStaffValuer(
     });
     return await readSettingsWrite(res);
   } catch (err) {
-    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
-    return { ok: false, kind: "network" };
+    if (err instanceof ApiAuthError) return { ok: false, kind: ApiErrorKinds.Auth };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -727,9 +728,9 @@ export async function getOrganizationSettingsSectionEditors(
     const res = await fetch(`${base}/api/organization-settings/section-editors`, {
       headers: { Authorization: `Bearer ${config.token}`, Accept: "application/json" },
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     return {
       ok: true,
@@ -740,7 +741,7 @@ export async function getOrganizationSettingsSectionEditors(
       },
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -766,8 +767,8 @@ export async function notifyOrganizationSettingsGap(
       },
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
         detail?: string;
@@ -776,11 +777,11 @@ export async function notifyOrganizationSettingsGap(
       } | null;
       return {
         ok: false,
-        kind: "validation",
+        kind: ApiErrorKinds.Validation,
         message: payload?.detail ?? payload?.error ?? payload?.title,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const raw = (await res.json()) as Record<string, unknown>;
     return {
       ok: true,
@@ -790,7 +791,7 @@ export async function notifyOrganizationSettingsGap(
       },
     };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 

@@ -92,6 +92,7 @@ import {
   scrollToInspectorField,
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
+  InspectorStepLayouts,
 } from "../../lib/app-data/inspector-workspace-validation";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 
@@ -247,7 +248,7 @@ export function InspectorCard({
   badge,
   children,
   defaultOpen = false,
-  layout = "desktop",
+  layout = InspectorStepLayouts.Desktop,
   step,
   subtitle,
   hidden = false,
@@ -264,7 +265,7 @@ export function InspectorCard({
   hidden?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const mobile = layout === "mobile";
+  const mobile = layout === InspectorStepLayouts.Mobile;
 
   if (hidden) return null;
 

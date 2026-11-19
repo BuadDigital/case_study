@@ -4,6 +4,9 @@ import type {
   ChecklistAnswer,
   EngineeringSurveyChecklistRow,
 } from "./engineering-survey-data";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
+import { CaseStudyReportAnswers } from "@platform/app-shared/app-data/case-study-report-model";
+import { CaseStudyQuestionSections } from "@platform/app-shared/domain/case-study/question-catalog";
 
 /** Overlapping questions: checklist (above) ↔ survey and nature (below). */
 type ChecklistCaseStudyLink = {
@@ -14,7 +17,7 @@ type ChecklistCaseStudyLink = {
 };
 
 function surveyKey(index: number): string {
-  return caseStudyAnswerKey("survey", index);
+  return caseStudyAnswerKey(CaseStudyQuestionSections.Survey, index);
 }
 
 /** Shared wording between the 13-item checklist and survey step questions. */
@@ -56,14 +59,14 @@ function checklistAnswerToCaseStudy(
   yesMapsToA: boolean,
 ): CaseStudyReportAnswer | null {
   if (answer === null) return null;
-  if (yesMapsToA) return answer === "yes" ? "A" : "B";
-  return answer === "yes" ? "B" : "A";
+  if (yesMapsToA) return answer === ChecklistAnswers.Yes ? CaseStudyReportAnswers.A : CaseStudyReportAnswers.B;
+  return answer === ChecklistAnswers.Yes ? CaseStudyReportAnswers.B : CaseStudyReportAnswers.A;
 }
 
 function isAnswered(
   value: CaseStudyReportAnswer | null | undefined,
 ): value is CaseStudyReportAnswer {
-  return value === "A" || value === "B";
+  return value === CaseStudyReportAnswers.A || value === CaseStudyReportAnswers.B;
 }
 
 /** One-way: checklist → case study. Skips keys the party already answered. */

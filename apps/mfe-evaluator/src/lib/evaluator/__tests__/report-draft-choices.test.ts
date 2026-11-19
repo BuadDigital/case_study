@@ -74,6 +74,8 @@ describe("report draft choices", () => {
     // A linked property's report keeps its «-L» (numbering 2026-11-08).
     expect(versionedReportNo("PRV-26-00123-L", 2)).toBe("PRV-26-00123-L/2");
     expect(versionedReportNo("", 2)).toBe("");
+    // The package's number already carries its suffix (stamped by the server, 2026-11-18).
+    expect(versionedReportNo("PRV-26-00123/2", 2)).toBe("PRV-26-00123/2");
   });
 
   it("only the recorded deposit code is printed", () => {

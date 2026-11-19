@@ -16,9 +16,11 @@ import {
   individualFeeUiStatus,
   statementMeta,
   statusMeta,
+  FeeUiStatuses,
 } from "./party-individual-fees-state";
 import { feeRowCardFields, statementCardFields } from "./FeeLedgerParts";
 import type { usePartyIndividualFeesWorkflow } from "./usePartyIndividualFeesWorkflow";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 type Workflow = ReturnType<typeof usePartyIndividualFeesWorkflow>;
 type FeeRow = Workflow["filteredFees"][number];
@@ -51,7 +53,7 @@ export function FeeRowAction({
 }) {
   return (
     <>
-      {st === "needs_submit" ? (
+      {st === FeeUiStatuses.NeedsSubmit ? (
         <button
           type="button"
           disabled={busy || !row.canSubmitToSupervisor}
@@ -61,24 +63,24 @@ export function FeeRowAction({
         >
           رفع للمشرف
         </button>
-      ) : st === "sup_review" ? (
+      ) : st === FeeUiStatuses.SupReview ? (
         <span className="text-[11px] text-text-3">
           بانتظار الاعتماد
         </span>
-      ) : st === "returned_to_party" ||
-        st === "inquiry_to_party" ? (
+      ) : st === FeeUiStatuses.ReturnedToParty ||
+        st === FeeUiStatuses.InquiryToParty ? (
         <span className="text-[11px] text-text-3">
           راجع الملاحظات وأعِد الرفع
         </span>
-      ) : st === "draft_work" ? (
+      ) : st === FeeUiStatuses.DraftWork ? (
         <span className="text-[11px] text-text-3">
           بعد إنجاز العمل يظهر للرفع
         </span>
-      ) : st === "at_finance" || st === "listed" ? (
+      ) : st === FeeUiStatuses.AtFinance || st === FeeUiStatuses.Listed ? (
         <span className="text-[11px] text-text-3">
           المالية تتولى أمر الصرف
         </span>
-      ) : st === "paid" ? (
+      ) : st === FeeUiStatuses.Paid ? (
         <span className="text-[11px] font-semibold text-heading">
           ✓ مصروف
         </span>
@@ -169,7 +171,7 @@ export function PartyFeesPhoneList({
           return (
             <MobileRecordCard
               key={partyFeeRowKey(row)}
-              tone={st === "needs_submit" ? "gold" : undefined}
+              tone={st === FeeUiStatuses.NeedsSubmit ? "gold" : undefined}
               title={<bdi dir="ltr" className="tabular-nums">{deed}</bdi>}
               subtitle={region}
               status={<StatusPill label={meta.label} style={meta.style} />}
@@ -228,7 +230,7 @@ export function PartyStatementsPhoneList({
               status={<StatusPill label={meta.label} style={meta.style} />}
               fields={statementCardFields(
                 s,
-                s.status === "closed" && s.paidAtUtc
+                s.status === PartyBillingStatementStatuses.Closed && s.paidAtUtc
                   ? `صُرف ${formatYmd(s.paidAtUtc)}`
                   : "بانتظار الصرف",
               )}

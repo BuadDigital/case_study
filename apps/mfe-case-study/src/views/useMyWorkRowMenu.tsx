@@ -9,6 +9,7 @@ import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { RedistributePartiesHost } from "../components/distribution/RedistributePartiesHost";
+import { useAppraiserHandoverMenuItems } from "../components/appraiser-handover/AppraiserHandoverCards";
 import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
 import { useTransactionGeneralActions } from "../components/po-intake/useTransactionGeneralActions";
 import { withTransactionGeneralItems } from "../lib/app-data/transaction-general-actions";
@@ -23,6 +24,7 @@ import {
   type PoIntakeRecord,
 } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 /**
  * The ⋮ menu of a «أعمالي» row — the same items its stage queue offers, so the stage queues can
@@ -70,6 +72,9 @@ export function useMyWorkRowMenu({
   const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
     useTransactionGeneralActions({ onChanged: refresh });
   const byId = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
+  // The appraiser asks for a reassignment or transfers to a colleague; he never reassigns (Omar 2026-11-18).
+  const isAppraiser = role === "real-estate-appraiser";
+  const { itemsFor: handoverItemsFor, modal: handoverModal } = useAppraiserHandoverMenuItems(isAppraiser);
 
   const stageItemsFor = useCallback(
     (item: MyWorkItem): RowMoreMenuItem[] => {
@@ -100,7 +105,7 @@ export function useMyWorkRowMenu({
           refreshQueue: refresh,
           showToast,
           poByNumber,
-          allowPhaseRevert: task.phase !== "enfath",
+          allowPhaseRevert: task.phase !== CaseStudyTaskPhases.Enfath,
           allowDeleteTransaction: true,
           skipsBourse: property
             ? skipsBourseForIdentifier(property.identifierType)
@@ -150,9 +155,13 @@ export function useMyWorkRowMenu({
             reopenable: item.stage === "upload" && !item.reopened,
           })
         : [];
-      return withTransactionGeneralItems(stageItemsFor(item), general);
+      const appraisal = isAppraiser
+        ? tasks.find((t) => t.kind === "property-appraisal" && t.propertyId === item.propertyId)
+        : undefined;
+      const handover = appraisal ? handoverItemsFor(appraisal) : [];
+      return withTransactionGeneralItems([...stageItemsFor(item), ...handover], general);
     },
-    [poByNumber, generalItemsFor, stageItemsFor],
+    [poByNumber, generalItemsFor, stageItemsFor, isAppraiser, tasks, handoverItemsFor],
   );
 
   const modals = (
@@ -160,6 +169,7 @@ export function useMyWorkRowMenu({
       {dialog}
       {failureRaiseModal}
       {generalDialogs}
+      {handoverModal}
       <RedistributePartiesHost
         task={redistributeTask}
         onClose={() => setRedistributeTask(null)}

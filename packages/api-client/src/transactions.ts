@@ -2,6 +2,7 @@ import { readProblemMessage } from "./parse-json";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, PropertyTimelineEventDto, WorkOrdersApiConfig } from "./work-orders";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 /**
  * The transaction (المعاملة) above the deeds —. An ordinary property is a
@@ -124,10 +125,10 @@ export type TransactionTimelineEventDto = PropertyTimelineEventDto & {
  * failure → server; a success parses the JSON body.
  */
 async function readJson<T>(res: Response): Promise<ApiOk<T> | ApiErr> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 403) return { ok: false, kind: "forbidden" };
-  if (res.status === 404) return { ok: false, kind: "not_found" };
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+  if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
+  if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
   return { ok: true, data: (await res.json()) as T };
 }
 
@@ -152,7 +153,7 @@ export async function getTransactionByProperty(
     });
     return await readJson<TransactionDetailDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -173,7 +174,7 @@ export async function getTransaction(
     });
     return await readJson<TransactionDetailDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -206,13 +207,13 @@ type CommandErr = ApiErr & { message?: string };
  * the JSON body.
  */
 export async function readCommand<T>(res: Response): Promise<ApiOk<T> | CommandErr> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 403) return { ok: false, kind: "forbidden", message: await readProblemMessage(res) };
-  if (res.status === 404) return { ok: false, kind: "not_found" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden, message: await readProblemMessage(res) };
+  if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
   if (!res.ok) {
     return {
       ok: false,
-      kind: res.status >= 500 ? "server" : "validation",
+      kind: res.status >= 500 ? ApiErrorKinds.Server : ApiErrorKinds.Validation,
       message: await readProblemMessage(res),
     };
   }
@@ -244,7 +245,7 @@ export async function searchTransactionDeeds(
     if (!result.ok) return result;
     return { ok: true, data: Array.isArray(result.data) ? result.data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -274,7 +275,7 @@ export async function mergeTransactions(
     });
     return await readCommand<TransactionDetailDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -297,7 +298,7 @@ export async function receiveTransaction(
     });
     return await readCommand(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -330,7 +331,7 @@ export async function listTransactionExternalReceipts(
     });
     return await readJson<TransactionExternalReceiptDto[]>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -350,7 +351,7 @@ export async function addTransactionExternalReceipt(
     });
     return await readCommand<TransactionExternalReceiptDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -371,7 +372,7 @@ export async function closeTransactionExternalReceipt(
     });
     return await readCommand<TransactionExternalReceiptDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -391,7 +392,7 @@ export async function changeTransactionLinkKind(
     });
     return await readCommand<TransactionDetailDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -440,7 +441,7 @@ export async function unmergeTransactionDeed(
     });
     return await readCommand<TransactionDetailDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -466,7 +467,7 @@ export async function getTransactionTimeline(
     if (!result.ok) return result;
     return { ok: true, data: Array.isArray(result.data) ? result.data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -541,7 +542,7 @@ export async function previewTransactionCancellation(
     });
     return await readCommand<TransactionCancellationPreviewDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -563,7 +564,7 @@ export async function getTransactionCancellationState(
     });
     return await readJson<TransactionCancellationStateDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -582,7 +583,7 @@ export async function listTransactionCancellations(
     if (!result.ok) return result;
     return { ok: true, data: Array.isArray(result.data) ? result.data : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -615,7 +616,7 @@ export async function requestTransactionCancellation(
     });
     return await readCommand<TransactionCancellationDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -645,6 +646,6 @@ export async function decideTransactionCancellation(
     );
     return await readCommand<TransactionCancellationDto>(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

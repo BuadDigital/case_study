@@ -15,6 +15,7 @@ import {
   preloadPoPropertyBourseForm,
 } from "./MyTaskWorkLazyForms";
 import type { MyTaskWorkflow } from "./useMyTaskWorkWorkflow";
+import { TaskWorkLayouts } from "./my-task-work-state";
 
 type PropertyFormProps = Pick<
   MyTaskWorkflow,
@@ -42,9 +43,9 @@ export function MyTaskWorkEnfathStep({
 }: PropertyFormProps) {
   return (
     <RegistrationFormCard
-      title={layout === "panel" ? undefined : "بيانات إنفاذ (الصك)"}
+      title={layout === TaskWorkLayouts.Panel ? undefined : "بيانات إنفاذ (الصك)"}
       subtitle={
-        layout === "panel" ? undefined : "البيانات الواردة من منصة إنفاذ"
+        layout === TaskWorkLayouts.Panel ? undefined : "البيانات الواردة من منصة إنفاذ"
       }
     >
       {/* Working the Infath step = next step is bourse — prefetch (bundle-preload). */}
@@ -120,9 +121,9 @@ export function MyTaskWorkDistributionStep({
 >) {
   return (
     <RegistrationFormCard
-      title={layout === "panel" ? undefined : "توزيع المعاملة على الأطراف"}
+      title={layout === TaskWorkLayouts.Panel ? undefined : "توزيع المعاملة على الأطراف"}
       subtitle={
-        layout === "panel"
+        layout === TaskWorkLayouts.Panel
           ? undefined
           : "فعّل الطرف ثم اختر المسؤول — يمكن الإسناد لأكثر من طرف معاً"
       }

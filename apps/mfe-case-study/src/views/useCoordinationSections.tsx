@@ -47,6 +47,7 @@ import { usePropertyDetailPartySubmissionsQuery } from "../query/property-detail
 import { CoordinationIntakeBody } from "./CoordinationIntake";
 import { StepLink } from "./StepLink";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 /**
  * The transaction's live engineering-survey task, if one was distributed (its section shows only then).
  * Edge cases: a cancelled one — the study skipped the office («تجاوز المكتب الهندسي», 2026-11-11), or the
@@ -60,7 +61,7 @@ export function useSurveyTask(
     () =>
       studyTask
         ? childTasksForCaseStudyParent(studyTask.id, [...tasks]).find(
-            (t) => t.kind === "engineering-survey" && t.status !== "cancelled",
+            (t) => t.kind === WorkflowTaskKinds.EngineeringSurvey && t.status !== WorkflowTaskStatuses.Cancelled,
           )
         : undefined,
     [studyTask, tasks],
@@ -138,7 +139,7 @@ export function useCoordinationSections({
   }, [queryClient, record.poNumber]);
   // «المهام المرتبطة» lists the office's survey added after the distribution too (Omar 2026-11-12).
   const addedSurveys = useMemo(() => addedSurveysOfProperty(tasks, property.id), [tasks, property.id]);
-  const intakeActive = step <= 2 && task?.status !== "cancelled";
+  const intakeActive = step <= 2 && task?.status !== WorkflowTaskStatuses.Cancelled;
   const sent = task?.transactionReceived === true;
 
   const detailHref = (tab?: string) => poPropertyDetailPath(record.poNumber, property.id, tab);
@@ -149,7 +150,7 @@ export function useCoordinationSections({
       case "intake":
         return (
           <CoordinationIntakeBody
-            step="enfath"
+            step={CaseStudyTaskPhases.Enfath}
             fallback={
               <StepLink line="بيانات الأمر والصك في «تفاصيل العقار»." label="عرض التفاصيل" href={detailHref("basic")} />
             }
@@ -158,7 +159,7 @@ export function useCoordinationSections({
       case "bourse":
         return (
           <CoordinationIntakeBody
-            step="bourse"
+            step={CaseStudyTaskPhases.Bourse}
             fallback={
               <StepLink line="بيانات البورصة والملاك في «تفاصيل العقار»." label="عرض التفاصيل" href={detailHref("basic")} />
             }
@@ -166,7 +167,7 @@ export function useCoordinationSections({
         );
       case "distribution": {
         if (intakeActive) {
-          return <CoordinationIntakeBody step="distribution" fallback={null} />;
+          return <CoordinationIntakeBody step={CaseStudyTaskPhases.Distribution} fallback={null} />;
         }
         if (!task) return notYet("لا توجد مهمة دراسة حالة لهذا الصك بعد.");
         // Past the distribution: who was assigned, read-only; changing a party is «تعديل إسناد الأطراف».
@@ -180,7 +181,7 @@ export function useCoordinationSections({
               readOnly
               // The form places it: beside the parties, at the row's end (Omar 2026-11-15).
               action={
-                task.phase === "case-study" && canRedistributeParties(access) ? (
+                task.phase === CaseStudyTaskPhases.CaseStudy && canRedistributeParties(access) ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -216,8 +217,8 @@ export function useCoordinationSections({
                 while its work is not delivered and the report not issued, the study may skip it. */}
             {studyTask &&
             surveyTask &&
-            surveyTask.status !== "completed" &&
-            studyTask.phase === "case-study" &&
+            surveyTask.status !== WorkflowTaskStatuses.Completed &&
+            studyTask.phase === CaseStudyTaskPhases.CaseStudy &&
             studyTask.studyReportIssued !== true &&
             canSkipEngineeringSurvey(access) ? (
               <SkipEngineeringSurveyNote caseStudyTaskId={studyTask.id} />

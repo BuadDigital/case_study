@@ -7,6 +7,7 @@ import {
   submitPartyTaskSubmission,
   type CorrectInspectedTypeRequest,
   type ReturnInspectionRequest,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { createKeyedWriteQueue } from "@platform/app-shared/lib/keyed-write-queue";
 import {
@@ -52,6 +53,7 @@ import {
   type InspectorWorkspacePatchInput,
 } from "./inspector-workspace-model";
 import { fetchInspectorWorkspace } from "./inspector-workspace-reads";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 /**
  * Every inspector workspace PUT sends the whole draft with no version token, so the debounce, the
@@ -66,7 +68,7 @@ export async function migrateInspectorDefaultCoordsIfNeeded(
   draft: InspectorWorkspaceDraft,
   rawCoords?: { latitude: string; longitude: string },
 ): Promise<InspectorWorkspaceDraft> {
-  if (draft.status === "submitted") return draft;
+  if (draft.status === SubmissionStatuses.Submitted) return draft;
   const lat = rawCoords?.latitude ?? draft.mapLatitude;
   const lng = rawCoords?.longitude ?? draft.mapLongitude;
   if (!shouldUseJeddahDefaultCoords(lat, lng)) {
@@ -204,11 +206,11 @@ async function putInspectorWorkspaceDraft(
   const nextDraft = sanitizeInspectorDraftForLand({
     ...draft,
     status:
-      draft.status === "submitted"
-        ? "submitted"
-        : draft.status === "reopened"
-          ? "reopened"
-          : "draft",
+      draft.status === SubmissionStatuses.Submitted
+        ? SubmissionStatuses.Submitted
+        : draft.status === SubmissionStatuses.Reopened
+          ? SubmissionStatuses.Reopened
+          : SubmissionStatuses.Draft,
     updatedAtUtc: new Date().toISOString(),
   });
   const payload = draftToPayload(nextDraft);
@@ -248,7 +250,7 @@ async function putInspectorWorkspaceDraft(
         const err = new Error(
           resolveApiError(result.kind, result.errors, "تعذّر حفظ مسودة المعاينة"),
         ) as Error & { offlineQueueable?: boolean; errors?: Record<string, string> };
-        if (result.kind !== "network" && result.kind !== "server") {
+        if (result.kind !== ApiErrorKinds.Network && result.kind !== ApiErrorKinds.Server) {
           err.offlineQueueable = false;
         }
         if (result.errors) {
@@ -371,7 +373,7 @@ export async function updateInspectorWorkspace(
   if (!current) return null;
   // Built from the cached draft as it is NOW — see InspectorWorkspacePatchInput.
   const patch = resolveInspectorWorkspacePatch(current, patchInput);
-  if (current.status === "submitted" && !options?.allowWhenSubmitted) {
+  if (current.status === SubmissionStatuses.Submitted && !options?.allowWhenSubmitted) {
     return current;
   }
 
@@ -381,7 +383,7 @@ export async function updateInspectorWorkspace(
   const next = mergeInspectorWorkspacePatch(current, patch);
   setCache(next);
   // Spec: the edit is on the device now — the network save below is debounced.
-  if (next.status !== "submitted") {
+  if (next.status !== SubmissionStatuses.Submitted) {
     void saveLocalWorkingCopy({
       taskId,
       kind: "field-inspection",
@@ -411,7 +413,7 @@ export async function submitInspectorWorkspace(
   if (!current) {
     return { ok: false, message: "لا توجد مسودة للإرسال" };
   }
-  if (current.status === "submitted") {
+  if (current.status === SubmissionStatuses.Submitted) {
     return { ok: true, draft: current };
   }
 
@@ -452,7 +454,7 @@ async function submitFlushedInspectorWorkspace(
             offlineQueueable?: boolean;
           };
           err.errors = result.errors;
-          if (result.kind !== "network" && result.kind !== "server") {
+          if (result.kind !== ApiErrorKinds.Network && result.kind !== ApiErrorKinds.Server) {
             err.offlineQueueable = false;
           }
           throw err;
@@ -465,7 +467,7 @@ async function submitFlushedInspectorWorkspace(
     if (queued.queued) {
       const pending: InspectorWorkspaceDraft = {
         ...saved,
-        status: "draft",
+        status: SubmissionStatuses.Draft,
         updatedAtUtc: new Date().toISOString(),
       };
       writeCache(pending);

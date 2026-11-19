@@ -4,6 +4,7 @@ import {
   inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceLocked,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { WorkflowTaskKinds, SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 export function workspaceHasDraftProgress(
   workspace: FieldInspectionWorkspaceListItemDto,
@@ -23,7 +24,7 @@ export function fieldInspectionTaskStatusBadge(
 ): { label: string; className: string } | null {
   if (taskStatus === "completed") {
     return {
-      label: inspectorWorkspaceStatusLabel("submitted"),
+      label: inspectorWorkspaceStatusLabel(SubmissionStatuses.Submitted),
       className: "b-done",
     };
   }
@@ -31,13 +32,13 @@ export function fieldInspectionTaskStatusBadge(
   if (workspace) {
     if (workspace.status === "submitted") {
       return {
-        label: inspectorWorkspaceStatusLabel("submitted"),
+        label: inspectorWorkspaceStatusLabel(SubmissionStatuses.Submitted),
         className: "b-done",
       };
     }
     if (workspace.status === "reopened") {
       return {
-        label: inspectorWorkspaceStatusLabel("reopened"),
+        label: inspectorWorkspaceStatusLabel(SubmissionStatuses.Reopened),
         className: "b-returned",
       };
     }
@@ -71,7 +72,7 @@ export function filterFieldInspectionListedTasks(
 ): WorkflowTask[] {
   return tasks.filter(
     (t) =>
-      t.kind === "field-inspection" &&
+      t.kind === WorkflowTaskKinds.FieldInspection &&
       isVisibleInFieldInspectionQueue(t.status, {
         showCompleted: options?.showCompleted,
       }),

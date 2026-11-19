@@ -1,6 +1,7 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { readProblemMessage } from "./parse-json";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type PrintPdfApiConfig = { token: string; baseUrl?: string };
 
@@ -25,11 +26,11 @@ export async function renderPrintPdf(config: PrintPdfApiConfig, html: string): P
       headers: authHeaders(config.token),
       body: JSON.stringify({ html }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server", message: await readProblemMessage(res) };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server, message: await readProblemMessage(res) };
     return { ok: true, data: await res.blob() };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

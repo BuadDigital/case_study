@@ -25,6 +25,7 @@ import {
   normalizeDeedNatureMatchOutcome,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 /** «450» / «١٢٫٥» → «450 م²» / «12.5 م²»; an empty or unreadable value → «» (the field then shows «—»). */
 export function areaText(raw: string | null | undefined): string {
@@ -89,7 +90,7 @@ export function appraiserAreaFacts(input: {
   inspector: InspectorAreas | null;
 }): AppraiserAreaFacts {
   const { survey, inspector } = input;
-  const byNature = survey?.deedMatchesNature === "no" && Boolean(survey.natureOnSiteAreaSqm?.trim());
+  const byNature = survey?.deedMatchesNature === ChecklistAnswers.No && Boolean(survey.natureOnSiteAreaSqm?.trim());
   const total =
     inspector?.buildingsTotal.trim() ||
     (inspector

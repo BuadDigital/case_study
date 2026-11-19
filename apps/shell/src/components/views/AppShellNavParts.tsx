@@ -41,6 +41,7 @@ import {
   navItemClasses,
   navLabelClasses,
 } from "./AppShellNavPrimitives";
+import { Pages } from "@platform/types";
 
 export function NavRow({
   item,
@@ -333,7 +334,7 @@ export function ActiveTransactionsNavDropdown({
 
   const childActive = (tx: ActiveTransactionNavItem) =>
     currentPage === tx.id ||
-    (tx.id === "active-case-study" && onCaseStudyWorkspace);
+    (tx.id === Pages.ActiveCaseStudy && onCaseStudyWorkspace);
 
   // A group of one is no group (Omar 2026-11-12: once «أعمالي» took the place of the inspector's
   // queue, «فوترة الأتعاب» sat alone under «قوائم العمل»): the lone page is a plain sidebar row,

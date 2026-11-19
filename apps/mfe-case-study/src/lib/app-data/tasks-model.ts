@@ -38,6 +38,7 @@ import type {
   WorkflowTaskStatus,
 } from "@platform/app-shared/workflow/task-types";
 
+import { CaseStudyTaskPhases, WorkflowTaskStatuses, WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 type LegacyDistribution = {
   fieldInspector?: boolean;
   governmentReviewer?: boolean;
@@ -199,8 +200,6 @@ export function distributionToDto(
   };
 }
 
-export type SyncTasksResult = { ok: true } | { ok: false; error: string };
-
 export function taskKindLabel(kind: WorkflowTaskKind | string): string {
   if (kind === "case-study-property") return "دراسة حالة — عقار";
   if (kind === "field-inspection") return "معاينة ميدانية";
@@ -211,17 +210,17 @@ export function taskKindLabel(kind: WorkflowTaskKind | string): string {
 }
 
 export function taskPhaseLabel(phase: CaseStudyTaskPhase): string {
-  if (phase === "enfath") return "البيانات الأولية للعقار";
-  if (phase === "bourse") return "المرحلة 2 — بيانات البورصة";
-  if (phase === "distribution") return "المرحلة 3 — توزيع الأطراف";
-  if (phase === "case-study") return "دراسة حالة العقار";
-  if (phase === "obstruction") return "تعذّر — بانتظار المشرف";
+  if (phase === CaseStudyTaskPhases.Enfath) return "البيانات الأولية للعقار";
+  if (phase === CaseStudyTaskPhases.Bourse) return "المرحلة 2 — بيانات البورصة";
+  if (phase === CaseStudyTaskPhases.Distribution) return "المرحلة 3 — توزيع الأطراف";
+  if (phase === CaseStudyTaskPhases.CaseStudy) return "دراسة حالة العقار";
+  if (phase === CaseStudyTaskPhases.Obstruction) return "تعذّر — بانتظار المشرف";
   return "مكتملة";
 }
 
 export function taskStatusLabel(status: WorkflowTaskStatus): string {
-  if (status === "open") return "قيد الإجراء";
-  if (status === "blocked") return "موقوفة";
+  if (status === WorkflowTaskStatuses.Open) return "قيد الإجراء";
+  if (status === WorkflowTaskStatuses.Blocked) return "موقوفة";
   if (status === "cancelled") return "ملغاة";
   return "مكتملة";
 }
@@ -323,11 +322,6 @@ export function distributionValidationError(
   return null;
 }
 
-/** Server-side slot sync from work orders. */
-export type SyncTaskSlotsResult =
-  | { ok: true; tasks: WorkflowTask[] }
-  | { ok: false; error: string };
-
 export type AdvanceTaskResult =
   | { ok: true; task: WorkflowTask }
   | { ok: false; error: string };
@@ -383,14 +377,14 @@ export function partyAssigneeIdFromDistribution(
   distribution: TaskDistributionDraft,
 ): string {
   switch (kind) {
-    case "government-review":
+    case WorkflowTaskKinds.GovernmentReview:
       // Not selected via transaction distribution — operations tasks own this.
       return "";
-    case "field-inspection":
+    case WorkflowTaskKinds.FieldInspection:
       return distribution.inspectorId.trim();
-    case "property-appraisal":
+    case WorkflowTaskKinds.PropertyAppraisal:
       return distribution.valuatorId.trim();
-    case "engineering-survey":
+    case WorkflowTaskKinds.EngineeringSurvey:
       return distribution.engineeringOfficeId.trim();
     default:
       return "";

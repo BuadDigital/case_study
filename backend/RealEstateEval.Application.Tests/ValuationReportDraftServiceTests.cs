@@ -438,6 +438,56 @@ public class ValuationReportDraftServiceTests
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(rig.Contexts.Valuation, rig.RequestId));
     }
 
+    [Fact]
+    public async Task A_later_version_is_numbered_with_its_suffix_for_the_print_and_enfaz()
+    {
+        await using var rig = await ArrangeSentAsync();
+        var draft = await rig.Contexts.Valuation.ValuationReportDrafts.SingleAsync();
+        draft.Version = 2;
+        await rig.Contexts.Valuation.SaveChangesAsync();
+
+        var (_, errors) = await rig.Service.ApproveAsync(
+            rig.RequestId, new ApproveReportDraftRequest { ReportDate = "2026-10-05", Html = Html }, Appraiser);
+
+        Assert.Null(errors);
+        Assert.Equal(2, rig.Commands.LastConfirmVersion);
+    }
+
+    [Fact]
+    public async Task Review_voids_the_approval_when_it_returns_the_valuation()
+    {
+        await using var rig = await ArrangeSentAsync();
+        await rig.Service.ApproveAsync(
+            rig.RequestId, new ApproveReportDraftRequest { ReportDate = "2026-10-05", Html = Html }, Appraiser);
+        var propertyId = (await rig.Contexts.Valuation.ValuationRequests.SingleAsync()).PropertyId;
+
+        var (back, errors) = await rig.Service.WithdrawApprovalForReturnAsync(
+            propertyId, new WithdrawReportDraftRequest { Note = "المقيّم غائب" }, ReviewOnly);
+
+        Assert.Null(errors);
+        Assert.Equal(ReportDraftStatuses.Sent, back!.Status);
+        Assert.False(await ValuationReportFreeze.IsFrozenAsync(rig.Contexts.Valuation, rig.RequestId));
+        Assert.Empty(rig.Contexts.Valuation.ValuationReportIssuances);
+    }
+
+    [Fact]
+    public async Task Only_review_voids_the_approval_for_a_return()
+    {
+        await using var rig = await ArrangeSentAsync();
+        await rig.Service.ApproveAsync(
+            rig.RequestId, new ApproveReportDraftRequest { ReportDate = "2026-10-05", Html = Html }, Appraiser);
+        var propertyId = (await rig.Contexts.Valuation.ValuationRequests.SingleAsync()).PropertyId;
+
+        var (result, errors) = await rig.Service.WithdrawApprovalForReturnAsync(
+            propertyId, new WithdrawReportDraftRequest(), StudyOnly);
+
+        Assert.Null(result);
+        Assert.Equal(
+            ValuationReportDraftService.ReviewWithdrawApprovalForbiddenAr,
+            errors![ReportDraftErrorKeys.Forbidden]);
+        Assert.True(await ValuationReportFreeze.IsFrozenAsync(rig.Contexts.Valuation, rig.RequestId));
+    }
+
     // ---- arrangement ----
 
     /// <summary>The staged workflow notices as parsed payload objects (JSON escapes Arabic text).</summary>

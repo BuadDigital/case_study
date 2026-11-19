@@ -5,6 +5,8 @@
  */
 import type { ApiErr, BuildingInventoryLineDto } from "@platform/api-client";
 import { inspectionHasStructures } from "./specialist-components";
+import { ApiErrorKinds } from "@platform/api-client";
+import { WorkspaceActors } from "@platform/app-shared/app-data/inspector-workspace-data";
 
 /** Who is editing the table — decides the wording of a refusal. */
 export type BuildingInventoryActor = "specialist" | "inspector";
@@ -81,10 +83,10 @@ export function inventorySaveMessage(res: ApiErr, actor: BuildingInventoryActor)
     res.errors?.lines ||
     res.errors?.componentsText ||
     Object.values(res.errors ?? {})[0];
-  if (res.kind === "forbidden") {
+  if (res.kind === ApiErrorKinds.Forbidden) {
     return (
       fieldError ||
-      (actor === "inspector"
+      (actor === WorkspaceActors.Inspector
         ? "لا يمكنك تعديل جدول الحصر بعد إرسال المعاينة"
         : "جدول الحصر يعبّئه المعاين المُسنَد قبل إرسال معاينته، ويعدّله أخصائي دراسة الحالة")
     );

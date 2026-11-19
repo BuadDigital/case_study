@@ -50,6 +50,7 @@ internal static class CaseStudyReportMapping
             PropertyId = entity.PropertyId?.ToString(),
             PoNumber = entity.PoNumber,
             Status = entity.Status,
+            Version = entity.ReportVersion,
             CurrentStep = entity.CurrentStep,
             RequestNumber = entity.RequestNumber,
             RequestDate = entity.RequestDate,

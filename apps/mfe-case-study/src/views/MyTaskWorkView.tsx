@@ -26,16 +26,18 @@ import {
   activeTaskWorkStep,
   canRaiseFailure,
   taskWorkChromeTitle,
+  TaskWorkLayouts,
 } from "./my-task-work-state";
 import {
   useMyTaskWorkWorkflow,
   type CaseStudyTaskWorkProps,
 } from "./useMyTaskWorkWorkflow";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 export function CaseStudyTaskWork({
   task,
   onRefresh,
-  layout = "page",
+  layout = TaskWorkLayouts.Page,
   onClose,
   onEnfathSaved,
 }: CaseStudyTaskWorkProps) {
@@ -71,9 +73,9 @@ export function CaseStudyTaskWork({
   useEffect(() => {
     if (screen !== "work") return;
     const preloadNext =
-      activeStep === "enfath"
+      activeStep === CaseStudyTaskPhases.Enfath
         ? preloadPoPropertyBourseForm
-        : activeStep === "bourse"
+        : activeStep === CaseStudyTaskPhases.Bourse
           ? preloadDistributionPartiesForm
           : null;
     if (!preloadNext) return;
@@ -136,7 +138,7 @@ export function CaseStudyTaskWork({
           raisedByRole={failureRaisedByRole}
           onSubmitted={() => {
             onRefresh();
-            if (layout === "panel") exit();
+            if (layout === TaskWorkLayouts.Panel) exit();
           }}
         />
       ) : null}

@@ -107,4 +107,7 @@ public class ReturnFromEnfazRequest
 
     /// <summary>Field work is needed — the study is reopened and the screen offers a task for it.</summary>
     public bool NeedsFieldWork { get; init; }
+
+    /// <summary>Enfaz asks to change the value or the forced-sale ratio — requires ReopenValuation (2026-11-18).</summary>
+    public bool ChangesValue { get; init; }
 }

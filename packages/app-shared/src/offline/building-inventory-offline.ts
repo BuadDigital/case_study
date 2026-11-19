@@ -18,6 +18,7 @@ import {
   type BuildingInventoryDto,
   type SaveBuildingInventoryRequest,
   type WorkOrdersApiConfig,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   beginOfflineLease,
@@ -175,15 +176,15 @@ export async function loadBuildingInventoryWithOffline(
       if (field) await rememberBuildingInventory(propertyId, res.data);
       return res;
     }
-    if (res.kind !== "network" || !field) return res;
+    if (res.kind !== ApiErrorKinds.Network || !field) return res;
   } else if (!field) {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 
   const cached = userId ? await cachedInventory(userId, propertyId) : null;
   return cached
     ? { ok: true, fromDevice: true, data: cached }
-    : { ok: false, kind: "network" };
+    : { ok: false, kind: ApiErrorKinds.Network };
 }
 
 type BuildingInventorySaveResult =
@@ -219,7 +220,7 @@ export async function saveBuildingInventoryWithOffline(
     const queued = await queue();
     if (queued) return queued;
   }
-  if (!config) return { ok: false, kind: "auth" };
+  if (!config) return { ok: false, kind: ApiErrorKinds.Auth };
 
   const res = await saveBuildingInventory(config, poNumber, propertyId, body);
   if (res.ok) {
@@ -230,7 +231,7 @@ export async function saveBuildingInventoryWithOffline(
     }
     return { ...res, queued: false };
   }
-  if (res.kind === "network" && field) {
+  if (res.kind === ApiErrorKinds.Network && field) {
     const queued = await queue();
     if (queued) return queued;
   }

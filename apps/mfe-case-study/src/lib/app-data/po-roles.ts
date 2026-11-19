@@ -4,6 +4,7 @@ import {
   holdsSubRole,
   type StaffAccess,
 } from "@platform/app-shared/app-data/case-specialist-sub-roles";
+import { Roles } from "@platform/types";
 
 export type { StaffAccess };
 
@@ -16,7 +17,7 @@ export type { StaffAccess };
  * CDO); mirrors `PoRoleMatrixRules.CanReceivePo`.
  */
 export function canReceivePo(access: StaffAccess): boolean {
-  return access.role === "section-supervisor" || holdsSubRole(access, "coordination");
+  return access.role === Roles.SectionSupervisor || holdsSubRole(access, "coordination");
 }
 
 // «تعذّر نهائي» and «تعذّر داخلي» — the case specialist, the section supervisor and the CDO
@@ -32,7 +33,7 @@ export {
  * is counted with them (my reading). The appraiser is not.
  */
 export function isExternalPartyRole(role: RoleId): boolean {
-  return role === "field-inspector" || role === "engineering-office" || role === "government-reviewer";
+  return role === Roles.FieldInspector || role === Roles.EngineeringOffice || role === Roles.GovernmentReviewer;
 }
 
 /**
@@ -40,7 +41,7 @@ export function isExternalPartyRole(role: RoleId): boolean {
  * supervisor and the CDO. Mirrors `PoRoleMatrixRules.CanDecideTransactionCancel`.
  */
 export function canDecideTransactionCancel(role: RoleId): boolean {
-  return role === "cdo" || role === "section-supervisor";
+  return role === Roles.Cdo || role === Roles.SectionSupervisor;
 }
 
 /**
@@ -52,7 +53,7 @@ export function canRequestTransactionCancel(access: StaffAccess): boolean {
 }
 
 export function canEditPoHeader(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "section-supervisor";
+  return isSuperAdmin(role) || role === Roles.SectionSupervisor;
 }
 
 /**
@@ -76,7 +77,7 @@ export function canAdvanceIntake(access: StaffAccess): boolean {
  * and the CDO (ruling 2026-11-02, with a server-side change log). Mirrors `PoRoleMatrixRules.CanEditPropertyData`.
  */
 export function canEditPropertyData(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "case-specialist" || role === "real-estate-appraiser";
+  return isSuperAdmin(role) || role === Roles.CaseSpecialist || role === Roles.RealEstateAppraiser;
 }
 
 /**
@@ -86,7 +87,7 @@ export function canEditPropertyData(role: RoleId): boolean {
 export function canRevertTaskPhase(access: StaffAccess): boolean {
   return (
     isSuperAdmin(access.role) ||
-    access.role === "section-supervisor" ||
+    access.role === Roles.SectionSupervisor ||
     holdsSubRole(access, "coordination")
   );
 }
@@ -98,8 +99,8 @@ export function canRevertTaskPhase(access: StaffAccess): boolean {
 export function canDistribute(access: StaffAccess): boolean {
   return (
     isSuperAdmin(access.role) ||
-    access.role === "section-supervisor" ||
-    access.role === "general-manager" ||
+    access.role === Roles.SectionSupervisor ||
+    access.role === Roles.GeneralManager ||
     holdsSubRole(access, "coordination")
   );
 }
@@ -111,13 +112,13 @@ export function canDistribute(access: StaffAccess): boolean {
 export function canFormallyReceive(access: StaffAccess): boolean {
   return (
     isSuperAdmin(access.role) ||
-    access.role === "section-supervisor" ||
+    access.role === Roles.SectionSupervisor ||
     holdsSubRole(access, "coordination")
   );
 }
 
 export function isCaseStudySpecialist(role: RoleId): boolean {
-  return role === "case-specialist";
+  return role === Roles.CaseSpecialist;
 }
 
 /**
@@ -129,9 +130,9 @@ export function isCaseStudySpecialist(role: RoleId): boolean {
 export function canAcceptPartyWork(access: StaffAccess): boolean {
   return (
     isSuperAdmin(access.role) ||
-    access.role === "section-supervisor" ||
-    access.role === "general-manager" ||
-    access.role === "case-specialist"
+    access.role === Roles.SectionSupervisor ||
+    access.role === Roles.GeneralManager ||
+    access.role === Roles.CaseSpecialist
   );
 }
 
@@ -153,7 +154,7 @@ export const canHandOverToEnfaz = (access: StaffAccess) => holdsSubRole(access, 
  * the section supervisor and the CDO. Mirrors `PoRoleMatrixRules.CanReopenTransaction`.
  */
 export const canReopenTransaction = (access: StaffAccess) =>
-  isSuperAdmin(access.role) || access.role === "section-supervisor" || access.role === "case-specialist";
+  isSuperAdmin(access.role) || access.role === Roles.SectionSupervisor || access.role === Roles.CaseSpecialist;
 /** Record the «قيمة» deposit and open a new version (n+1) — the review sub-role. */
 export const canRecordValuationDeposit = (access: StaffAccess) => holdsSubRole(access, "review");
 /**
@@ -181,11 +182,11 @@ export function canViewPoEye(role: RoleId): boolean {
 }
 
 export function canDeletePo(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "section-supervisor";
+  return isSuperAdmin(role) || role === Roles.SectionSupervisor;
 }
 
 export function canDeleteProperty(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "section-supervisor";
+  return isSuperAdmin(role) || role === Roles.SectionSupervisor;
 }
 
 /** Delete a transaction from primary-data / bourse / distribution queues — supervisor or admin only. */
@@ -210,9 +211,9 @@ export function canViewPropertyTimelineRail(role: RoleId): boolean {
 export function canUploadPropertyDocuments(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||
-    role === "case-specialist" ||
-    role === "section-supervisor" ||
-    role === "real-estate-appraiser"
+    role === Roles.CaseSpecialist ||
+    role === Roles.SectionSupervisor ||
+    role === Roles.RealEstateAppraiser
   );
 }
 
@@ -223,12 +224,12 @@ export function canUploadPropertyDocuments(role: RoleId): boolean {
 export function canUploadValuedDocuments(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||
-    role === "case-specialist" ||
-    role === "real-estate-appraiser" ||
-    role === "section-supervisor" ||
-    role === "general-manager" ||
-    role === "field-inspector" ||
-    role === "engineering-office"
+    role === Roles.CaseSpecialist ||
+    role === Roles.RealEstateAppraiser ||
+    role === Roles.SectionSupervisor ||
+    role === Roles.GeneralManager ||
+    role === Roles.FieldInspector ||
+    role === Roles.EngineeringOffice
   );
 }
 
@@ -245,8 +246,8 @@ export function canReviewValuedDocuments(access: StaffAccess): boolean {
 export function canSkipEngineeringSurvey(access: StaffAccess): boolean {
   return (
     isSuperAdmin(access.role) ||
-    access.role === "section-supervisor" ||
-    access.role === "general-manager" ||
+    access.role === Roles.SectionSupervisor ||
+    access.role === Roles.GeneralManager ||
     holdsSubRole(access, "study")
   );
 }
@@ -258,17 +259,8 @@ export function canSkipEngineeringSurvey(access: StaffAccess): boolean {
 export function canRedistributeParties(access: StaffAccess): boolean {
   return (
     isSuperAdmin(access.role) ||
-    access.role === "section-supervisor" ||
-    access.role === "general-manager" ||
+    access.role === Roles.SectionSupervisor ||
+    access.role === Roles.GeneralManager ||
     holdsSubRole(access, "coordination")
   );
-}
-
-/**
- * Hand a case-study party to someone else from «جميع العقارات» («تعديل الأطراف»): everyone in
- * `canRedistributeParties`, and the appraiser (Omar 2026-11-18). Mirrors
- * `WorkflowTaskLifecycleRules.CanReassignParties`; adding the survey stays with the narrower rule.
- */
-export function canReassignParties(access: StaffAccess): boolean {
-  return canRedistributeParties(access) || access.role === "real-estate-appraiser";
 }

@@ -5,25 +5,42 @@ import { TASKS_CHANGED_EVENT } from "../events/app-events";
 export const TASKS_STORAGE_KEY = "evalWorkflowTasks";
 
 /** Phases of the case-study property task (specialist workflow). */
-export type CaseStudyTaskPhase =
-  | "enfath"
-  | "bourse"
-  | "distribution"
-  | "case-study"
-  | "done"
-  | "obstruction";
+export const CaseStudyTaskPhases = {
+  Enfath: "enfath",
+  Bourse: "bourse",
+  Distribution: "distribution",
+  CaseStudy: "case-study",
+  Done: "done",
+  Obstruction: "obstruction",
+} as const;
+export type CaseStudyTaskPhase = (typeof CaseStudyTaskPhases)[keyof typeof CaseStudyTaskPhases];
 
-export type WorkflowTaskKind =
-  | "case-study-property"
-  | "field-inspection"
-  | "government-review"
-  | "engineering-survey"
-  | "property-appraisal";
+export const WorkflowTaskKinds = {
+  CaseStudyProperty: "case-study-property",
+  FieldInspection: "field-inspection",
+  GovernmentReview: "government-review",
+  EngineeringSurvey: "engineering-survey",
+  PropertyAppraisal: "property-appraisal",
+} as const;
+export type WorkflowTaskKind = (typeof WorkflowTaskKinds)[keyof typeof WorkflowTaskKinds];
 
-export type WorkflowTaskStatus = "open" | "completed" | "blocked" | "cancelled";
+export const WorkflowTaskStatuses = {
+  Open: "open",
+  Completed: "completed",
+  Blocked: "blocked",
+  Cancelled: "cancelled",
+} as const;
+export type WorkflowTaskStatus = (typeof WorkflowTaskStatuses)[keyof typeof WorkflowTaskStatuses];
 
-/** The appraiser's package: draft → submitted (handed to the specialist) → reopened (returned). */
-type AppraisalPackageStatus = "draft" | "submitted" | "reopened";
+/** A party's package: draft → submitted (handed to the specialist) → reopened (returned). */
+export const SubmissionStatuses = {
+  Draft: "draft",
+  Submitted: "submitted",
+  Reopened: "reopened",
+} as const;
+export type SubmissionStatus = (typeof SubmissionStatuses)[keyof typeof SubmissionStatuses];
+
+type AppraisalPackageStatus = SubmissionStatus;
 
 /** Party selection on transaction distribution — checkbox gates each dropdown group. */
 export type TaskDistributionDraft = {
@@ -167,14 +184,14 @@ export function isFoldedTransactionTask(
 export function isFoldedCaseStudyTask(
   task: Pick<WorkflowTask, "kind" | "propertyId" | "transactionStudyHolderPropertyId">,
 ): boolean {
-  return task.kind === "case-study-property" && isFoldedTransactionTask(task);
+  return task.kind === WorkflowTaskKinds.CaseStudyProperty && isFoldedTransactionTask(task);
 }
 
 /** Phase 5: an appraisal row whose transaction's valuation lives on the holder deed's task. */
 export function isFoldedAppraisalTask(
   task: Pick<WorkflowTask, "kind" | "propertyId" | "transactionStudyHolderPropertyId">,
 ): boolean {
-  return task.kind === "property-appraisal" && isFoldedTransactionTask(task);
+  return task.kind === WorkflowTaskKinds.PropertyAppraisal && isFoldedTransactionTask(task);
 }
 
 /**
@@ -199,9 +216,9 @@ export function holderAppraisalTaskFor(
   return (
     tasks.find(
       (t) =>
-        t.kind === "property-appraisal" &&
+        t.kind === WorkflowTaskKinds.PropertyAppraisal &&
         t.propertyId === holder &&
-        t.status !== "cancelled" &&
+        t.status !== WorkflowTaskStatuses.Cancelled &&
         t.id !== task.id,
     ) ?? null
   );

@@ -3,6 +3,7 @@ import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
 import { NAV } from "./constants";
 import { SYSTEM_FIELDS_PAGE_IDS } from "./system-fields-nav";
 import { SYSTEM_SETTINGS_PRIMARY_PAGE_IDS } from "./system-settings-nav";
+import { Pages } from "@platform/types";
 
 const NAV_PAGE_ORDER: PageId[] = [
   ...NAV.map((item) => item.id),
@@ -13,14 +14,14 @@ const NAV_PAGE_ORDER: PageId[] = [
 
 /** Map shell page id to app route. */
 function pagePathFromId(pageId: PageId): string {
-  return pageId === "po" ? "/po" : `/${pageId}`;
+  return pageId === Pages.Po ? "/po" : `/${pageId}`;
 }
 
 /** Dedicated party work queues — preferred over the generic ops hub after login. */
 const PARTY_WORK_QUEUE_PAGES = [
-  "property-appraisal",
-  "active-inspection",
-  "active-survey",
+  Pages.PropertyAppraisal,
+  Pages.ActiveInspection,
+  Pages.ActiveSurvey,
 ] as const satisfies readonly PageId[];
 
 /**
@@ -28,9 +29,9 @@ const PARTY_WORK_QUEUE_PAGES = [
  * CDO catalog (`users`) — or a dashboard-only page list — should land there.
  */
 function isDashboardHome(rolePages: readonly PageId[]): boolean {
-  if (!rolePages.includes("dashboard")) return false;
-  if (rolePages.includes("users")) return true;
-  return rolePages.every((page) => page === "dashboard");
+  if (!rolePages.includes(Pages.Dashboard)) return false;
+  if (rolePages.includes(Pages.Users)) return true;
+  return rolePages.every((page) => page === Pages.Dashboard);
 }
 
 /**
@@ -42,9 +43,9 @@ function isDashboardHome(rolePages: readonly PageId[]): boolean {
  * Edge cases / changed 2026-11-09: the general manager used to land on the PO list.
  */
 export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
-  if (isDashboardHome(rolePages)) return "dashboard";
+  if (isDashboardHome(rolePages)) return Pages.Dashboard;
 
-  if (rolePages.includes("my-work")) return "my-work";
+  if (rolePages.includes(Pages.MyWork)) return Pages.MyWork;
 
   // Appraiser / inspector / engineering office → their primary work queue.
   for (const pageId of PARTY_WORK_QUEUE_PAGES) {
@@ -55,22 +56,22 @@ export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   // dedicated queue — land on the operations-tasks hub. A case specialist holding
   // any case-study queue (any sub-role) is not one of them: he lands on «أعمالي» (first NAV page).
   if (
-    rolePages.includes("operations-tasks") &&
+    rolePages.includes(Pages.OperationsTasks) &&
     !holdsCaseStudyQueue(rolePages)
   ) {
-    return "operations-tasks";
+    return Pages.OperationsTasks;
   }
 
   for (const pageId of NAV_PAGE_ORDER) {
     // «المفضلة» sits near the top of the menu (2026-11-12) but is a list to look things up in,
     // never where a role starts.
-    if (pageId === "dashboard" || pageId === "favorites") continue;
+    if (pageId === Pages.Dashboard || pageId === Pages.Favorites) continue;
     if (rolePages.includes(pageId)) return pageId;
   }
-  if (rolePages.includes("financial")) return "financial";
+  if (rolePages.includes(Pages.Financial)) return Pages.Financial;
   // No page at all → the profile (open to everyone); «dashboard» would bounce back here forever now
   // that only the CDO holds it (Omar 2026-11-09).
-  return rolePages.find((page) => page !== "dashboard") ?? rolePages[0] ?? "profile";
+  return rolePages.find((page) => page !== Pages.Dashboard) ?? rolePages[0] ?? Pages.Profile;
 }
 
 export function defaultLandingPath(rolePages: readonly PageId[]): string {
@@ -80,24 +81,24 @@ export function defaultLandingPath(rolePages: readonly PageId[]): string {
 /** Map URL path to sidebar page id for permission checks. */
 export function pageIdFromPathname(pathname: string): PageId | null {
   const parts = pathname.split("/").filter(Boolean);
-  if (parts.length === 0) return "dashboard";
+  if (parts.length === 0) return Pages.Dashboard;
 
   switch (parts[0]) {
     case "po":
-      return "po";
+      return Pages.Po;
     case "case-study":
-      return "active-case-study";
+      return Pages.ActiveCaseStudy;
     case "active-survey":
-      return "active-survey";
+      return Pages.ActiveSurvey;
     case "active-inspection":
-      return "active-inspection";
+      return Pages.ActiveInspection;
     case "property-appraisal":
-      return "property-appraisal";
+      return Pages.PropertyAppraisal;
     case "login":
     case "start": // the site's entry: it sends the user to his landing page itself
       return null;
     case "audit-log":
-      return "audit-log";
+      return Pages.AuditLog;
     default:
       return parts[0] as PageId;
   }
@@ -140,28 +141,28 @@ function isPoPropertyEditPath(pathname: string): boolean {
 
 /** Party / queue roles that may open property detail without PO list access. */
   const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
-  "active-inspection",
-  "property-appraisal",
-  "active-survey",
+  Pages.ActiveInspection,
+  Pages.PropertyAppraisal,
+  Pages.ActiveSurvey,
   /** Field inspector works from property detail or the official inspection queue. */
-  "all-transactions",
-  "property-map",
-  "favorites",
-  "failures",
-  "system-upload",
-  "active-case-study",
-  "operations-tasks",
-  "keys",
+  Pages.AllTransactions,
+  Pages.PropertyMap,
+  Pages.Favorites,
+  Pages.Failures,
+  Pages.SystemUpload,
+  Pages.ActiveCaseStudy,
+  Pages.OperationsTasks,
+  Pages.Keys,
 ];
 
 /** Case-study specialist queues — may open property edit without full PO list. */
 const PROPERTY_EDIT_WITHOUT_PO_LIST: readonly PageId[] = [
-  "active-primary-data",
-  "bourse-inquiry",
-  "active-distribution",
-  "active-receipt",
-  "active-case-study",
-  "system-upload",
+  Pages.ActivePrimaryData,
+  Pages.BourseInquiry,
+  Pages.ActiveDistribution,
+  Pages.ActiveReceipt,
+  Pages.ActiveCaseStudy,
+  Pages.SystemUpload,
 ];
 
 /**
@@ -188,7 +189,7 @@ export function canAccessPage(
   rolePages: readonly PageId[],
 ): boolean {
   // Self profile is available to every signed-in role.
-  if (pageId === "profile") return true;
+  if (pageId === Pages.Profile) return true;
   return rolePages.includes(pageId);
 }
 
@@ -197,7 +198,7 @@ export function canAccessPathname(
   pathname: string,
   rolePages: readonly PageId[],
 ): boolean {
-  if (isPoPropertyFailurePath(pathname) && rolePages.includes("failures")) {
+  if (isPoPropertyFailurePath(pathname) && rolePages.includes(Pages.Failures)) {
     return true;
   }
   if (

@@ -59,6 +59,8 @@ import {
   buildPropertyDetailHeroMenuItems,
   CASE_STUDY_OPEN_PROGRESS_MESSAGE,
 } from "./property-detail-hero-menu";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
 
 const shellBtn = (variant: "default" | "primary" = "default") =>
   cn(
@@ -157,9 +159,9 @@ export function PoPropertyDetailTopbarActions({
       tasksForRole(role, tasks).map((item) => item.id),
     );
     const oversees =
-      role === "section-supervisor" ||
-      role === "general-manager" ||
-      role === "cdo";
+      role === Roles.SectionSupervisor ||
+      role === Roles.GeneralManager ||
+      role === Roles.Cdo;
 
     const findChild = (kind: string) =>
       children.find(
@@ -173,14 +175,14 @@ export function PoPropertyDetailTopbarActions({
 
     if (!isHero) {
       return [inspection, survey, appraisal].filter(Boolean).map((child) => {
-        if (child!.kind === "field-inspection") {
+        if (child!.kind === WorkflowTaskKinds.FieldInspection) {
           return {
             id: child!.id,
             label: "معاينة",
             href: `${poPropertyPath(poNumber, propertyId)}?tab=inspection&inspect=edit`,
           };
         }
-        if (child!.kind === "engineering-survey") {
+        if (child!.kind === WorkflowTaskKinds.EngineeringSurvey) {
           return {
             id: child!.id,
             label: "رفع مساحي",

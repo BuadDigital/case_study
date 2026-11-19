@@ -1,5 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type CaseStudyInfoRolesApiConfig = {
   baseUrl?: string;
@@ -23,8 +24,8 @@ export type CaseStudyInfoRolesResult =
 
 /** The answer of both GET and PUT: 401 → auth, other failures → server, else the saved config. */
 async function readInfoRolesResult(res: Response): Promise<CaseStudyInfoRolesResult> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
   const data = (await res.json()) as CaseStudyInfoRolesConfigDto;
   return { ok: true, config: data };
 }
@@ -39,7 +40,7 @@ export async function getCaseStudyInfoRoles(
     });
     return await readInfoRolesResult(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -56,6 +57,6 @@ export async function saveCaseStudyInfoRoles(
     });
     return await readInfoRolesResult(res);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

@@ -11,6 +11,7 @@ import {
   remindOperationsTask,
   acceptOperationsTaskOutputs,
   createIdempotencyKey,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   beginOfflineLease,
@@ -131,7 +132,7 @@ export async function patchOperationsTaskRecord(
   try {
     const result = await patchOperationsTask(config, id, body);
     if (!result.ok) {
-      if (result.kind === "network" && userId && isOfflineFieldSession()) {
+      if (result.kind === ApiErrorKinds.Network && userId && isOfflineFieldSession()) {
         const queued = await enqueueOperationsTaskPatch(id, body);
         if (queued) {
           return {
@@ -238,7 +239,7 @@ export async function addOperationsTaskCommentRecord(
   try {
     const result = await addOperationsTaskComment(config, id, text, kind, files);
     if (!result.ok) {
-      if (result.kind === "network" && userId && isOfflineFieldSession()) {
+      if (result.kind === ApiErrorKinds.Network && userId && isOfflineFieldSession()) {
         const queued = await enqueueOperationsTaskComment(id, text, kind, files);
         if (queued) {
           return { ok: true, task: await cachedTaskOrStub(id), queued: true };

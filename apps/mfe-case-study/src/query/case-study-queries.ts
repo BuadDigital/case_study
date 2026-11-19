@@ -8,7 +8,6 @@ import {
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
-import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   canManageWorkOrders,
@@ -29,7 +28,6 @@ import {
   loadWorkflowTasks,
   loadWorkflowTasksForQuery,
   loadWorkflowTasksPage,
-  syncTasksFromPoRecords,
 } from "../lib/app-data/tasks";
 import { loadCaseStudyReportDraftsForParents } from "../lib/app-data/case-study-report-reads";
 import type {
@@ -39,7 +37,7 @@ import type {
   WorkOrderListQuery,
 } from "@platform/api-client";
 
-export { loadWorkflowTasks, loadWorkflowTasksForQuery };
+export { loadPoRecords, loadWorkflowTasks, loadWorkflowTasksForQuery };
 export { TASKS_STORAGE_KEY } from "../lib/app-data/tasks";
 
 const STALE_MS = 60_000;
@@ -54,24 +52,6 @@ const listPageDefaults = {
   placeholderData: keepPreviousData,
 };
 
-/** Loads POs from API and keeps workflow task slots in sync. */
-export async function loadPoRecordsWithTaskSync() {
-  // Quiet slot sync: keep primary-data task slots aligned without broadcasting
-  // TASKS_CHANGED (that would re-invalidate workflow-tasks on every PO warm
-  // and compete with page navigation). Mutating paths already notify.
-  // Sync is independent of records — run in parallel, not sequentially (async-parallel).
-  // Offline there is nothing to sync against — the downloaded records are the answer.
-  if (isBrowserOffline()) return loadPoRecords();
-  const [records, sync] = await Promise.all([
-    loadPoRecords(),
-    syncTasksFromPoRecords({ notify: false }),
-  ]);
-  if (!sync.ok) {
-    throw new Error(sync.error);
-  }
-  return records;
-}
-
 export function prefetchPoRecord(queryClient: QueryClient, poNumber: string): void {
   const n = poNumber.trim();
   if (!n) return;
@@ -82,14 +62,14 @@ export function prefetchPoRecord(queryClient: QueryClient, poNumber: string): vo
   });
 }
 
-export function useWorkflowTasksQuery(options?: { live?: boolean }) {
+export function useWorkflowTasksQuery(options?: { live?: boolean; enabled?: boolean }) {
   const { authReady, capabilities } = useAppAccess();
   const live =
     options?.live === true && isFeatureEnabled("liveQueuePolling");
   return useQuery({
     queryKey: appDataKeys.workflowTasks(),
     queryFn: () => loadWorkflowTasksForQuery(),
-    enabled: authReady && canReadCaseStudyWorkspace(capabilities),
+    enabled: (options?.enabled ?? true) && authReady && canReadCaseStudyWorkspace(capabilities),
     ...queryDefaults,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
     // A live queue catches up when its tab comes back into view (the safety poll is now 5 min).
@@ -125,22 +105,24 @@ export function fetchRecentPoRecord(queryClient: QueryClient, poNumber: string) 
 /** How old a just-loaded work order may be and still be reused by the property editor. */
 const RECENT_PO_RECORD_MS = 5_000;
 
-export function usePoRecordsQuery() {
+export function usePoRecordsQuery(options?: { enabled?: boolean }) {
   const { authReady, capabilities } = useAppAccess();
   return useQuery({
     queryKey: poRecordsQueryKey(capabilities),
-    queryFn: loadPoRecordsWithTaskSync,
-    enabled: authReady && canReadCaseStudyWorkspace(capabilities),
+    // A read only reads: the server aligns the task slots when a work order or deed is saved
+    // (2026-11-19 — this used to POST a whole-table sync on every load).
+    queryFn: loadPoRecords,
+    enabled: (options?.enabled ?? true) && authReady && canReadCaseStudyWorkspace(capabilities),
     ...queryDefaults,
   });
 }
 
-export function usePendingBourseItemsQuery() {
+export function usePendingBourseItemsQuery(options?: { enabled?: boolean }) {
   const { authReady, capabilities } = useAppAccess();
   return useQuery({
     queryKey: appDataKeys.pendingBourseItems(),
     queryFn: loadPendingBourseItems,
-    enabled: authReady && canManageWorkOrders(capabilities),
+    enabled: (options?.enabled ?? true) && authReady && canManageWorkOrders(capabilities),
     ...queryDefaults,
   });
 }

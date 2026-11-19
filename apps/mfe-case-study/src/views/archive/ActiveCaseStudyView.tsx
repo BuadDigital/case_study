@@ -17,6 +17,8 @@ import {
   caseStudyWorkspacePath,
   decodeTaskParam,
 } from "../../lib/my-task-routes";
+import { Pages } from "@platform/types";
+import { ActiveTransactionQueueTableLayouts } from "../active-transaction-queue-state";
 
 export function ActiveCaseStudyView() {
   const router = useRouter();
@@ -32,10 +34,10 @@ export function ActiveCaseStudyView() {
   }, [legacyTask, router]);
 
   const config = useMemo((): ActiveTransactionQueueConfig => ({
-    pageId: "active-case-study",
+    pageId: Pages.ActiveCaseStudy,
     pageTitle: "دراسة حالة العقارات",
     hidePageTitle: true,
-    tableLayout: "case-study",
+    tableLayout: ActiveTransactionQueueTableLayouts.CaseStudy,
     emptyLine: "لا توجد معاملات في مرحلة دراسة الحالة.",
     emptyHint:
       "تظهر هنا بعد تأكيد توزيع المعاملة وإرسال المهام للأطراف. اضغط الصف لفتح تفاصيل العقار.",

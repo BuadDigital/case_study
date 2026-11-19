@@ -3,6 +3,7 @@ import {
   offlineFormPages,
   offlineLandingPath,
 } from "@platform/app-shared/offline/offline-routes";
+import { Pages } from "@platform/types";
 
 /** Re-warm at most this often when nothing changed (tasks refetch on a short interval). */
 const REWARM_AFTER_MS = 30 * 60_000;
@@ -32,7 +33,7 @@ export function offlinePagePlan(
   const pages = offlineFormPages(rolePages);
   const urls = pages.map((id) => `/${id}`);
 
-  if (pages.includes("active-inspection")) {
+  if (pages.includes(Pages.ActiveInspection)) {
     for (const task of tasks) {
       if (String(task.kind ?? task.Kind ?? "") !== "field-inspection") continue;
       const id = String(task.id ?? task.Id ?? "").trim();

@@ -16,14 +16,18 @@ import { isExternalPartyRole } from "../../lib/app-data/po-roles";
 import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { evaluatorValuationReportPreview } from "../../lib/evaluator-bridge";
+import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
+import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
 import {
   useCaseStudyReportBatchQuery,
   useWorkflowTasksQuery,
 } from "../../query/case-study-queries";
 import { useTransactionQuery } from "../../query/use-transaction-query";
-import { HeroIconButton } from "./HeroIconButton";
+import { HeroIconButton, type HeroIconState } from "./HeroIconButton";
 import { EmptyState } from "./PropertyDetailFields";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
+import { CaseStudyReportStatuses } from "@platform/app-shared/app-data/case-study-report-model";
 /** A clipboard with a tick — the case study's report. */
 const CASE_STUDY_REPORT_ICON =
   "M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4";
@@ -52,14 +56,14 @@ export function outputReportTasks(input: {
   tasks: WorkflowTask[];
 }): { studyTaskId: string; appraisalTask: WorkflowTask | null } {
   const { poNumber, propertyId, tasks } = input;
-  const ownAppraisal = partyChildTaskForProperty("property-appraisal", poNumber, propertyId, tasks);
+  const ownAppraisal = partyChildTaskForProperty(WorkflowTaskKinds.PropertyAppraisal, poNumber, propertyId, tasks);
   const studyTaskId =
     input.studyHolderTaskId?.trim() ||
     caseStudyTaskForProperty(poNumber, propertyId, tasks)?.id ||
     ownAppraisal?.parentTaskId?.trim() ||
     "";
   const studyAppraisal = studyTaskId
-    ? childTasksForCaseStudyParent(studyTaskId, tasks).find((t) => t.kind === "property-appraisal")
+    ? childTasksForCaseStudyParent(studyTaskId, tasks).find((t) => t.kind === WorkflowTaskKinds.PropertyAppraisal)
     : undefined;
   return { studyTaskId, appraisalTask: studyAppraisal ?? ownAppraisal };
 }
@@ -92,7 +96,7 @@ function CaseStudyReportWindow({
     <AppModal
       open
       onClose={onClose}
-      title={draft?.status === "issued" ? "تقرير دراسة الحالة" : "تقرير دراسة الحالة — مسودة"}
+      title={draft?.status === CaseStudyReportStatuses.Issued ? "تقرير دراسة الحالة" : "تقرير دراسة الحالة — مسودة"}
       subtitle="للقراءة — كما هو الآن"
       maxWidthPx={880}
     >
@@ -121,6 +125,9 @@ function CaseStudyReportWindow({
  * Edge cases: the external parties (inspector, engineering office, government reviewer) see neither
  * icon; no study task / no appraisal task (or the evaluator not loaded) → that icon is greyed out
  * and says why; a study not started opens a window that says so.
+ * Versions (Omar 2026-11-18): each icon opens the newest version; it is shaded with a dashed border
+ * until that version is approved (the study issued, the appraisal task completed — the signals the
+ * window titles use) and carries the version number in its corner above 1.
  */
 export function PropertyOutputReportButtons({
   record,
@@ -147,24 +154,43 @@ export function PropertyOutputReportButtons({
   );
   const deeds = useMemo(() => caseStudyReportDeeds(transaction?.deeds), [transaction]);
   const ValuationReport = evaluatorValuationReportPreview();
+  const sees = seesPropertyOutputReports(role);
+  // The study's status and version, and the valuation draft's version, for the icons' state and badge.
+  const { data: studyReports } = useCaseStudyReportBatchQuery(studyTaskId, { enabled: sees });
+  const studyDraft = studyReports?.get(studyTaskId.toLowerCase())?.parent ?? null;
+  useReportDraftStates([property.id], sees && Boolean(appraisalTask));
+  const valuationVersion = getReportDraftState(property.id)?.version;
 
-  if (!seesPropertyOutputReports(role)) return null;
+  if (!sees) return null;
 
   const valuationReady = Boolean(appraisalTask && ValuationReport);
+  const studyState: HeroIconState = !studyTaskId
+    ? "none"
+    : studyDraft?.status === "issued"
+      ? "approved"
+      : "draft";
+  const valuationState: HeroIconState = !valuationReady
+    ? "none"
+    : appraisalTask?.status === "completed"
+      ? "approved"
+      : "draft";
+  const draftNote = (state: HeroIconState) => (state === "draft" ? " — مسودة، لم تُعتمد" : "");
   return (
     <div className={cn("flex items-center", compact ? "gap-1" : "gap-1.5")} data-testid="hero-output-reports">
       <HeroIconButton
         iconPath={CASE_STUDY_REPORT_ICON}
-        label={studyTaskId ? "مطالعة تقرير دراسة الحالة" : "لم تبدأ دراسة الحالة بعد"}
-        ready={Boolean(studyTaskId)}
+        label={studyTaskId ? `مطالعة تقرير دراسة الحالة${draftNote(studyState)}` : "لم تبدأ دراسة الحالة بعد"}
+        state={studyState}
+        badge={studyDraft?.version}
         compact={compact}
         testId="hero-case-study-report"
         onClick={() => setOpen("study")}
       />
       <HeroIconButton
         iconPath={VALUATION_REPORT_ICON}
-        label={valuationReady ? "مطالعة تقرير التقييم" : "لم تُفتح مهمة التقييم بعد"}
-        ready={valuationReady}
+        label={valuationReady ? `مطالعة تقرير التقييم${draftNote(valuationState)}` : "لم تُفتح مهمة التقييم بعد"}
+        state={valuationState}
+        badge={valuationVersion}
         compact={compact}
         testId="hero-valuation-report"
         onClick={() => setOpen("valuation")}
@@ -182,7 +208,7 @@ export function PropertyOutputReportButtons({
         <AppModal
           open
           onClose={() => setOpen(null)}
-          title={appraisalTask.status === "completed" ? "تقرير التقييم" : "تقرير التقييم — مسودة"}
+          title={appraisalTask.status === WorkflowTaskStatuses.Completed ? "تقرير التقييم" : "تقرير التقييم — مسودة"}
           subtitle="للقراءة — كما هو الآن"
           maxWidthPx={1180}
         >

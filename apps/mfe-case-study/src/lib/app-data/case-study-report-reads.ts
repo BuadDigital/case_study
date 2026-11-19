@@ -3,6 +3,7 @@ import {
   getCaseStudyReport,
   getCaseStudyReportsBatch,
   getPartyCaseStudyReport,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import {
   apiErrorMessage,
@@ -18,7 +19,7 @@ export async function loadCaseStudyReportDraft(
   const config = requireWorkOrdersApiConfig();
   const result = await getCaseStudyReport(config, taskId);
   if (result.ok) return caseStudyReportDtoToDraft(result.data);
-  if (result.kind === "not_found") return null;
+  if (result.kind === ApiErrorKinds.NotFound) return null;
   throw new Error(
     resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودة دراسة الحالة"),
   );
@@ -32,7 +33,7 @@ export async function loadCaseStudyReportDraftOrThrow(
   if (!config) throw new Error(apiErrorMessage("auth"));
   const result = await getCaseStudyReport(config, taskId);
   if (result.ok) return caseStudyReportDtoToDraft(result.data);
-  if (result.kind === "not_found") return null;
+  if (result.kind === ApiErrorKinds.NotFound) return null;
   throw new Error(
     apiErrorMessage(result.kind, "تعذّر تحميل تقرير دراسة الحالة"),
   );
@@ -44,7 +45,7 @@ export async function loadPartyCaseStudyReportDraft(
   const config = requireWorkOrdersApiConfig();
   const result = await getPartyCaseStudyReport(config, childTaskId);
   if (result.ok) return caseStudyReportDtoToDraft(result.data);
-  if (result.kind === "not_found") return null;
+  if (result.kind === ApiErrorKinds.NotFound) return null;
   throw new Error(
     resolveApiError(result.kind, result.errors, "تعذّر تحميل مسودة دراسة الحالة"),
   );
@@ -115,7 +116,7 @@ export async function loadPartyCaseStudyReportDraftOrThrow(
   if (!config) throw new Error(apiErrorMessage("auth"));
   const result = await getPartyCaseStudyReport(config, childTaskId);
   if (result.ok) return caseStudyReportDtoToDraft(result.data);
-  if (result.kind === "not_found") return null;
+  if (result.kind === ApiErrorKinds.NotFound) return null;
   throw new Error(
     apiErrorMessage(result.kind, "تعذّر تحميل إجابات دراسة الحالة"),
   );

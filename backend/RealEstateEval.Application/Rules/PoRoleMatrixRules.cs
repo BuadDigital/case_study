@@ -178,6 +178,14 @@ public static class PoRoleMatrixRules
     /// <summary>A deposited report is reopened as a new version (n+1) by the review sub-role.</summary>
     public static bool CanReopenValuationReport(StaffActor actor) => actor.HoldsReview;
 
+    /// <summary>
+    /// The valuation copy n+1 opened by «التعديل» (a value change in «إعادة فتح المعاملة»): any case
+    /// specialist, since the coordinator opens the edit (Omar 2026-11-18). Checked by the two server-to-server
+    /// steps the edit runs with the specialist's bearer — Valuation's reopen by property and Case Study's
+    /// reopen of the appraiser's package — after Case Study checked <see cref="CanReopenTransaction"/>.
+    /// </summary>
+    public static bool CanReopenValuationForEdit(StaffActor actor) => actor.IsCaseSpecialist;
+
     /// <summary>The review sub-role deposits the approved report in «قيمة», so it records the code and certificate.</summary>
     public static bool CanRecordValuationDeposit(StaffActor actor) => actor.HoldsReview;
 

@@ -11,6 +11,7 @@ import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson, serverFailure } from "./parse-json";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 /** Result of a GET / PUT on one resource under `/api/valuation-requests/{id}/…`. */
 export type ValuationResourceResult<T> =
@@ -23,9 +24,9 @@ export type ValuationResourceResult<T> =
     };
 
 async function readResult<T>(res: Response, invalidMessage: string): Promise<ValuationResourceResult<T>> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 403) return { ok: false, kind: "forbidden" };
-  if (res.status === 404) return { ok: false, kind: "not_found" };
+  if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+  if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+  if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound };
   if (res.status === 400) {
     const payload = (await res.json().catch(() => null)) as {
       errors?: Record<string, string | string[]>;
@@ -36,7 +37,7 @@ async function readResult<T>(res: Response, invalidMessage: string): Promise<Val
     );
     return {
       ok: false,
-      kind: "validation",
+      kind: ApiErrorKinds.Validation,
       message: Object.values(errors)[0] ?? payload?.detail ?? invalidMessage,
       errors,
     };
@@ -67,6 +68,6 @@ export async function sendValuationResource<T>(
     );
     return await readResult<T>(res, invalidMessage);
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

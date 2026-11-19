@@ -382,12 +382,75 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default)
     {
-        // The client is part of the detail DTO (`ClientNameAr`): without the include the map and any other
-        // reader of this list saw the client id but never its name.
-        IQueryable<WorkOrder> query = _db.WorkOrders
+        var query = await VisibleAsync(DetailsQuery(), actor, cancellationToken);
+        return query is null ? [] : await ToDetailsAsync(query.Take(MaxDetailRows), cancellationToken);
+    }
+
+    /// <summary>
+    /// <see cref="ListDetailsAsync"/> a page at a time, with the total, so a reader can take every work
+    /// order: the unpaged list stops at <see cref="MaxDetailRows"/> and says nothing of the rest
+    /// (2026-11-19 — past 500 orders the oldest silently dropped off the map and the lists).
+    /// </summary>
+    public async Task<PagedResultDto<WorkOrderDto>> ListDetailsPagedAsync(
+        int? page,
+        int? pageSize,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default)
+    {
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(page ?? 1, pageSize, _dbOptions);
+        var query = await VisibleAsync(DetailsQuery(), actor, cancellationToken);
+        if (query is null) return EmptyPage<WorkOrderDto>(resolvedPage, take);
+        return new PagedResultDto<WorkOrderDto>
+        {
+            TotalCount = await query.CountAsync(cancellationToken),
+            Items = await ToDetailsAsync(query.Skip(skip).Take(take), cancellationToken),
+            Page = resolvedPage,
+            PageSize = take,
+        };
+    }
+
+    public async Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = await VisibleAsync(PropertyRowsQuery(), actor, cancellationToken);
+        return query is null
+            ? []
+            : await ToPropertyRowsAsync(await query.Take(MaxDetailRows).ToListAsync(cancellationToken), cancellationToken);
+    }
+
+    /// <summary>
+    /// <see cref="ListPropertyListItemsAsync"/> a page of work orders at a time — each order gives one row
+    /// per deed, so <c>TotalCount</c> and <c>PageSize</c> count work orders, not rows.
+    /// </summary>
+    public async Task<PagedResultDto<PropertyListItemDto>> ListPropertyListItemsPagedAsync(
+        int? page,
+        int? pageSize,
+        PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default)
+    {
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(page ?? 1, pageSize, _dbOptions);
+        var query = await VisibleAsync(PropertyRowsQuery(), actor, cancellationToken);
+        if (query is null) return EmptyPage<PropertyListItemDto>(resolvedPage, take);
+        var total = await query.CountAsync(cancellationToken);
+        var orders = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
+        return new PagedResultDto<PropertyListItemDto>
+        {
+            TotalCount = total,
+            Items = await ToPropertyRowsAsync(orders, cancellationToken),
+            Page = resolvedPage,
+            PageSize = take,
+        };
+    }
+
+    /// <summary>Every work order with its client, deeds, contacts and the deeds' transactions, newest first.</summary>
+    private IQueryable<WorkOrder> DetailsQuery() =>
+        _db.WorkOrders
             // Identity resolution: the transaction → properties → transaction include is a cycle a
             // plain no-tracking query refuses.
             .AsNoTrackingWithIdentityResolution()
+            // The client is part of the detail DTO (`ClientNameAr`): without the include the map and any
+            // other reader of this list saw the client id but never its name.
             .Include(w => w.Client)
             .Include(w => w.Properties)
             .ThenInclude(p => p.Contacts)
@@ -396,42 +459,46 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
             .Include(w => w.Properties)
             .ThenInclude(p => p.Transaction)
             .ThenInclude(t => t!.Properties)
-            .OrderByDescending(w => w.CreatedAtUtc);
+            // The PO number breaks ties, so a page never repeats or skips an order.
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ThenBy(w => w.PoNumber);
 
+    private IQueryable<WorkOrder> PropertyRowsQuery() =>
+        _db.WorkOrders
+            .AsNoTracking()
+            .Include(w => w.Properties)
+            .ThenInclude(p => p.Contacts)
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ThenBy(w => w.PoNumber);
+
+    /// <summary>The work orders the actor may see, or null when they may see none.</summary>
+    private async Task<IQueryable<WorkOrder>?> VisibleAsync(
+        IQueryable<WorkOrder> query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken)
+    {
         var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        if (visiblePos is not null)
-        {
-            if (visiblePos.Count == 0)
-                return [];
-            query = query.Where(w => visiblePos.Contains(w.PoNumber));
-        }
+        if (visiblePos is null) return query;
+        return visiblePos.Count == 0 ? null : query.Where(w => visiblePos.Contains(w.PoNumber));
+    }
 
-        var list = await query.Take(MaxDetailRows).ToListAsync(cancellationToken);
+    private static PagedResultDto<T> EmptyPage<T>(int page, int pageSize) =>
+        new() { Items = [], TotalCount = 0, Page = page, PageSize = pageSize };
+
+    private async Task<IReadOnlyList<WorkOrderDto>> ToDetailsAsync(
+        IQueryable<WorkOrder> query,
+        CancellationToken cancellationToken)
+    {
+        var list = await query.ToListAsync(cancellationToken);
         return await WithResolvedSpecialistsAsync(
             list.Select(WorkOrderMapper.ToDto).ToList(),
             cancellationToken);
     }
 
-    public async Task<IReadOnlyList<PropertyListItemDto>> ListPropertyListItemsAsync(
-        PermissionsDto? actor = null,
-        CancellationToken cancellationToken = default)
+    private async Task<IReadOnlyList<PropertyListItemDto>> ToPropertyRowsAsync(
+        List<WorkOrder> list,
+        CancellationToken cancellationToken)
     {
-        IQueryable<WorkOrder> query = _db.WorkOrders
-            .AsNoTracking()
-            .Include(w => w.Properties)
-            .ThenInclude(p => p.Contacts)
-            .OrderByDescending(w => w.CreatedAtUtc);
-
-        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        if (visiblePos is not null)
-        {
-            if (visiblePos.Count == 0)
-                return [];
-            query = query.Where(w => visiblePos.Contains(w.PoNumber));
-        }
-
-        var list = await query.Take(MaxDetailRows).ToListAsync(cancellationToken);
-
         var failureKeys = (await _failureLookup.ListApprovedPropertyKeysAsync(cancellationToken))
             .ToHashSet(StringComparer.Ordinal);
 
@@ -539,12 +606,35 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     }
 
     public async Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
+        CancellationToken cancellationToken) =>
+        await ToPendingBourseAsync(
+            await PendingBourseQuery().Take(MaxDetailRows).ToListAsync(cancellationToken),
+            cancellationToken);
+
+    /// <summary><see cref="ListPendingBourseAsync"/> a page at a time, with the total (2026-11-19).</summary>
+    public async Task<PagedResultDto<PendingBoursePropertyDto>> ListPendingBoursePagedAsync(
+        int? page,
+        int? pageSize,
         CancellationToken cancellationToken)
     {
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(page ?? 1, pageSize, _dbOptions);
+        var query = PendingBourseQuery();
+        return new PagedResultDto<PendingBoursePropertyDto>
+        {
+            TotalCount = await query.CountAsync(cancellationToken),
+            Items = await ToPendingBourseAsync(
+                await query.Skip(skip).Take(take).ToListAsync(cancellationToken),
+                cancellationToken),
+            Page = resolvedPage,
+            PageSize = take,
+        };
+    }
+
  // Only properties whose case-study task is currently in the bourse phase.
  // After revert to enfath, BourseDataCompleted stays false — without the phase
  // check the row would incorrectly remain on bourse inquiry.
-        var list = await _db.WorkOrderProperties
+    private IQueryable<WorkOrderProperty> PendingBourseQuery() =>
+        _db.WorkOrderProperties
             .AsNoTracking()
             .Include(p => p.WorkOrder)
             .Where(p => !p.IsRemoved && !p.BourseDataCompleted && p.WorkOrder != null)
@@ -557,9 +647,13 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
             .ThenByDescending(p => p.WorkOrder!.ReceivedFromEnfathAt)
             .ThenBy(p => p.WorkOrder!.PoNumber)
             .ThenBy(p => p.DeedNumber)
-            .Take(MaxDetailRows)
-            .ToListAsync(cancellationToken);
+            // The id last, so a page never repeats or skips a deed.
+            .ThenBy(p => p.Id);
 
+    private async Task<IReadOnlyList<PendingBoursePropertyDto>> ToPendingBourseAsync(
+        List<WorkOrderProperty> list,
+        CancellationToken cancellationToken)
+    {
         // «رقم المعاملة» is the deed's own number; the property number is a separate lookup for an
         // old row without one (a required navigation joins inner and would drop a deed whose
         // transaction row is missing — older seeds, tests).

@@ -2,6 +2,7 @@ import {
   deleteAttachment,
   listAttachments,
   uploadAttachment,
+  ApiErrorKinds,
 } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "./attachment-blob-cache";
 import { requestDocumentPreview } from "./document-preview-store";
@@ -226,7 +227,7 @@ export async function uploadTaskScopedAttachment(
           contentBase64: await fileToBase64(file),
         });
         if (!upload.ok) {
-          if (upload.kind === "network" || upload.kind === "server") {
+          if (upload.kind === ApiErrorKinds.Network || upload.kind === ApiErrorKinds.Server) {
             throw new TypeError("Failed to fetch");
           }
           const err = new Error(
@@ -266,8 +267,13 @@ export async function deleteTaskScopedAttachment(attachmentId: string): Promise<
   return result.ok;
 }
 
-/** Forgets the scope's cached preview without touching the server rows. */
-export async function clearTaskScopedAttachmentPreview(scope: string, taskId: string): Promise<void> {
+/**
+ * Forgets the scope's cached preview without touching the server rows.
+ * How it works: drops the in-memory cache entry for this scope and task.
+ * Edge cases: it was `async` with no await, so callers awaited a promise for a plain
+ * map delete; it is now synchronous.
+ */
+export function clearTaskScopedAttachmentPreview(scope: string, taskId: string): void {
   previewCache.delete(cacheKey(scope, taskId));
 }
 

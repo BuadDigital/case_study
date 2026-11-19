@@ -11,6 +11,7 @@ import {
 } from "../../lib/app-data/po-intake-model";
 import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import { copyPropertyFromPriorTransaction } from "../../lib/app-data/po-intake-commands";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 type Props = {
   open: boolean;
@@ -200,7 +201,7 @@ function CopyFromPriorTransactionForm({
         return;
       }
       showToast(
-        scope === "bourse"
+        scope === CaseStudyTaskPhases.Bourse
           ? "تم نسخ البيانات الأولية واستعلام البورصة على الصك المختار"
           : "تم نسخ البيانات الأولية على الصك المختار",
         "success",
@@ -312,21 +313,21 @@ function CopyFromPriorTransactionForm({
           <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
-              className={scopePill(scope === "enfath")}
+              className={scopePill(scope === CaseStudyTaskPhases.Enfath)}
               onClick={() => setScope("enfath")}
             >
               بيانات أولية فقط
             </button>
             <button
               type="button"
-              className={scopePill(scope === "bourse")}
+              className={scopePill(scope === CaseStudyTaskPhases.Bourse)}
               onClick={() => setScope("bourse")}
             >
               استعلام بورصة (مع الأولية)
             </button>
           </div>
           <p className="mt-1.5 m-0 text-[11px] text-text-3">
-            {scope === "enfath"
+            {scope === CaseStudyTaskPhases.Enfath
               ? "يُنسخ فقط حقول البيانات الأولية على الهدف المختار."
               : "يُنسخ البيانات الأولية وحقول البورصة معًا على الهدف المختار."}
           </p>

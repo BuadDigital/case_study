@@ -1,10 +1,17 @@
 import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import {
   effectiveDeedVerdict,
+  isInspectorWorkspaceAccepted,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
+import {
+  propertyRecordsFacadeType,
+  type PoPropertyIntake,
+} from "@platform/app-shared/app-data/po-intake-property-model";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
+import type { EngineeringSurveySubmissionSnapshot } from "./property-detail-party-submission-types";
 
 export type DeedNatureMatchProposal = {
   /** Only the field inspector proposes; the prior survey / engineering office are info lines. */
@@ -148,15 +155,15 @@ export function proposeDeedNatureMatch(input: {
 }): DeedNatureMatchProposal {
   const infoLinesAr: string[] = [];
   const engineeringSaidNotMatched =
-    input.engineeringAssigned && input.engineeringDeedMatchesNature === "no";
+    input.engineeringAssigned && input.engineeringDeedMatchesNature === ChecklistAnswers.No;
   if (input.hasPriorSurvey) {
     infoLinesAr.push("رفع مساحي سابق لنفس الصك — للعلم فقط، وليس مطابقة لهذه المعاملة.");
   }
   if (input.engineeringAssigned) {
     infoLinesAr.push(
-      input.engineeringDeedMatchesNature === "yes"
+      input.engineeringDeedMatchesNature === ChecklistAnswers.Yes
         ? "المكتب الهندسي: الصك مطابق للطبيعة."
-        : input.engineeringDeedMatchesNature === "no"
+        : input.engineeringDeedMatchesNature === ChecklistAnswers.No
           ? "المكتب الهندسي: الصك غير مطابق للطبيعة."
           : "المكتب الهندسي: لم يُبدِ حكمه بعد.",
     );
@@ -206,5 +213,41 @@ export function proposeDeedNatureMatch(input: {
     inspectorMismatchNotes: "",
     infoLinesAr,
     engineeringSaidNotMatched,
+  };
+}
+
+/**
+ * What the deed↔nature section shows from its loaded sources: the inspector's side-by-side rows and
+ * the proposal.
+ *
+ * How it works: the inspector counts once the inspection is submitted or accepted; the engineering
+ * office's verdict once its survey is submitted or accepted.
+ * Edge cases: land in any form and an apartment have no «نوع الواجهة» — the column stays off
+ * (Omar 2026-11-16).
+ */
+export function deedMatchSourceView(input: {
+  property: PoPropertyIntake;
+  inspector: InspectorWorkspaceDraft | null;
+  survey: Pick<EngineeringSurveySubmissionSnapshot, "status" | "acceptedAtUtc" | "deedMatchesNature"> | null;
+  hasPriorSurvey: boolean;
+  engineeringAssigned: boolean;
+}): { sides: DeedMatchSideRow[]; proposal: DeedNatureMatchProposal } {
+  const { property, inspector, survey } = input;
+  const inspectorSubmitted =
+    inspector?.status === SubmissionStatuses.Submitted || isInspectorWorkspaceAccepted(inspector);
+  const sideRows = inspectorSubmitted ? deedMatchSideRows(inspector, property) : [];
+  const engineeringSubmitted =
+    survey?.status === SubmissionStatuses.Submitted || Boolean(survey?.acceptedAtUtc?.trim());
+  return {
+    sides: propertyRecordsFacadeType(property, inspector)
+      ? sideRows
+      : sideRows.map((side) => ({ ...side, facade: "" })),
+    proposal: proposeDeedNatureMatch({
+      inspector,
+      inspectorSubmitted,
+      hasPriorSurvey: input.hasPriorSurvey,
+      engineeringAssigned: input.engineeringAssigned,
+      engineeringDeedMatchesNature: engineeringSubmitted ? (survey?.deedMatchesNature ?? null) : null,
+    }),
   };
 }

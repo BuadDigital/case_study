@@ -316,6 +316,9 @@ public class AppraisalHandOverGateTests
         public Task<IReadOnlyList<ValuationRequestDto>> ListAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<ValuationRequestDto>>([]);
 
+        public Task<PagedResultDto<ValuationRequestDto>> ListPagedAsync(int? page, int? pageSize, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new PagedResultDto<ValuationRequestDto> { Items = [], TotalCount = 0, Page = 1, PageSize = 0 });
+
         public Task<ValuationRequestDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<ValuationRequestDto?>(null);
 

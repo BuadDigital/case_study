@@ -33,11 +33,13 @@ import {
   canRaiseFailure,
   DISTRIBUTION_CONFIRM_ACTION,
   removedPropertyNote,
+  TaskWorkLayouts,
 } from "./my-task-work-state";
 import {
   useMyTaskWorkWorkflow,
   type MyTaskWorkflow,
 } from "./useMyTaskWorkWorkflow";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 export type IntakeStep = "enfath" | "bourse" | "distribution";
 
@@ -60,7 +62,7 @@ function StepsScope({
   const workflow = useMyTaskWorkWorkflow({
     task,
     onRefresh,
-    layout: "panel",
+    layout: TaskWorkLayouts.Panel,
     onClose: () => undefined,
   });
   return (
@@ -215,7 +217,7 @@ export function CoordinationIntakeBody({
   const scope = useContext(IntakeScopeContext);
 
   if (scope.mode === "editor") {
-    if (step === "distribution") return <>{fallback}</>;
+    if (step === CaseStudyTaskPhases.Distribution) return <>{fallback}</>;
     const { editor } = scope;
     // Omar 2026-11-10: the form alone — no card header, no save button; the fields autosave.
     return (
@@ -223,7 +225,7 @@ export function CoordinationIntakeBody({
         {editor.formError ? <Note tone="warn">{editor.formError}</Note> : null}
         {editor.loading ? (
           <p className="m-0 text-[12px] text-text-3">جارٍ التحميل…</p>
-        ) : step === "enfath" ? (
+        ) : step === CaseStudyTaskPhases.Enfath ? (
           <PropertyIntakeEnfathCard editor={editor} bare />
         ) : (
           <PropertyIntakeBourseCard editor={editor} bare />
@@ -243,12 +245,12 @@ export function CoordinationIntakeBody({
   if (workflow.screen !== "work" && !sharedView) {
     return <p className="m-0 pt-3 text-[12.5px] text-text-3">انظر الملاحظة أعلى الصفحة.</p>;
   }
-  const submits = step === "distribution";
+  const submits = step === CaseStudyTaskPhases.Distribution;
   return (
     <div className="flex flex-col gap-3 pt-3">
-      {step === "enfath" ? <MyTaskWorkEnfathStep {...workflow} /> : null}
-      {step === "bourse" ? <MyTaskWorkBourseStep {...workflow} /> : null}
-      {step === "distribution" ? <MyTaskWorkDistributionStep {...workflow} /> : null}
+      {step === CaseStudyTaskPhases.Enfath ? <MyTaskWorkEnfathStep {...workflow} /> : null}
+      {step === CaseStudyTaskPhases.Bourse ? <MyTaskWorkBourseStep {...workflow} /> : null}
+      {step === CaseStudyTaskPhases.Distribution ? <MyTaskWorkDistributionStep {...workflow} /> : null}
       {submits ? (
         <>
           {workflow.formError ? (

@@ -84,12 +84,9 @@ function DeedMatchSidesTable({ sides }: { sides: readonly DeedMatchSideRow[] }) 
  * Lives on تبويب مدخلات المعاين — the case-study report is issued after valuation.
  */
 const OUTCOME_HINTS: Record<string, string> = {
-  matched:
-    "الصك يطابق الطبيعة — يُسمح بإكمال التقييم وإصدار تقرير دراسة الحالة.",
-  differences:
-    "توجد فروق بين الصك والطبيعة — يلزم توضيحها أدناه، ويُوقف مسار التقييم حتى تُعالَج (مسار تعذّر).",
-  impediment:
-    "المطابقة غير ممكنة أو الحالة تعذّر محتمل — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذّر).",
+  matched: "الصك يطابق الطبيعة — يُسمح بإكمال التقييم وإصدار تقرير دراسة الحالة.",
+  differences: "توجد فروق بين الصك والطبيعة — يلزم توضيحها أدناه، ويُوقف مسار التقييم حتى تُعالَج (مسار تعذّر).",
+  impediment: "المطابقة غير ممكنة أو الحالة تعذّر محتمل — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذّر).",
 };
 
 export function CaseStudyDeedNatureMatchSection({
@@ -130,19 +127,13 @@ export function CaseStudyDeedNatureMatchSection({
   // click: its notes are written first and saved with it (a click alone is refused by the server and rolled
   // back), and they start empty — the reason of one outcome never becomes the notes of another.
   const [pending, setPending] = useState<{ value: string; notes: string } | null>(null);
-  const pendingIsOverride =
-    pending?.value === DeedNatureMatchOutcomes.Matched && inspectorSaidNotMatched;
+  const pendingIsOverride = pending?.value === DeedNatureMatchOutcomes.Matched && inspectorSaidNotMatched;
   const pendingMin = pendingIsOverride ? DEED_MATCH_OVERRIDE_REASON_MIN : 1;
   const pendingShort = (pending?.notes ?? "").trim().length < pendingMin;
-  const pendingLabel =
-    DEED_NATURE_MATCH_OPTIONS.find((o) => o.value === pending?.value)?.label ?? "";
-  const savedOverrideReason =
-    inspectorSaidNotMatched && outcome === DeedNatureMatchOutcomes.Matched
-      ? (draft.deedNatureMatchNotes ?? "").trim()
-      : "";
+  const pendingLabel = DEED_NATURE_MATCH_OPTIONS.find((o) => o.value === pending?.value)?.label ?? "";
+  const savedOverrideReason = inspectorSaidNotMatched && outcome === DeedNatureMatchOutcomes.Matched ? (draft.deedNatureMatchNotes ?? "").trim() : "";
   const needsNotes = deedNatureMatchRequiresNotes(outcome);
-  const canAdopt =
-    Boolean(onAdoptSuggestion && suggestedOutcome && suggestedOutcome !== outcome);
+  const canAdopt = Boolean(onAdoptSuggestion && suggestedOutcome && suggestedOutcome !== outcome);
   const outcomeHint = OUTCOME_HINTS[outcome] ?? "";
 
   return (
@@ -236,7 +227,7 @@ export function CaseStudyDeedNatureMatchSection({
               );
             })}
           </div>
-          {outcomeHint && outcome !== "matched" ? (
+          {outcomeHint && outcome !== DeedNatureMatchOutcomes.Matched ? (
             <p
               className="mb-0 mt-2 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-[11.5px] leading-relaxed text-amber-text"
               role="status"

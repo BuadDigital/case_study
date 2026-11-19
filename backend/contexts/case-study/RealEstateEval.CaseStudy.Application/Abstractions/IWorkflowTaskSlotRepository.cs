@@ -12,6 +12,11 @@ public interface IWorkflowTaskSlotRepository
     Task<IReadOnlyList<WorkOrder>> ListWorkOrdersWithPropertiesAsync(
         CancellationToken cancellationToken);
 
+    /// <summary>One untracked work order with its properties, or null when there is none.</summary>
+    Task<WorkOrder?> GetWorkOrderWithPropertiesAsync(
+        string poNumber,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Tracked workflow tasks on any of <paramref name="poNumbers"/>. Edits to the returned
     /// entities are persisted by <see cref="SaveChangesAsync"/>.

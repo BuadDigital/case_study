@@ -46,6 +46,7 @@ import {
   resolveShellRoute,
 } from "./app-shell-nav-state";
 import { PAGE_CHUNK_PRELOAD } from "./AppPageView";
+import { Pages } from "@platform/types";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -289,7 +290,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className={cn(
             /* Block layout so tall list pages scroll on #content; workspaces use flex + inner scroll. */
             "relative min-h-0 min-w-0 flex-1 bg-bg p-0",
-            hideShellTopbar || currentPage === "property-map"
+            hideShellTopbar || currentPage === Pages.PropertyMap
               ? /* Party work page owns scroll (back/title card inside). */
                 "flex flex-col overflow-hidden"
               : "overflow-x-hidden overflow-y-auto max-lg:pb-[var(--browser-bar-inset)]",

@@ -6,6 +6,7 @@ import {
   ensureInspectorOriginalMapOnSubmit,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   type InspectorWorkspaceDraft,
+  WorkspaceActors,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { saveInspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-commands";
 import {
@@ -150,7 +151,7 @@ export async function submitPropertyDetailInspection(input: {
 
     // The inspector's declaration phone rule and key status — the phone's gate.
     const preGate =
-      mapActor === "inspector" && inspectorGate
+      mapActor === WorkspaceActors.Inspector && inspectorGate
         ? inspectorPreSubmitGate({ draft, ...inspectorGate })
         : null;
     if (preGate && !preGate.ok) {
@@ -166,7 +167,7 @@ export async function submitPropertyDetailInspection(input: {
         inspectionConfirmed: true,
         ...(preGate?.ok ? inspectorSubmitStamp(latest, preGate) : {}),
       };
-      return mapActor === "inspector"
+      return mapActor === WorkspaceActors.Inspector
         ? ensureInspectorOriginalMapOnSubmit(baseConfirmed)
         : baseConfirmed;
     };
@@ -182,11 +183,11 @@ export async function submitPropertyDetailInspection(input: {
       includeRetiredFeatureKeys,
       // The inspector's own submit only — the specialist's accept path never demands the verdict.
       requireDeedMatch:
-        mapActor === "inspector" && inspectorMustDecideDeedMatch(property),
+        mapActor === WorkspaceActors.Inspector && inspectorMustDecideDeedMatch(property),
       // Same for «هل في الأرض مبانٍ أو ملاحق تستحق التقييم؟» (asked of an asset typed land).
-      requireLandStructures: mapActor === "inspector",
+      requireLandStructures: mapActor === WorkspaceActors.Inspector,
       // And the 10 exterior / 20 interior photo floor.
-      requirePhotoMinimums: mapActor === "inspector",
+      requirePhotoMinimums: mapActor === WorkspaceActors.Inspector,
     });
     delete errors.inspectionConfirmed;
     if (inspectorWorkspaceHasBlockingErrors(errors)) {

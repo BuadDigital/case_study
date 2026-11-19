@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
 import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
+import { PartyBillingStatementStatuses } from "@platform/api-client";
 
 export function useFinanceTabCounts() {
   const statementsQuery = useQuery({
@@ -26,7 +27,7 @@ export function useFinanceTabCounts() {
       (r) =>
         r.excludedFromBatch ||
         (r.netFeeSar === 0 && r.workStatus === "done"),
-    ).length + statements.filter((s) => s.status === "cancelled").length;
+    ).length + statements.filter((s) => s.status === PartyBillingStatementStatuses.Cancelled).length;
 
   return { excludedCount };
 }

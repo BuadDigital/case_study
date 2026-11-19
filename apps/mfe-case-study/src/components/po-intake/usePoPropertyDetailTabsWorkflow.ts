@@ -63,6 +63,7 @@ import {
   usePreloadPropertyDetailTabChunks,
 } from "./PropertyDetailTabChunks";
 import { propertyEnfazRevenueQueryOptions } from "./property-detail-finance-query";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 /** Tabs that render property documents or photos; opening one starts the attachment load. */
 const EMPTY_LOG_EVENTS: PropertyTimelineEvent[] = [];
@@ -207,7 +208,7 @@ export function usePoPropertyDetailTabsWorkflow({
       task
         ? findSurveyChildForParent(task.id, property.id, tasks)
         : partyChildTaskForProperty(
-            "engineering-survey",
+            WorkflowTaskKinds.EngineeringSurvey,
             poNumber,
             property.id,
             tasks,
@@ -218,12 +219,12 @@ export function usePoPropertyDetailTabsWorkflow({
   const appraisalTask = useMemo(() => {
     if (task) {
       const fromParent = childTasksForCaseStudyParent(task.id, tasks).find(
-        (t) => t.kind === "property-appraisal",
+        (t) => t.kind === WorkflowTaskKinds.PropertyAppraisal,
       );
       if (fromParent) return fromParent;
     }
     return partyChildTaskForProperty(
-      "property-appraisal",
+      WorkflowTaskKinds.PropertyAppraisal,
       poNumber,
       property.id,
       tasks,
@@ -335,7 +336,7 @@ export function usePoPropertyDetailTabsWorkflow({
         (t) =>
           t.poNumber.trim() === poNumber &&
           t.propertyId === property.id &&
-          (t.kind === "field-inspection" || t.kind === "engineering-survey"),
+          (t.kind === WorkflowTaskKinds.FieldInspection || t.kind === WorkflowTaskKinds.EngineeringSurvey),
       ),
     [tasks, poNumber, property.id],
   );
@@ -386,11 +387,11 @@ export function usePoPropertyDetailTabsWorkflow({
     if (!task) return null;
     return (
       childTasksForCaseStudyParent(task.id, tasks).find(
-        (t) => t.kind === "government-review",
+        (t) => t.kind === WorkflowTaskKinds.GovernmentReview,
       ) ??
       tasks.find(
         (t) =>
-          t.kind === "government-review" &&
+          t.kind === WorkflowTaskKinds.GovernmentReview &&
           t.poNumber.trim() === poNumber &&
           t.propertyId === property.id,
       ) ??

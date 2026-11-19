@@ -25,6 +25,9 @@ import type { PartyAppraisalExtensions } from "@platform/app-shared/party-apprai
 import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-survey-extensions";
 import { fieldInspectionTaskStatusBadge, filterFieldInspectionListedTasks } from "../lib/app-data/field-inspection-work-queue";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
+import { ActiveTransactionQueueTableLayouts } from "./active-transaction-queue-state";
+import { TaskWorkLayouts } from "./my-task-work-state";
 
 function queueConfig(
   def: PartyTaskPageDef,
@@ -54,20 +57,20 @@ function queueConfig(
     serverQuery: { kind: [def.kind] },
   };
 
-  if (def.kind === "property-appraisal" && appraisalExtensions) {
+  if (def.kind === WorkflowTaskKinds.PropertyAppraisal && appraisalExtensions) {
     return appraisalExtensions.patchQueueConfig(base, def);
   }
 
-  if (def.kind === "engineering-survey" && engineeringSurveyExtensions) {
+  if (def.kind === WorkflowTaskKinds.EngineeringSurvey && engineeringSurveyExtensions) {
     return engineeringSurveyExtensions.patchQueueConfig(base, def);
   }
 
-  if (def.kind === "field-inspection") {
+  if (def.kind === WorkflowTaskKinds.FieldInspection) {
     const baseFilter = base.filterListed!;
     return {
       ...base,
       hidePageTitle: true,
-      tableLayout: "field-inspection",
+      tableLayout: ActiveTransactionQueueTableLayouts.FieldInspection,
       emptyHint:
         "بعد إرسال المعاينة تختفي من قائمة العمل — فعّل «إظهار المكتملة» لعرضها للقراءة فقط.",
       tableHint: "اضغط الصف لفتح نموذج المعاينة في صفحة مستقلة.",
@@ -125,28 +128,28 @@ function PartyActiveTaskViewBody({
   useEffect(() => {
     if (!legacyTask) return;
     const taskId = decodeTaskParam(legacyTask);
-    if (def?.kind === "engineering-survey") {
+    if (def?.kind === WorkflowTaskKinds.EngineeringSurvey) {
       router.replace(activeSurveyWorkspacePath(taskId));
       return;
     }
-    if (def?.kind === "property-appraisal") {
+    if (def?.kind === WorkflowTaskKinds.PropertyAppraisal) {
       router.replace(propertyAppraisalWorkspacePath(taskId));
       return;
     }
-    if (def?.kind === "field-inspection") {
+    if (def?.kind === WorkflowTaskKinds.FieldInspection) {
       router.replace(activeInspectionWorkspacePath(taskId));
     }
   }, [def?.kind, legacyTask, router]);
 
-  if (def?.kind === "engineering-survey" && legacyTask) {
+  if (def?.kind === WorkflowTaskKinds.EngineeringSurvey && legacyTask) {
     return <PanelSkeleton className="p-4" />;
   }
 
-  if (def?.kind === "property-appraisal" && legacyTask) {
+  if (def?.kind === WorkflowTaskKinds.PropertyAppraisal && legacyTask) {
     return <PanelSkeleton className="p-4" />;
   }
 
-  if (def?.kind === "field-inspection" && legacyTask) {
+  if (def?.kind === WorkflowTaskKinds.FieldInspection && legacyTask) {
     return <PanelSkeleton className="p-4" />;
   }
 
@@ -176,7 +179,7 @@ function PartyActiveTaskViewBody({
                 def={def}
                 task={task}
                 onRefreshAction={onRefresh}
-                layout="panel"
+                layout={TaskWorkLayouts.Panel}
                 onCloseAction={onClose}
                 appraisalExtensions={appraisalExtensions}
                 engineeringSurveyExtensions={engineeringSurveyExtensions}

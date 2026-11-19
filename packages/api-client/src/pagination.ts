@@ -1,5 +1,6 @@
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import { authHeaders, getApiBase } from "./api-base";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 const DEFAULT_LIST_PAGE_SIZE = 500;
 
@@ -102,14 +103,16 @@ async function requestPage<T>(
   const url = `${base}${path}${buildListQueryString(params)}`;
   try {
     const res = await fetch(url, { headers: authHeaders(config.token) });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    // A role without the read (the map overlay is one) is told so, not shown a server error.
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const data = (await res.json()) as PagedResultDto<T> | T[];
     if (Array.isArray(data)) return { ok: true, data: arrayAsPage(data) };
-    if (!isPagedResult<T>(data)) return { ok: false, kind: "server" };
+    if (!isPagedResult<T>(data)) return { ok: false, kind: ApiErrorKinds.Server };
     return { ok: true, data };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 

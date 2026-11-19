@@ -12,6 +12,7 @@ import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 /**
  * The case-study «inspector inputs» step for a transaction: one inspection review per deed.
  *
@@ -150,9 +151,9 @@ function SiblingDeedAppraisal({
     () =>
       tasks.find(
         (t) =>
-          t.kind === "case-study-property" &&
+          t.kind === WorkflowTaskKinds.CaseStudyProperty &&
           t.propertyId === deed.propertyId &&
-          t.status !== "cancelled",
+          t.status !== WorkflowTaskStatuses.Cancelled,
       ) ?? null,
     [tasks, deed.propertyId],
   );

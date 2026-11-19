@@ -4,6 +4,20 @@ import { ToastProvider } from "@platform/ui-kit";
 import { reviewCorrectionOptions } from "../../../lib/app-data/review-correction-model";
 import { ReviewCorrectionDialog } from "../ReviewCorrectionDialog";
 
+// «المقيّم» reads the appraisers and the open loads only while it shows (Omar 2026-11-18).
+vi.mock("@settings/mfe/query/settings-queries", () => ({
+  useDistributionAssigneesQuery: () => ({ data: { users: [] } }),
+}));
+vi.mock("../../../query/case-study-queries", () => ({
+  useWorkflowTasksQuery: () => ({ data: [] }),
+}));
+vi.mock("../../../lib/app-data/distribution-parties", () => ({
+  getValuators: () => [
+    { id: "a-1", name: "سعد" },
+    { id: "a-2", name: "صالح" },
+  ],
+}));
+
 const OPTIONS = reviewCorrectionOptions({
   studyIssued: true,
   hasAppraisal: true,
@@ -34,6 +48,19 @@ const typeReason = (text: string) =>
 const send = () => fireEvent.click(screen.getByRole("button", { name: "إرسال طلب التصحيح" }));
 
 describe("ReviewCorrectionDialog — «طلب تصحيح»", () => {
+  it("returns the valuation to another appraiser in the same step (Omar 2026-11-18)", async () => {
+    const props = open({ currentAppraiserId: "a-1" });
+
+    expect(screen.queryByLabelText("المقيّم")).toBeNull();
+    tick("valuation");
+    fireEvent.change(screen.getByLabelText("المقيّم"), { target: { value: "a-2" } });
+    typeReason(REASON);
+    send();
+
+    await waitFor(() => expect(props.onClose).toHaveBeenCalledOnce());
+    expect(props.onReturnValuation).toHaveBeenCalledWith(REASON, { id: "a-2", name: "صالح" });
+  });
+
   it("shows each choice's action and who it touches before anything is sent", () => {
     open();
 
@@ -73,7 +100,7 @@ describe("ReviewCorrectionDialog — «طلب تصحيح»", () => {
     await waitFor(() => expect(props.onClose).toHaveBeenCalledOnce());
     expect(order).toEqual(["study", "valuation"]);
     expect(props.onReturnStudy).toHaveBeenCalledWith(REASON, false);
-    expect(props.onReturnValuation).toHaveBeenCalledWith(REASON);
+    expect(props.onReturnValuation).toHaveBeenCalledWith(REASON, null);
   });
 
   it("keeps the window on a refusal and does not send the finished return again", async () => {

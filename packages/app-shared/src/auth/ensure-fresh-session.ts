@@ -1,4 +1,4 @@
-import { refreshAuthSession, revokeAuthSession } from "@platform/api-client";
+import { refreshAuthSession, revokeAuthSession, ApiErrorKinds } from "@platform/api-client";
 import {
   clearAuthSession,
   ensureAuthGateCookie,
@@ -112,7 +112,7 @@ async function renew(force: boolean): Promise<FreshAuthSessionResult> {
     return { status: "ok", session };
   }
 
-  if (result.kind === "auth") {
+  if (result.kind === ApiErrorKinds.Auth) {
     if (result.accountDisabled) await wipeDisabledAccountDevice(stored.user.id);
     return { status: "auth" };
   }

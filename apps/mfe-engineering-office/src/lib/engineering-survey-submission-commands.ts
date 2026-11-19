@@ -92,6 +92,7 @@ import {
   ENGINEERING_SURVEY_RETURNED_EVENT,
   ENGINEERING_SURVEY_SUBMITTED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 /** Serialised per task — see engineering-survey-draft-write-queue.ts. */
 export function updateEngineeringSurveyDraft(
@@ -147,13 +148,13 @@ async function writeEngineeringSurveyDraft(
   >,
 ): Promise<EngineeringSurveySubmission | null> {
   const current = loadEngineeringSurveySubmission(taskId);
-  if (!current || current.status === "submitted") return current;
+  if (!current || current.status === SubmissionStatuses.Submitted) return current;
 
   const next: EngineeringSurveySubmission = {
     ...current,
     ...patch,
     checklist: patch.checklist ?? current.checklist,
-    status: current.status === "reopened" ? "reopened" : "draft",
+    status: current.status === SubmissionStatuses.Reopened ? SubmissionStatuses.Reopened : SubmissionStatuses.Draft,
     updatedAtUtc: new Date().toISOString(),
   };
   return saveEngineeringSurveySubmission(next);
@@ -169,14 +170,14 @@ export async function submitEngineeringSurveySubmission(
   if (!current) {
     return { ok: false, error: "لا توجد مسودة للإرسال" };
   }
-  if (current.status === "submitted") {
+  if (current.status === SubmissionStatuses.Submitted) {
     return { ok: true, data: current };
   }
 
   try {
     await saveEngineeringSurveySubmission({
       ...current,
-      status: "draft",
+      status: SubmissionStatuses.Draft,
       updatedAtUtc: new Date().toISOString(),
     });
   } catch (err: unknown) {

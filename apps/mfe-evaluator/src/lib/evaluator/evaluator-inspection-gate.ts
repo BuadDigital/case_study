@@ -1,4 +1,5 @@
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 export type InspectionGateState =
   | { ready: true }
@@ -14,7 +15,7 @@ export function findSiblingInspectionTask(
       (t) =>
         t.parentTaskId === appraisalTask.parentTaskId &&
         t.propertyId === appraisalTask.propertyId &&
-        t.kind === "field-inspection",
+        t.kind === WorkflowTaskKinds.FieldInspection,
     ) ?? null
   );
 }

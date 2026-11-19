@@ -1,6 +1,7 @@
 import type { RoleId } from "@platform/types";
 import type { FailureSeverity } from "@platform/app-shared/failures/failures-types";
 import { OTHER_FAILURE_TYPE_ID } from "./failure-types-data";
+import { Roles } from "@platform/types";
 
 /**
  * The three degrees of a failure, in their ladder order (Omar 2026-11-11):
@@ -26,7 +27,7 @@ export const FAILURE_DEGREE_LABELS: Record<FailureDegree, { label: string; hint:
  * both sides.
  */
 export function canRecordFinalFailure(role: RoleId): boolean {
-  return role === "case-specialist" || role === "section-supervisor" || role === "cdo";
+  return role === Roles.CaseSpecialist || role === Roles.SectionSupervisor || role === Roles.Cdo;
 }
 
 /**

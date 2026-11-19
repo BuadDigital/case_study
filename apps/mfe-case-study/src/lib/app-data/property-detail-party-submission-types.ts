@@ -1,3 +1,4 @@
+import type { ChecklistAnswer } from "@platform/app-shared/engineering-survey/checklist-answers";
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
 
 export type PartyAnswerRow = {
@@ -64,7 +65,7 @@ export type EvaluatorSubmissionSnapshot = {
   returnNote?: string | null;
 };
 
-export type EngineeringSurveyChecklistAnswer = "yes" | "no" | null;
+export type EngineeringSurveyChecklistAnswer = ChecklistAnswer | null;
 
 export type EngineeringSurveyChecklistRow = {
   answer: EngineeringSurveyChecklistAnswer;

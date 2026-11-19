@@ -27,7 +27,7 @@ export function useCaseStudyInfoRolesQuery() {
   });
 }
 
-export function useStaffUsersQuery() {
+export function useStaffUsersQuery(options?: { enabled?: boolean }) {
   const { authReady, capabilities } = useAppAccess();
   const userId = getAuthSession()?.user.id ?? "anonymous";
   const canManageUsers = capabilities.includes("manage-users");
@@ -48,7 +48,7 @@ export function useStaffUsersQuery() {
             canManageUsers,
             canListDistributionAssignees: canListAssignees,
           }),
-    enabled: authReady,
+    enabled: (options?.enabled ?? true) && authReady,
     ...queryDefaults,
   });
 }

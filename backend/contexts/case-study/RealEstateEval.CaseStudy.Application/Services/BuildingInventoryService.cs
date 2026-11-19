@@ -11,7 +11,8 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Services;
 
 public class BuildingInventoryService(IBuildingInventoryRepository db,
-    TimeProvider? time = null) : IBuildingInventoryService
+    TimeProvider? time = null,
+    ICaseStudyLookup? caseStudy = null) : IBuildingInventoryService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
@@ -37,6 +38,17 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
         // Staff never needs the task facts, so skip the query for them.
         if (PoRoleMatrixRules.CanAcceptPartyWork(actor.Staff))
             return BuildingInventoryWriteAccess.Staff;
+
+        // The appraiser edits and adds lines on a transaction assigned to him (Omar 2026-11-18); another
+        // appraiser's stays read only. With no Case Study lookup (tools, tests) he is denied as before.
+        if (PoRoleMatrixRules.EditsOnlyAssignedProperties(actor.PrototypeRole))
+        {
+            return caseStudy is not null
+                   && await caseStudy.IsAssignedAppraiserAsync(
+                       propertyId, actor.UserId, actor.DistributionAssigneeId, cancellationToken)
+                ? BuildingInventoryWriteAccess.Appraiser
+                : BuildingInventoryWriteAccess.Denied;
+        }
 
         var facts = await db.GetFieldInspectionWriteFactsAsync(poNumber, propertyId, cancellationToken);
         return BuildingInventoryWriteRules.Resolve(

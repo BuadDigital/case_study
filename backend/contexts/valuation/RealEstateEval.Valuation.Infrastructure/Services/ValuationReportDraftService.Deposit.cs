@@ -138,7 +138,10 @@ public sealed partial class ValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanReopenValuationReport(actor.Staff))
+        // Called only by Case Study's «إعادة فتح المعاملة» (the forwarded bearer is the specialist's), which
+        // the coordinator opens too (Omar 2026-11-18) — not the review-only «نسخة جديدة» of the valuation
+        // screen (found live 2026-11-19).
+        if (!PoRoleMatrixRules.CanReopenValuationForEdit(actor.Staff))
             return (null, Forbidden(ReopenForbiddenAr));
 
         // The property's request that holds the current deposit copy (the closed one after the final issuance).

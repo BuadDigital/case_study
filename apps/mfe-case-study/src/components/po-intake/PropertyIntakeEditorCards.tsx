@@ -36,10 +36,12 @@ import {
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
 import {
   DISTRIBUTION_LOCKED_KEYS,
+  editLiftsDistributionLock,
   isPropertyDistributed,
   keepDistributionLockedFields,
 } from "../../lib/app-data/property-distribution-lock";
 import { fetchRecentPoRecord, useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useActiveReopeningsQuery } from "../../query/use-active-reopenings-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { PoPropertyEnfathForm } from "./PoPropertyDeedForm";
 import {
@@ -52,6 +54,7 @@ import {
 } from "../../lib/domain/po-intake/property-deed-validation";
 import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
 import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake/po-field-error-targets";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 
 export type IntakeSection = "enfath" | "bourse";
 
@@ -71,7 +74,7 @@ function sectionDirtyCount(
   const bourseKeys = new Set(Object.keys(propertyToBourseRequest(property)));
   return Object.keys(now).filter(
     (key) =>
-      bourseKeys.has(key) === (section === "bourse") &&
+      bourseKeys.has(key) === (section === CaseStudyTaskPhases.Bourse) &&
       JSON.stringify(now[key] ?? null) !== JSON.stringify(was[key] ?? null),
   ).length;
 }
@@ -165,7 +168,11 @@ export function usePropertyIntakeEditor({
   // The distribution lock (Omar 2026-11-15): once the deed is distributed, the fields the parties work
   // from are greyed out in the forms and their patches are dropped here; the server refuses them too.
   const tasksQuery = useWorkflowTasksQuery();
-  const distributionLocked = isPropertyDistributed(poNumber, propertyId, tasksQuery.data ?? []);
+  // «التعديل» that reopened the study lifts it while active (Omar 2026-11-18).
+  const reopenings = useActiveReopeningsQuery();
+  const distributionLocked =
+    !editLiftsDistributionLock(reopenings, propertyId, property?.transactionId) &&
+    isPropertyDistributed(poNumber, propertyId, tasksQuery.data ?? []);
   // The form waits for the task list too, so it is drawn once in its final state — before this the
   // fields showed editable for half a second, then turned grey with the lock lines (2026-11-15).
   const tasksLoading = tasksQuery.isLoading;
@@ -208,7 +215,7 @@ export function usePropertyIntakeEditor({
       return;
     }
     const errors: FieldErrors =
-      section === "enfath"
+      section === CaseStudyTaskPhases.Enfath
         ? mergeFieldErrors(
             mergePropertyEnfathValidation(
               property,
@@ -221,7 +228,7 @@ export function usePropertyIntakeEditor({
           ? validatePropertyBourseFields(property)
           : {};
     if (
-      section === "enfath" &&
+      section === CaseStudyTaskPhases.Enfath &&
       (await deedExistsInPo(poNumber, property.deedNumber, propertyId))
     ) {
       errors.deedNumber = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
@@ -229,7 +236,7 @@ export function usePropertyIntakeEditor({
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
       setFormError(
-        section === "enfath"
+        section === CaseStudyTaskPhases.Enfath
           ? firstEnfathValidationMessage(errors)
           : firstBourseValidationMessage(errors),
       );
@@ -375,10 +382,10 @@ export function PropertyIntakeEnfathCard({
         title={
           deed ? `${SECTION_TITLES.enfath} — ${deed}` : SECTION_TITLES.enfath
         }
-        dirtyCount={editor.dirtyCount("enfath")}
-        saving={editor.savingSection === "enfath"}
+        dirtyCount={editor.dirtyCount(CaseStudyTaskPhases.Enfath)}
+        saving={editor.savingSection === CaseStudyTaskPhases.Enfath}
         disabled={disabled || editor.savingSection !== null}
-        onSave={() => void editor.saveSection("enfath")}
+        onSave={() => void editor.saveSection(CaseStudyTaskPhases.Enfath)}
       />
       <CardBody>
         <PoPropertyEnfathForm
@@ -429,10 +436,10 @@ export function PropertyIntakeBourseCard({
       <IntakeSectionHeader
         title={SECTION_TITLES.bourse}
         subtitle="المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة"
-        dirtyCount={editor.dirtyCount("bourse")}
-        saving={editor.savingSection === "bourse"}
+        dirtyCount={editor.dirtyCount(CaseStudyTaskPhases.Bourse)}
+        saving={editor.savingSection === CaseStudyTaskPhases.Bourse}
         disabled={disabled || editor.savingSection !== null}
-        onSave={() => void editor.saveSection("bourse")}
+        onSave={() => void editor.saveSection(CaseStudyTaskPhases.Bourse)}
       />
       <CardBody>
         <PoPropertyBourseForm

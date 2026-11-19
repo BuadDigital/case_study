@@ -12,6 +12,7 @@ import { clearPartyTaskRecall } from "@platform/app-shared/app-data/party-task-r
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { getValuationReconciliation } from "@platform/api-client";
 import type { EvaluatorSubmission } from "./evaluator-window-data";
+import { SubmissionStatuses } from "@platform/app-shared/workflow/task-types";
 
 type FinalizeAppraiserResult =
   | { ok: true; submission: EvaluatorSubmission }
@@ -62,11 +63,11 @@ export async function finalizeAppraiserSubmission(
       };
     }
     const reportIssueDate =
-      current.status === "reopened" || !current.reportIssueDate.trim()
+      current.status === SubmissionStatuses.Reopened || !current.reportIssueDate.trim()
         ? formatValuationReportIssueDateIso(issuedAt)
         : current.reportIssueDate.trim();
     const appraisalDate =
-      current.status === "reopened" || !current.appraisalDate.trim()
+      current.status === SubmissionStatuses.Reopened || !current.appraisalDate.trim()
         ? reportIssueDate
         : current.appraisalDate.trim();
 

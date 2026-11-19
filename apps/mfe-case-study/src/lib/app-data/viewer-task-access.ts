@@ -8,19 +8,21 @@ import {
   tasksForRole,
   type WorkflowTask,
 } from "./tasks";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
+import { Roles, Pages } from "@platform/types";
 
 /** Case-study workflow queues where the section supervisor oversees all rows. */
 const CASE_STUDY_WORKFLOW_QUEUE_PAGES: ReadonlySet<PageId> = new Set([
-  "active-primary-data",
-  "bourse-inquiry",
-  "active-distribution",
-  "active-receipt",
-  "active-case-study",
-  "system-upload",
+  Pages.ActivePrimaryData,
+  Pages.BourseInquiry,
+  Pages.ActiveDistribution,
+  Pages.ActiveReceipt,
+  Pages.ActiveCaseStudy,
+  Pages.SystemUpload,
 ]);
 
 function isCaseStudyWorkflowOverseer(role: RoleId): boolean {
-  return role === "section-supervisor";
+  return role === Roles.SectionSupervisor;
 }
 
 export function seesAllCaseStudyWorkflowTasks(
@@ -30,9 +32,9 @@ export function seesAllCaseStudyWorkflowTasks(
   if (isSuperAdmin(role)) return true;
   // All-transactions lists one row per property at its latest stage, which
   // needs sibling party tasks — not only the specialist's own assigneeRole.
-  if (isCaseStudySpecialist(role) && pageId === "all-transactions") return true;
+  if (isCaseStudySpecialist(role) && pageId === Pages.AllTransactions) return true;
   // The appraiser reads every transaction there too, read only (Omar 2026-11-17).
-  if (role === "real-estate-appraiser" && pageId === "all-transactions") return true;
+  if (role === Roles.RealEstateAppraiser && pageId === Pages.AllTransactions) return true;
   if (!isCaseStudyWorkflowOverseer(role)) return false;
   if (!pageId) return true;
   return CASE_STUDY_WORKFLOW_QUEUE_PAGES.has(pageId);
@@ -87,14 +89,14 @@ export function canOpenCaseStudyWorkspace(
   task: WorkflowTask,
   tasks: WorkflowTask[],
 ): boolean {
-  if (task.kind !== "case-study-property") return false;
+  if (task.kind !== WorkflowTaskKinds.CaseStudyProperty) return false;
   if (isSuperAdmin(role)) return true;
-  if (seesAllCaseStudyWorkflowTasks(role, "active-case-study")) return true;
+  if (seesAllCaseStudyWorkflowTasks(role, Pages.ActiveCaseStudy)) return true;
   if (
     isCaseStudySpecialist(role) &&
     tasksForRole(role, tasks).some((t) => t.id === task.id)
   ) {
     return true;
   }
-  return role === "general-manager" || role === "cdo";
+  return role === Roles.GeneralManager || role === Roles.Cdo;
 }

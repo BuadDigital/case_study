@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listKeyEnvelopeFeeReport } from "@platform/api-client";
+import { listKeyEnvelopeFeeReport, InspectorFeeBillingStatuses } from "@platform/api-client";
 import { QueryErrorState, QueueTableHint, useSwapAnimation } from "@platform/ui-kit";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
@@ -77,18 +77,18 @@ export function PartyFeesWorkspace({
   // Lines waiting for the supervisor — including engineering-office fees whose discount the
   // specialist proposed at acceptance (decided in this queue: approve / amend / waive).
   const supReviewRows = useMemo(
-    () => rows.filter((r) => r.billingStatus === "sup-review"),
+    () => rows.filter((r) => r.billingStatus === InspectorFeeBillingStatuses.SupReview),
     [rows],
   );
   const returnedToSup = useMemo(
     () =>
       rows.filter(
-        (r) => r.billingStatus === "returned" && r.returnTo === "supervisor",
+        (r) => r.billingStatus === InspectorFeeBillingStatuses.Returned && r.returnTo === "supervisor",
       ),
     [rows],
   );
   const suspendedRows = useMemo(
-    () => rows.filter((r) => r.billingStatus === "suspended"),
+    () => rows.filter((r) => r.billingStatus === InspectorFeeBillingStatuses.Suspended),
     [rows],
   );
 

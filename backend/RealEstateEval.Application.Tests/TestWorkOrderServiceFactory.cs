@@ -51,7 +51,9 @@ internal static class TestWorkOrderServiceFactory
         var loader = new WorkOrderLoader(caseStudy);
         var visibility = new WorkOrderVisibilityFilter(caseStudy);
         var query = new WorkOrderQueryService(caseStudy, new FailureLookup(failuresCtx), new PoEnfazInvoiceLookup(financial), new UserLabelLookup(identity), loader, visibility, dbOptions);
-        var properties = new WorkOrderPropertyCommands(new WorkOrderPropertyRepository(caseStudy), new CaseStudyFailureGate(new FailureLookup(failuresCtx), failures), new UserLabelLookup(identity), loader, timeline, notifications, recipients);
+        // As in production: each save aligns its work order's task slots (2026-11-19).
+        var slots = new WorkflowTaskSlotSynchronizer(new WorkflowTaskSlotRepository(caseStudy), new WorkflowTaskQueryService(caseStudy));
+        var properties = new WorkOrderPropertyCommands(new WorkOrderPropertyRepository(caseStudy), new CaseStudyFailureGate(new FailureLookup(failuresCtx), failures), new UserLabelLookup(identity), loader, timeline, notifications, recipients, slots: slots);
         return new WorkOrderService(
             new WorkOrderRepository(caseStudy),
             timeline,
@@ -60,7 +62,8 @@ internal static class TestWorkOrderServiceFactory
             loader,
             query,
             properties,
-            organizationSettings);
+            organizationSettings,
+            slots: slots);
     }
 
     public static WorkOrderService Create(

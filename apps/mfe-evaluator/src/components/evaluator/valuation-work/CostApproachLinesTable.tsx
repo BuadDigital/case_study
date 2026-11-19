@@ -38,6 +38,7 @@ import {
   DirectTotalFooter,
   costLineEditor,
 } from "./CostApproachLineEditors";
+import { CostGroups } from "@platform/app-shared/domain/cost-items";
 import { CostApproachLinesPhone } from "./CostApproachLinesPhone";
 
 const COLS = 8;
@@ -194,7 +195,7 @@ export function CostApproachLinesTable({
         </THead>
         <TBody>
           {COST_GROUPS.map(([group, groupTitle, borderedTop]) => {
-            const subtotal = group === "area" ? areaSubtotal : extraSubtotal;
+            const subtotal = group === CostGroups.Area ? areaSubtotal : extraSubtotal;
             return (
             <Fragment key={group}>
               <Tr hoverable={false}>

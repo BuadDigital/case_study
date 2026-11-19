@@ -37,6 +37,9 @@ import { usePoRecordQuery } from "../../query/case-study-queries";
 import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { holdsSubRole } from "@platform/app-shared/app-data/case-specialist-sub-roles";
+import { CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
+import { TaskWorkLayouts } from "../../views/my-task-work-state";
 
 const LOADING_TEXT = "text-xs text-text-3";
 
@@ -71,9 +74,9 @@ export function DistributionTaskWork({
   const loading = poRecordLoading && !poRecord;
 
   // Distribution is the coordination sub-role's (ruling 2026-11-02); the CDO keeps it.
-  const isSpecialist = holdsSubRole(access, "coordination") || role === "cdo";
+  const isSpecialist = holdsSubRole(access, "coordination") || role === Roles.Cdo;
   const failureRaisedByRole =
-    role === "section-supervisor"
+    role === Roles.SectionSupervisor
       ? FAILURE_RAISER_SUPERVISOR
       : FAILURE_RAISER_SPECIALIST;
   const failureSpecialist = ROLES[role]?.name ?? "أخصائي";
@@ -247,7 +250,7 @@ export function DistributionTaskWork({
   if (loading) {
     return (
       <TaskWorkChrome
-        layout="panel"
+        layout={TaskWorkLayouts.Panel}
         title="توزيع المعاملة"
         onClose={onClose}
         onSave={onClose}
@@ -262,7 +265,7 @@ export function DistributionTaskWork({
   if (!isSpecialist) {
     return (
       <TaskWorkChrome
-        layout="panel"
+        layout={TaskWorkLayouts.Panel}
         title="توزيع المعاملة"
         onClose={onClose}
         onSave={onClose}
@@ -276,10 +279,10 @@ export function DistributionTaskWork({
     );
   }
 
-  if (task.phase !== "distribution") {
+  if (task.phase !== CaseStudyTaskPhases.Distribution) {
     return (
       <TaskWorkChrome
-        layout="panel"
+        layout={TaskWorkLayouts.Panel}
         title="توزيع المعاملة"
         onClose={onClose}
         onSave={onClose}
@@ -297,7 +300,7 @@ export function DistributionTaskWork({
   if (activeFailure) {
     return (
       <TaskWorkChrome
-        layout="panel"
+        layout={TaskWorkLayouts.Panel}
         title="توزيع المعاملة"
         onClose={onClose}
         onSave={onClose}
@@ -314,7 +317,7 @@ export function DistributionTaskWork({
 
   return (
     <TaskWorkChrome
-      layout="panel"
+      layout={TaskWorkLayouts.Panel}
       title={`توزيع المعاملة — ${deedTitle}`}
       saving={submitBusy}
       onClose={onClose}

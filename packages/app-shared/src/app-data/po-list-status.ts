@@ -6,15 +6,17 @@ import type { BadgeTone } from "@platform/ui-kit";
  * billing labels relabel those once Finance issued an invoice — only Finance and management see
  * them (`canSeeBillingStatuses`); everyone else reads the row's `studyStatus`.
  */
-export type PoListStatus =
-  | "new"
-  | "under_study"
-  | "ready_for_enfaz"
-  | "cancelled"
-  | "stopped"
-  | "completed"
-  | "partially_billed"
-  | "fully_billed";
+export const PoListStatuses = {
+  New: "new",
+  UnderStudy: "under_study",
+  ReadyForEnfaz: "ready_for_enfaz",
+  Cancelled: "cancelled",
+  Stopped: "stopped",
+  Completed: "completed",
+  PartiallyBilled: "partially_billed",
+  FullyBilled: "fully_billed",
+} as const;
+export type PoListStatus = (typeof PoListStatuses)[keyof typeof PoListStatuses];
 
 /** Filter-only buckets: `active` = every non-terminal status, `closed` = every terminal one. */
 export type PoListStatusBucket = PoListStatus | "active" | "closed";
@@ -37,19 +39,19 @@ const PO_LIST_STATUS_META: Record<
 
 /** Dropdown order: the study cycle first, then the billing labels, then the manual overrides. */
 const PO_LIST_STATUS_ORDER: readonly PoListStatus[] = [
-  "new",
-  "under_study",
-  "ready_for_enfaz",
-  "completed",
-  "partially_billed",
-  "fully_billed",
-  "stopped",
-  "cancelled",
+  PoListStatuses.New,
+  PoListStatuses.UnderStudy,
+  PoListStatuses.ReadyForEnfaz,
+  PoListStatuses.Completed,
+  PoListStatuses.PartiallyBilled,
+  PoListStatuses.FullyBilled,
+  PoListStatuses.Stopped,
+  PoListStatuses.Cancelled,
 ];
 
 const PO_LIST_BILLING_STATUSES: readonly PoListStatus[] = [
-  "partially_billed",
-  "fully_billed",
+  PoListStatuses.PartiallyBilled,
+  PoListStatuses.FullyBilled,
 ];
 
 export function isPoListBillingStatus(status: PoListStatus): boolean {
@@ -82,7 +84,7 @@ export const PO_LIST_STATUS_OPTIONS: PoListStatusOption[] = poListStatusOptions(
 
 export function normalizePoListStatus(status: string): PoListStatus {
   if (status in PO_LIST_STATUS_META) return status as PoListStatus;
-  return "new";
+  return PoListStatuses.New;
 }
 
 /**
@@ -90,8 +92,8 @@ export function normalizePoListStatus(status: string): PoListStatus {
  * «مفوتر بالكامل» is delivered, «مفوتر جزئي» is still under study.
  */
 export function studyStatusOf(status: PoListStatus): PoListStatus {
-  if (status === "fully_billed") return "completed";
-  if (status === "partially_billed") return "under_study";
+  if (status === PoListStatuses.FullyBilled) return PoListStatuses.Completed;
+  if (status === PoListStatuses.PartiallyBilled) return PoListStatuses.UnderStudy;
   return status;
 }
 
@@ -105,10 +107,10 @@ export function poListStatusMeta(status: PoListStatus): {
 /** Nothing left for the office: cancelled, stopped, or delivered. «جاهز للرفع» is still open work. */
 export function isPoListStatusTerminal(status: PoListStatus): boolean {
   return (
-    status === "cancelled" ||
-    status === "stopped" ||
-    status === "completed" ||
-    status === "fully_billed"
+    status === PoListStatuses.Cancelled ||
+    status === PoListStatuses.Stopped ||
+    status === PoListStatuses.Completed ||
+    status === PoListStatuses.FullyBilled
   );
 }
 

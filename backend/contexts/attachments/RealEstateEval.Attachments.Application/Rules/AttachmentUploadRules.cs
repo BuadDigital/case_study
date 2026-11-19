@@ -51,6 +51,8 @@ public static class AttachmentUploadRules
         "evaluator-plan-image",
         // The deposit certificate the valuation service stores (one-page PDF; see ReportFileScopes there).
         "evaluator-deposit-certificate",
+        // Each delivered version of the case-study report (Omar 2026-11-18), key {propertyId}:case-study:v{n}.
+        "case-study-report",
     };
 
  /// <summary>

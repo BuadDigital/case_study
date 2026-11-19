@@ -76,6 +76,14 @@ public sealed class WorkOrderPropertyRepository(CaseStudyDbContext db) : IWorkOr
                     || t.Phase == WorkflowTaskPhase.Done),
             cancellationToken);
 
+    /// <summary>An active reopening (not closed) of the deed's transaction with the study reopened.</summary>
+    public Task<bool> HasActiveStudyReopeningAsync(Guid propertyId, CancellationToken cancellationToken) =>
+        db.TransactionReopenings.AsNoTracking().AnyAsync(
+            r => r.ReopensStudy
+                && r.Status != TransactionReopeningStatuses.Closed
+                && db.WorkOrderProperties.Any(p => p.Id == propertyId && p.TransactionId == r.TransactionId),
+            cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         EfConcurrency.SaveAsync(db, cancellationToken);
 

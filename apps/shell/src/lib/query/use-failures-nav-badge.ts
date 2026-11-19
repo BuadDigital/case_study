@@ -7,6 +7,7 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { countOpenFailuresForPartyRole } from "@failures/mfe/lib/failures-party-raiser-scope";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
+import { Pages } from "@platform/types";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
@@ -14,7 +15,7 @@ const GC_MS = 10 * 60_000;
 /** Live red badge count for Failures management in the sidebar. */
 export function useFailuresNavBadge(): number {
   const { role, rolePages } = useAppAccess();
-  const scoped = rolePages.includes("failures");
+  const scoped = rolePages.includes(Pages.Failures);
 
   const selectCount = useCallback(
     (failures: FailureRecord[]) =>

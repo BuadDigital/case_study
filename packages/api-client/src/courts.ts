@@ -1,5 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
+import { ApiErrorKinds } from "./api-error-kinds";
 
 export type CourtsApiConfig = {
   baseUrl?: string;
@@ -89,15 +90,15 @@ async function adminRequest<T>(
     } catch {
       // The status code is enough when the response has no JSON body.
     }
-    if (res.status === 401) return { ok: false, kind: "auth", message };
-    if (res.status === 403) return { ok: false, kind: "forbidden", message };
-    if (res.status === 404) return { ok: false, kind: "not_found", message };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth, message };
+    if (res.status === 403) return { ok: false, kind: ApiErrorKinds.Forbidden, message };
+    if (res.status === 404) return { ok: false, kind: ApiErrorKinds.NotFound, message };
     if (res.status === 400 || res.status === 422) {
-      return { ok: false, kind: "validation", message };
+      return { ok: false, kind: ApiErrorKinds.Validation, message };
     }
-    return { ok: false, kind: "server", message };
+    return { ok: false, kind: ApiErrorKinds.Server, message };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -206,12 +207,12 @@ export async function listSelectableCourts(
     const res = await fetch(`${base}/api/courts/selectable${suffix}`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const courts = (await res.json()) as SelectableCourtDto[];
     return { ok: true, courts: Array.isArray(courts) ? courts : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }
 
@@ -229,11 +230,11 @@ export async function listSelectableCircuits(
       `${base}/api/courts/${encodeURIComponent(courtId)}/circuits/selectable`,
       { headers: authHeaders(config.token) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (res.status === 401) return { ok: false, kind: ApiErrorKinds.Auth };
+    if (!res.ok) return { ok: false, kind: ApiErrorKinds.Server };
     const circuits = (await res.json()) as SelectableCircuitDto[];
     return { ok: true, circuits: Array.isArray(circuits) ? circuits : [] };
   } catch {
-    return { ok: false, kind: "network" };
+    return { ok: false, kind: ApiErrorKinds.Network };
   }
 }

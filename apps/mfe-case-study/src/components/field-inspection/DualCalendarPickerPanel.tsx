@@ -15,8 +15,8 @@ import {
   stepDualCalendarMonth,
   todayDualCalendarParts,
   type DualCalendarDateParts,
-  type DualCalendarKind,
 } from "../../lib/app-data/dual-calendar-date";
+import { DualCalendarKinds, type DualCalendarKind } from "@platform/app-shared/format/hijri";
 
 const WEEKDAY_HEADERS = ["س", "ح", "ن", "ث", "ر", "خ", "ج"] as const;
 
@@ -50,7 +50,7 @@ function CalendarKindToggle({
               if (!on) onChange(kind);
             }}
           >
-            {kind === "gregorian" ? "ميلادي" : "هجري"}
+            {kind === DualCalendarKinds.Gregorian ? "ميلادي" : "هجري"}
           </button>
         );
       })}
@@ -105,7 +105,7 @@ export function DualCalendarPickerPanel({
   const yearOptions = useMemo(() => listDualCalendarYears(calendar), [calendar]);
   const grid = useMemo(
     () =>
-      calendar === "gregorian"
+      calendar === DualCalendarKinds.Gregorian
         ? buildGregorianMonthGrid(viewYear, viewMonth)
         : buildHijriMonthGrid(viewYear, viewMonth),
     [calendar, viewYear, viewMonth],

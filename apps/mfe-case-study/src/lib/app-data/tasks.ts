@@ -36,8 +36,6 @@ export {
   type RedistributePartiesResult,
   type ReopenCompletedTaskResult,
   type RevertTaskPhaseResult,
-  type SyncTaskSlotsResult,
-  type SyncTasksResult,
 } from "./tasks-model";
 
 export {
@@ -68,6 +66,4 @@ export {
   resolveTaskObstruction,
   revertTaskToPhase,
   suspendWorkflowTasksForProperty,
-  syncTaskSlotsForPo,
-  syncTasksFromPoRecords,
 } from "./tasks-commands";

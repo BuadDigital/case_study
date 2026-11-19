@@ -14,6 +14,8 @@ import {
   EVALUATOR_SUBMISSION_CHANGED_EVENT,
   PARTY_TASK_RECALL_CHANGED_EVENT,
 } from "@platform/app-shared/events/app-events";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
+import { Roles } from "@platform/types";
 
 export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
   const { role } = useAppAccess();
@@ -21,7 +23,7 @@ export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
   const { data: tasks, refetch } = useWorkflowTasksQuery();
 
   useEffect(() => {
-    if (role !== "real-estate-appraiser") return;
+    if (role !== Roles.RealEstateAppraiser) return;
     const handler = () => void refetch();
     window.addEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, handler);
     window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, handler);
@@ -33,10 +35,10 @@ export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
 
   const buildPropertyRowMoreItems = useCallback(
     (ctx: PoPropertyRowMoreContext): RowMoreMenuItem[] => {
-      if (role !== "real-estate-appraiser") return [];
+      if (role !== Roles.RealEstateAppraiser) return [];
       const task = (tasks ?? []).find(
         (t) =>
-          t.kind === "property-appraisal" &&
+          t.kind === WorkflowTaskKinds.PropertyAppraisal &&
           t.poNumber.trim() === ctx.poNumber.trim() &&
           t.propertyId === ctx.property.id,
       );
@@ -55,7 +57,7 @@ export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
     <PoPropertiesPage
       poNumber={poNumber}
       buildPropertyRowMoreItems={
-        role === "real-estate-appraiser" ? buildPropertyRowMoreItems : undefined
+        role === Roles.RealEstateAppraiser ? buildPropertyRowMoreItems : undefined
       }
     />
   );

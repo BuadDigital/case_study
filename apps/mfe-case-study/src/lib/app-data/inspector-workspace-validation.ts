@@ -44,6 +44,7 @@ import {
   type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 /** Mirrors FieldInspectionSubmissionValidator — text or components photo, at least one. */
 const PROPERTY_DESCRIPTION_REQUIRED =
@@ -422,7 +423,7 @@ export function validateInspectorWorkspace(
     const mismatched = rows.filter(({ row }) => row.matches === false);
     if (verdict !== "yes" && verdict !== "no") {
       errors.deedMatchesNature = DEED_MATCH_VERDICT_REQUIRED;
-    } else if (verdict === "no") {
+    } else if (verdict === ChecklistAnswers.No) {
       if (mismatched.length === 0) {
         errors.boundaries = DEED_MATCH_NEEDS_A_SIDE;
       }
@@ -696,7 +697,11 @@ export function pickInspectorErrorsForWizardStep(
  * step 1, description / services in step 2), «mobile» = `FieldInspectionWorkBody` (features,
  * components and boundaries in step 2; description, service photos and observations in step 3).
  */
-export type InspectorStepLayout = "desktop" | "mobile";
+export const InspectorStepLayouts = {
+  Desktop: "desktop",
+  Mobile: "mobile",
+} as const;
+export type InspectorStepLayout = (typeof InspectorStepLayouts)[keyof typeof InspectorStepLayouts];
 
 /**
  * Which step of the phone body (`FieldInspectionWorkBody`) holds a form control.
@@ -744,9 +749,9 @@ function phoneStepForErrorTarget(targetId: string): InspectorWizardStepId {
  */
 export function inspectorWizardStepForErrorTarget(
   targetId: string,
-  layout: InspectorStepLayout = "desktop",
+  layout: InspectorStepLayout = InspectorStepLayouts.Desktop,
 ): InspectorWizardStepId {
-  if (layout === "mobile") return phoneStepForErrorTarget(targetId);
+  if (layout === InspectorStepLayouts.Mobile) return phoneStepForErrorTarget(targetId);
   const featureKeyMatch = targetId.match(/^ins-feature(?:-photo)?-(.+)$/);
   if (featureKeyMatch && isWizardStep2FeatureKey(featureKeyMatch[1])) {
     return 2;

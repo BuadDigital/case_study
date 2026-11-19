@@ -1,4 +1,4 @@
-import { uploadAttachment } from "@platform/api-client";
+import { uploadAttachment, ApiErrorKinds } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
 import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import { uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
@@ -279,7 +279,7 @@ async function uploadInspectorPhotoOnline(
     });
     if (upload.ok) return upload.data;
 
-    if (upload.kind === "auth" && attempt === 0) {
+    if (upload.kind === ApiErrorKinds.Auth && attempt === 0) {
       const renewed = await ensureFreshAuthSession({ force: true });
       if (!renewed?.token) break;
       config = { token: renewed.token, baseUrl: config.baseUrl };

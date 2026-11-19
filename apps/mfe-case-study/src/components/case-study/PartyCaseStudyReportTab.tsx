@@ -11,12 +11,13 @@ import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
 } from "../../query/case-study-queries";
+import { WorkflowTaskKinds } from "@platform/app-shared/workflow/task-types";
 
 function resolveParentCaseStudyTask(
   task: WorkflowTask,
   all: WorkflowTask[],
 ): WorkflowTask | null {
-  if (task.kind === "case-study-property") return task;
+  if (task.kind === WorkflowTaskKinds.CaseStudyProperty) return task;
   if (task.parentTaskId) {
     const parent = all.find((t) => t.id === task.parentTaskId);
     if (parent) return parent;
@@ -24,7 +25,7 @@ function resolveParentCaseStudyTask(
   return (
     all.find(
       (t) =>
-        t.kind === "case-study-property" &&
+        t.kind === WorkflowTaskKinds.CaseStudyProperty &&
         t.poNumber === task.poNumber &&
         t.propertyId === task.propertyId,
     ) ?? null

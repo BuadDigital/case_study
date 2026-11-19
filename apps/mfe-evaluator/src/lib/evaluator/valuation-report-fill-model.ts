@@ -146,6 +146,7 @@ import {
 } from "./arabic-amount-words";
 import { parseEvaluatorAmount } from "./value-estimation";
 import { costLandReportRows, type CostLandReportRow } from "./cost-land-figures";
+import { ChecklistAnswers } from "@platform/app-shared/engineering-survey/checklist-answers";
 
 const OWNERSHIP_LABELS: Record<string, string> = {
   // One wording everywhere (report, case study, glossary): «ملكية مطلقة» (Omar 2026-11-15).
@@ -410,7 +411,7 @@ function reportPropertyDescription(
 }
 
 function surveyUsesNature(survey?: ValuationReportSurveyBounds | null): boolean {
-  return survey?.deedMatchesNature === "no";
+  return survey?.deedMatchesNature === ChecklistAnswers.No;
 }
 
 /**

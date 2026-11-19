@@ -20,6 +20,7 @@ import {
   type WorkflowTask,
 } from "./tasks";
 
+import { WorkflowTaskKinds, WorkflowTaskStatuses, CaseStudyTaskPhases } from "@platform/app-shared/workflow/task-types";
 type TaskTableRow = {
   deedLabel: string;
   location: string;
@@ -226,7 +227,7 @@ function buildTaskTableRow(
   const typeLabel = (property && effectivePropertyTypeOf(property)) || classification || "—";
   const typeDisplay =
     !property || boursePending
-      ? task.kind === "case-study-property"
+      ? task.kind === WorkflowTaskKinds.CaseStudyProperty
         ? taskPhaseLabel(task.phase)
         : "—"
       : classification
@@ -255,7 +256,7 @@ function buildTaskTableRow(
       statusLabel: FAILURE_OBSTRUCTED_BADGE.label,
     };
   }
-  if (task.status === "blocked") {
+  if (task.status === WorkflowTaskStatuses.Blocked) {
     return {
       deedLabel,
       location,
@@ -265,7 +266,7 @@ function buildTaskTableRow(
       statusLabel: taskStatusLabel(task.status),
     };
   }
-  if (boursePending && task.phase === "bourse") {
+  if (boursePending && task.phase === CaseStudyTaskPhases.Bourse) {
     return {
       deedLabel,
       location,
@@ -275,7 +276,7 @@ function buildTaskTableRow(
       statusLabel: "بانتظار البورصة",
     };
   }
-  if (task.phase === "distribution") {
+  if (task.phase === CaseStudyTaskPhases.Distribution) {
     return {
       deedLabel,
       location,
@@ -285,7 +286,7 @@ function buildTaskTableRow(
       statusLabel: "بانتظار التوزيع",
     };
   }
-  if (task.phase === "case-study") {
+  if (task.phase === CaseStudyTaskPhases.CaseStudy) {
     return {
       deedLabel,
       location,

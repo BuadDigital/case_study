@@ -15,7 +15,27 @@ export const COMPARABLE_SOURCE_OPTIONS = [
 ] as const;
 
 /** Shared bank kinds — land feeds cost, building feeds market. */
-export type ComparableKind = "land" | "building";
+export const ComparableKinds = {
+  Land: "land",
+  Building: "building",
+} as const;
+export type ComparableKind = (typeof ComparableKinds)[keyof typeof ComparableKinds];
+
+/** An offer on the market, or a sale that went through. */
+export const ComparableTransactionKinds = {
+  Offer: "offer",
+  Executed: "executed",
+} as const;
+export type ComparableTransactionKind =
+  (typeof ComparableTransactionKinds)[keyof typeof ComparableTransactionKinds];
+
+/** The price's description — «حد» (`asking`) or «سوم». */
+export const ComparablePriceDescriptions = {
+  Asking: "asking",
+  Som: "som",
+} as const;
+export type ComparablePriceDescription =
+  (typeof ComparablePriceDescriptions)[keyof typeof ComparablePriceDescriptions];
 
 export const LAND_COMPARABLE_TYPE = "أرض";
 export const BUILDING_COMPARABLE_TYPE = "مبنى";
@@ -23,8 +43,8 @@ export const BUILDING_COMPARABLE_TYPE = "مبنى";
 export type ComparableEntryDraft = {
   kind: ComparableKind | "";
   comparablePropertyType: string;
-  transactionKind: "offer" | "executed";
-  priceDescription: "asking" | "som";
+  transactionKind: ComparableTransactionKind;
+  priceDescription: ComparablePriceDescription;
   source: string;
   listingNumber: string;
   advertiserPhone: string;
@@ -56,8 +76,8 @@ export function comparableKindFromType(
 ): ComparableKind | "" {
   const t = (type ?? "").trim();
   if (!t) return "";
-  if (/أرض|ارض|فضاء|land/i.test(t)) return "land";
-  return "building";
+  if (/أرض|ارض|فضاء|land/i.test(t)) return ComparableKinds.Land;
+  return ComparableKinds.Building;
 }
 
 /**
@@ -66,7 +86,7 @@ export function comparableKindFromType(
  * records) — the use has its own field. Any other type shows as recorded.
  */
 export function comparableTypeLabel(type: string | null | undefined): string {
-  return comparableKindFromType(type) === "land" ? LAND_COMPARABLE_TYPE : (type ?? "").trim();
+  return comparableKindFromType(type) === ComparableKinds.Land ? LAND_COMPARABLE_TYPE : (type ?? "").trim();
 }
 
 /**
@@ -74,15 +94,15 @@ export function comparableTypeLabel(type: string | null | undefined): string {
  * floor area — a building's price includes its land, which is not measured separately.
  */
 export function comparableAreaLabel(kind: ComparableKind | ""): string {
-  if (kind === "building") return "مسطح البناء";
-  if (kind === "land") return "مساحة الأرض";
+  if (kind === ComparableKinds.Building) return "مسطح البناء";
+  if (kind === ComparableKinds.Land) return "مساحة الأرض";
   return "المساحة";
 }
 
 /** The price per m² a comparable's area gives — «سعر متر البناء» / «سعر متر الأرض». */
 export function comparableRateLabel(kind: ComparableKind | ""): string {
-  if (kind === "building") return "سعر متر البناء";
-  if (kind === "land") return "سعر متر الأرض";
+  if (kind === ComparableKinds.Building) return "سعر متر البناء";
+  if (kind === ComparableKinds.Land) return "سعر متر الأرض";
   return "سعر المتر";
 }
 
@@ -90,8 +110,8 @@ export function emptyComparableEntryDraft(): ComparableEntryDraft {
   return {
     kind: "",
     comparablePropertyType: "",
-    transactionKind: "offer",
-    priceDescription: "asking",
+    transactionKind: ComparableTransactionKinds.Offer,
+    priceDescription: ComparablePriceDescriptions.Asking,
     source: "listing_platform",
     listingNumber: "",
     advertiserPhone: "",
@@ -109,10 +129,10 @@ export function emptyComparableEntryDraft(): ComparableEntryDraft {
 }
 
 export function comparableTypeForSave(draft: ComparableEntryDraft): string {
-  if (draft.kind === "land") {
+  if (draft.kind === ComparableKinds.Land) {
     return draft.comparablePropertyType.trim() || LAND_COMPARABLE_TYPE;
   }
-  if (draft.kind === "building") {
+  if (draft.kind === ComparableKinds.Building) {
     return draft.comparablePropertyType.trim() || BUILDING_COMPARABLE_TYPE;
   }
   return draft.comparablePropertyType.trim();
@@ -216,7 +236,7 @@ export function validateComparableEntry(
     errors.district = "أدخل اسم الحي (يُستخرج من الخريطة أو يُكتب يدوياً)";
   }
 
-  if (draft.kind !== "land" && draft.kind !== "building") {
+  if (draft.kind !== ComparableKinds.Land && draft.kind !== ComparableKinds.Building) {
     errors.kind = "اختر نوع المقارن (أرض أو مبنى)";
   }
 
@@ -231,7 +251,7 @@ export function validateComparableEntry(
 
   // The land under a building is optional; when typed it must be a real area.
   if (
-    draft.kind === "building" &&
+    draft.kind === ComparableKinds.Building &&
     (draft.landAreaSqm ?? "").trim() &&
     !isPositiveLocaleNumber(draft.landAreaSqm ?? "")
   ) {
@@ -242,10 +262,10 @@ export function validateComparableEntry(
     errors.transactionDate = "حدّد تاريخ العملية";
   }
 
-  if (draft.transactionKind === "offer") {
+  if (draft.transactionKind === ComparableTransactionKinds.Offer) {
     if (
-      draft.priceDescription !== "asking" &&
-      draft.priceDescription !== "som"
+      draft.priceDescription !== ComparablePriceDescriptions.Asking &&
+      draft.priceDescription !== ComparablePriceDescriptions.Som
     ) {
       errors.priceDescription = "اختر وصف السعر (حد أو سوم)";
     }
@@ -296,7 +316,7 @@ export function comparableDraftToUpsert(
     sourcePropertyId?: string | null;
   },
 ): UpsertComparablePropertyRequest {
-  const executed = draft.transactionKind === "executed";
+  const executed = draft.transactionKind === ComparableTransactionKinds.Executed;
   const coords = parseLatLng(draft.latitude, draft.longitude);
   return {
     comparablePropertyType: comparableTypeForSave(draft),
@@ -310,7 +330,7 @@ export function comparableDraftToUpsert(
     longitude: coords?.lng ?? 0,
     areaSqm: parseLocaleNumber(draft.areaSqm) || 0,
     landAreaSqm:
-      draft.kind === "building" && isPositiveLocaleNumber(draft.landAreaSqm ?? "")
+      draft.kind === ComparableKinds.Building && isPositiveLocaleNumber(draft.landAreaSqm ?? "")
         ? parseLocaleNumber(draft.landAreaSqm ?? "")
         : null,
     transactionDate: draft.transactionDate,
@@ -327,8 +347,8 @@ export function comparableDraftToUpsert(
 }
 
 export function comparableDealLabel(row: Pick<ComparablePropertyDto, "transactionKind" | "priceDescription" | "transactionKindLabelAr" | "priceDescriptionLabelAr">): string {
-  if (row.transactionKind === "executed") return row.transactionKindLabelAr || "صفقة منفّذة";
-  const price = row.priceDescriptionLabelAr || (row.priceDescription === "som" ? "سوم" : "حد");
+  if (row.transactionKind === ComparableTransactionKinds.Executed) return row.transactionKindLabelAr || "صفقة منفّذة";
+  const price = row.priceDescriptionLabelAr || (row.priceDescription === ComparablePriceDescriptions.Som ? "سوم" : "حد");
   return `عرض ${price}`;
 }
 

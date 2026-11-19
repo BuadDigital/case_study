@@ -7,6 +7,7 @@ import type { PoIntakeRecord, PoPropertyIntake } from "../lib/app-data/po-intake
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import { usePropertyDetailPartySubmissionsQuery } from "../query/property-detail-party-submissions-queries";
 import { useWorkDeedDocuments } from "./use-work-deed-documents";
+import { WorkflowTaskStatuses } from "@platform/app-shared/workflow/task-types";
 
 /**
  * The work page's «الرفع على إنفاذ» section (Omar 2026-11-08): the handover card, then the upload package
@@ -52,7 +53,7 @@ export function WorkUploadSection({
         task={task}
         studyTask={studyTask}
         reportDeeds={reportDeeds}
-        hasSurveyTask={Boolean(surveyTask && surveyTask.status !== "cancelled")}
+        hasSurveyTask={Boolean(surveyTask && surveyTask.status !== WorkflowTaskStatuses.Cancelled)}
         parties={parties.data}
         documentSections={documentSections}
         loading={parties.isLoading}

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -21,14 +22,17 @@ public sealed class ValuationRequestService : IValuationRequestService
     private readonly IPropertyPoNumberLookup _poNumbers;
     private readonly TimeProvider _time;
     private readonly IValuationReportFreezeGate? _freeze;
+    private readonly DatabaseOptions _dbOptions;
 
     public ValuationRequestService(
         ValuationDbContext db,
         IValuationEventPublisher events,
         IPropertyPoNumberLookup poNumbers,
         TimeProvider? time = null,
-        IValuationReportFreezeGate? freeze = null)
+        IValuationReportFreezeGate? freeze = null,
+        IOptions<DatabaseOptions>? dbOptions = null)
     {
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
         _time = time ?? TimeProvider.System;
 
         _db = db;
@@ -38,12 +42,36 @@ public sealed class ValuationRequestService : IValuationRequestService
     }
 
     public async Task<IReadOnlyList<ValuationRequestDto>> ListAsync(
+        CancellationToken cancellationToken = default) =>
+        await ToDtosAsync(await NewestFirst().Take(MaxListRows).ToListAsync(cancellationToken), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<PagedResultDto<ValuationRequestDto>> ListPagedAsync(
+        int? page,
+        int? pageSize,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _db.ValuationRequests.AsNoTracking()
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(page ?? 1, pageSize, _dbOptions);
+        var query = NewestFirst();
+        return new PagedResultDto<ValuationRequestDto>
+        {
+            TotalCount = await query.CountAsync(cancellationToken),
+            Items = await ToDtosAsync(await query.Skip(skip).Take(take).ToListAsync(cancellationToken), cancellationToken),
+            Page = resolvedPage,
+            PageSize = take,
+        };
+    }
+
+    // The id breaks ties, so a page never repeats or skips a request.
+    private IQueryable<ValuationRequest> NewestFirst() =>
+        _db.ValuationRequests.AsNoTracking()
             .OrderByDescending(x => x.RequestDate)
-            .Take(MaxListRows)
-            .ToListAsync(cancellationToken);
+            .ThenBy(x => x.Id);
+
+    private async Task<IReadOnlyList<ValuationRequestDto>> ToDtosAsync(
+        List<ValuationRequest> rows,
+        CancellationToken cancellationToken)
+    {
         var overlays = await LoadOverlaysAsync(rows.Select(x => x.Id), cancellationToken);
         return rows.Select(row => ToDto(row, OverlayFor(overlays, row.Id))).ToList();
     }

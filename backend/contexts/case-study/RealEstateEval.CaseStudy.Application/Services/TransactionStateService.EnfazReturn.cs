@@ -1,3 +1,5 @@
+using RealEstateEval.CaseStudy.Application.Mapping;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -56,6 +58,9 @@ public sealed partial class TransactionStateService
         var reopenStudy = request.ReopenStudy || request.NeedsFieldWork;
         if (!reopenStudy && !request.ReopenValuation)
             return (null, Fail(ReturnNothingChosenAr));
+        // «التعديل» (Omar 2026-11-18): a value or ratio change is always the valuation report's.
+        if (request.ChangesValue && !request.ReopenValuation)
+            return (null, Fail(EditLevelRules.ValueChangeNeedsValuationAr));
         var source = string.Equals(request.Source?.Trim(), TransactionReopeningSources.Internal, StringComparison.OrdinalIgnoreCase)
             ? TransactionReopeningSources.Internal
             : TransactionReopeningSources.Enfaz;
@@ -176,6 +181,11 @@ public sealed partial class TransactionStateService
                 ReopensStudy = reopenStudy,
                 ReopensValuation = request.ReopenValuation,
                 NeedsFieldWork = request.NeedsFieldWork,
+                ChangesValue = request.ChangesValue,
+                // A study-only edit keeps the deed's data as it was, for the check before the upload.
+                ValuationInputsJson = reopenStudy && !request.ReopenValuation
+                    ? EditLevelRules.Snapshot(WorkOrderMapper.ToPropertyDto(current))
+                    : null,
                 Status = TransactionReopeningStatuses.Open,
                 OpenedAtUtc = now,
                 OpenedByUserId = string.IsNullOrWhiteSpace(actor.UserId) ? null : actor.UserId.Trim(),
