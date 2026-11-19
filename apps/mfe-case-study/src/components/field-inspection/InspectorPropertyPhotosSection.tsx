@@ -414,6 +414,17 @@ export function InspectorPropertyPhotosSection({
     );
   }
 
+  // Each group starts closed — its header keeps the count (and the minimum, red when short); the
+  // arrow opens the picker and the photos (Omar 2026-11-19).
+  const [openBuckets, setOpenBuckets] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleBucket = (key: string) =>
+    setOpenBuckets((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   function renderBucket(parent: (typeof INSPECTOR_FREE_PHOTO_PARENTS)[number]) {
     const bucketPhotos = photosByParent.map.get(parent.key) ?? [];
     // View-only page: nothing to classify, so unclassified photos sit in the same grid.
@@ -424,69 +435,85 @@ export function InspectorPropertyPhotosSection({
     const busy = uploadingParent === parent.key;
     const isExterior = parent.key === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR;
     const minimum = inspectorFreePhotoMinimum(parent.key, isLand);
+    const open = openBuckets.has(parent.key);
+    const bodyId = `photo-bucket-${parent.key}`;
 
     return (
       <div
         key={parent.key}
         className="rounded-lg border border-border bg-surface-2/40 px-3 py-3"
       >
-        <div className="mb-2.5 flex items-baseline justify-between gap-2">
-          <p className="m-0 flex items-center gap-1.5 text-[13px] font-bold text-heading">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => toggleBucket(parent.key)}
+          className="flex w-full cursor-pointer items-baseline justify-between gap-2 border-0 bg-transparent p-0 text-start font-inherit"
+        >
+          <span className="flex items-center gap-1.5 text-[13px] font-bold text-heading">
+            <i
+              className={cn("ti ti-chevron-down text-sm text-text-3 transition-transform", open && "rotate-180")}
+              aria-hidden
+            />
             <i className={`ti ${parent.icon} text-primary`} aria-hidden />
             {parent.label}
-          </p>
-          <p
+          </span>
+          <span
             className={cn(
-              "m-0 text-[11px] text-text-3",
+              "text-[11px] text-text-3",
               canUpload && bucketPhotos.length < minimum && "font-semibold text-danger",
             )}
           >
             {inspectorPhotosLabel(bucketPhotos.length)}
             {canUpload && minimum > 0 ? ` · الحد الأدنى ${minimum}` : null}
-          </p>
-        </div>
+          </span>
+        </button>
 
-        {canUpload ? (
-          <InspectorPhotoFilePicker
-            label={
-              bucketPhotos.length > 0
-                ? `إضافة صورة ${isExterior ? "خارجية" : "داخلية"}`
-                : `التقاط صورة ${isExterior ? "خارجية" : "داخلية"}`
-            }
-            disabled={uploading && !busy}
-            loading={busy}
-            multiple
-            onFilesSelected={(files) => upload(files, parent.key as ParentKey)}
-          />
-        ) : null}
+        {open ? (
+          <div id={bodyId} className="mt-2.5">
+            {canUpload ? (
+              <InspectorPhotoFilePicker
+                label={
+                  bucketPhotos.length > 0
+                    ? `إضافة صورة ${isExterior ? "خارجية" : "داخلية"}`
+                    : `التقاط صورة ${isExterior ? "خارجية" : "داخلية"}`
+                }
+                disabled={uploading && !busy}
+                loading={busy}
+                multiple
+                onFilesSelected={(files) => upload(files, parent.key as ParentKey)}
+              />
+            ) : null}
 
-        {pendingInBucket.length > 0 ? (
-          <div className="mt-3">
-            <p className="m-0 mb-2 text-[11px] font-semibold text-text-3">
-              بانتظار النوع · {pendingInBucket.length}
-            </p>
-            <div className={gridClass}>
-              {pendingInBucket.map((photo) =>
-                renderPhotoCard(photo, parent.key as ParentKey),
-              )}
-            </div>
+            {pendingInBucket.length > 0 ? (
+              <div className="mt-3">
+                <p className="m-0 mb-2 text-[11px] font-semibold text-text-3">
+                  بانتظار النوع · {pendingInBucket.length}
+                </p>
+                <div className={gridClass}>
+                  {pendingInBucket.map((photo) =>
+                    renderPhotoCard(photo, parent.key as ParentKey),
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {doneInBucket.length > 0 ? (
+              <div className={cn(gridClass, pendingInBucket.length > 0 ? "mt-3" : "mt-3")}>
+                {doneInBucket.map((photo) =>
+                  renderPhotoCard(photo, parent.key as ParentKey),
+                )}
+              </div>
+            ) : bucketPhotos.length === 0 ? (
+              <p className="m-0 mt-2 text-[11px] leading-relaxed text-text-3">
+                {!canUpload
+                  ? "لا توجد صور."
+                  : isExterior
+                  ? "ارفع صور الواجهات والمحيط الخارجي، ثم حدّد نوع كل صورة: واجهة / خدمة / مرفق / أخرى."
+                  : "ارفع صور الفراغات الداخلية، ثم حدّد نوع كل صورة: خدمة / مرفق / أخرى."}
+              </p>
+            ) : null}
           </div>
-        ) : null}
-
-        {doneInBucket.length > 0 ? (
-          <div className={cn(gridClass, pendingInBucket.length > 0 ? "mt-3" : "mt-3")}>
-            {doneInBucket.map((photo) =>
-              renderPhotoCard(photo, parent.key as ParentKey),
-            )}
-          </div>
-        ) : bucketPhotos.length === 0 ? (
-          <p className="m-0 mt-2 text-[11px] leading-relaxed text-text-3">
-            {!canUpload
-              ? "لا توجد صور."
-              : isExterior
-              ? "ارفع صور الواجهات والمحيط الخارجي، ثم حدّد نوع كل صورة: واجهة / خدمة / مرفق / أخرى."
-              : "ارفع صور الفراغات الداخلية، ثم حدّد نوع كل صورة: خدمة / مرفق / أخرى."}
-          </p>
         ) : null}
       </div>
     );

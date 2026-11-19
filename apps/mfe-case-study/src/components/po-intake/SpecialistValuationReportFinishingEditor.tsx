@@ -1,29 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { cn, FormRow, formControlClassName, useWorkDensity } from "@platform/ui-kit";
+import { useEffect, useId, useState } from "react";
+import { cn } from "@platform/ui-kit";
 import { rememberPropertyPoNumber } from "@platform/app-shared/storage/specialist-report-extras-sync";
-import { INSPECTOR_LOCKED_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
-import { InsReadField } from "./PropertyDetailInspectionParts";
 import {
+  ensureOrganizationSettingsLoaded,
+  getCachedOrganizationSettings,
+} from "@platform/app-shared/organization/organization-settings-cache";
+import {
+  SPECIALIST_FINISHING_LEVEL_OPTIONS,
   SPECIALIST_FINISHING_REQUIRED_MESSAGE,
   loadSpecialistFinishingLevel,
   saveSpecialistFinishingLevel,
+  specialistFinishingDescriptions,
   type SpecialistFinishingLevel,
 } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
-import {
-  VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT,
-} from "@platform/app-shared/events/app-events";
+import { VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT } from "@platform/app-shared/events/app-events";
 
-const OPTIONS: { value: SpecialistFinishingLevel; label: string }[] = [
-  { value: "", label: "— اختر المستوى —" },
-  { value: "luxury", label: "تشطيب فاخر" },
-  { value: "medium", label: "تشطيب متوسط" },
-  { value: "ordinary", label: "تشطيب عادي" },
-  { value: "none", label: "بدون تشطيب" },
-];
-
-/** Editable finishing level for case specialist — printed/highlighted in the report. */
+/**
+ * «مستوى تشطيبات البناء» — the case specialist's pick, printed (highlighted) in the valuation report.
+ *
+ * How it works (Omar 2026-11-19: the dropdown was «trash»): the four levels are cards to pick from,
+ * each with the description the report prints for it (from «إعدادات المنشأة»), so the specialist
+ * picks by what a level means, not by its name; a pick saves at once, as the dropdown did.
+ * Edge cases: read only, only the chosen level shows (or «لم يُحدَّد بعد»); «اختر مستوى…» on accept
+ * without a pick marks the cards and scrolls to them.
+ */
 export function SpecialistValuationReportFinishingEditor({
   propertyId,
   poNumber,
@@ -33,13 +35,12 @@ export function SpecialistValuationReportFinishingEditor({
   poNumber?: string;
   readOnly?: boolean;
 }) {
-  const [level, setLevel] = useState(() =>
-    loadSpecialistFinishingLevel(propertyId),
-  );
+  const radioName = useId();
+  const [level, setLevel] = useState(() => loadSpecialistFinishingLevel(propertyId));
   const [invalid, setInvalid] = useState(false);
-  // The work page's layout (`work` density) (Omar 2026-11-09): one field in the four-column row, the ui-kit control
-  // when editable and the page's read-only style when locked — not a full-width hand-made select.
-  const work = useWorkDensity();
+  const [descriptions, setDescriptions] = useState(() =>
+    specialistFinishingDescriptions(getCachedOrganizationSettings()?.valuationReport),
+  );
 
   // Another property means another saved level — read it before this paint.
   const [levelForProperty, setLevelForProperty] = useState(propertyId);
@@ -48,6 +49,16 @@ export function SpecialistValuationReportFinishingEditor({
     setLevel(loadSpecialistFinishingLevel(propertyId));
     setInvalid(false);
   }
+
+  useEffect(() => {
+    let live = true;
+    void ensureOrganizationSettingsLoaded().then((settings) => {
+      if (live && settings) setDescriptions(specialistFinishingDescriptions(settings.valuationReport));
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     const id = propertyId.trim();
@@ -66,99 +77,66 @@ export function SpecialistValuationReportFinishingEditor({
           ?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
     };
-    window.addEventListener(
-      VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT,
-      onRequired,
-    );
-    return () =>
-      window.removeEventListener(
-        VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT,
-        onRequired,
-      );
+    window.addEventListener(VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT, onRequired);
+    return () => window.removeEventListener(VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT, onRequired);
   }, [propertyId]);
 
+  function choose(next: SpecialistFinishingLevel) {
+    setLevel(next);
+    setInvalid(false);
+    saveSpecialistFinishingLevel(propertyId, next);
+  }
+
+  const shown = readOnly
+    ? SPECIALIST_FINISHING_LEVEL_OPTIONS.filter((o) => o.value === level)
+    : SPECIALIST_FINISHING_LEVEL_OPTIONS;
+
   return (
-    <section
-      id="specialist-valuation-finishing"
-      className="mb-4 rounded-[var(--radius-lg)] border border-border bg-surface px-3.5 py-3.5"
-    >
-      <div className="mb-2 text-[13px] font-extrabold text-heading">
-        مستوى تشطيبات البناء
-        {!readOnly ? (
-          <span className="ms-1 text-danger" aria-hidden>
-            *
-          </span>
-        ) : null}
-      </div>
-      <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
-        المستوى المختار يُظلَّل في التقرير. أوصاف الفاخر/المتوسط/العادي من إعدادات
-        المنشأة.
-      </p>
-      {work ? (
-        <FormRow>
-          {readOnly ? (
-            <InsReadField
-              id="specialist-finishing-level"
-              label="المستوى"
-              value={OPTIONS.find((o) => o.value === level && o.value)?.label ?? ""}
-            />
-          ) : (
-            <label className="block min-w-0">
-              <span className="mb-1 block text-[11px] font-semibold text-text-2">المستوى</span>
-              <select
-                id="specialist-finishing-level"
-                className={cn(
-                  formControlClassName,
-                  invalid &&
-                    "border-danger shadow-[0_0_0_3px_color-mix(in_srgb,var(--red)_14%,transparent)]",
-                )}
-                value={level}
-                aria-invalid={invalid || undefined}
-                aria-required
-                onChange={(e) => {
-                  const next = e.target.value as SpecialistFinishingLevel;
-                  setLevel(next);
-                  setInvalid(false);
-                  saveSpecialistFinishingLevel(propertyId, next);
-                }}
-              >
-                {OPTIONS.map((opt) => (
-                  <option key={opt.value || "empty"} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </FormRow>
+    <section id="specialist-valuation-finishing" className="mb-4">
+      {shown.length === 0 ? (
+        <p className="m-0 text-[12px] text-text-3">لم يُحدَّد مستوى التشطيب بعد.</p>
       ) : (
-      <select
-        className={cn(
-          readOnly
-            ? INSPECTOR_LOCKED_CONTROL_CLASS
-            : "w-full rounded-[var(--radius)] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] font-semibold text-text outline-none focus:border-ink",
-          invalid &&
-            !readOnly &&
-            "border-danger shadow-[0_0_0_3px_color-mix(in_srgb,var(--red)_14%,transparent)]",
-        )}
-        value={level}
-        disabled={readOnly}
-        aria-invalid={invalid || undefined}
-        aria-required={!readOnly || undefined}
-        onChange={(e) => {
-          if (readOnly) return;
-          const next = e.target.value as SpecialistFinishingLevel;
-          setLevel(next);
-          setInvalid(false);
-          saveSpecialistFinishingLevel(propertyId, next);
-        }}
-      >
-        {OPTIONS.map((opt) => (
-          <option key={opt.value || "empty"} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        <div
+          role="radiogroup"
+          aria-label="مستوى تشطيبات البناء"
+          aria-required={!readOnly || undefined}
+          aria-invalid={(invalid && !readOnly) || undefined}
+          className={cn("grid gap-2", !readOnly && "sm:grid-cols-2 xl:grid-cols-4")}
+        >
+          {shown.map((opt) => {
+            const on = level === opt.value;
+            const description = descriptions[opt.value];
+            return (
+              <label
+                key={opt.value}
+                className={cn(
+                  "flex min-w-0 flex-col gap-1.5 rounded-[var(--radius-lg)] border px-3 py-2.5 transition-colors",
+                  readOnly ? "cursor-default" : "cursor-pointer",
+                  on
+                    ? "border-heading bg-[color-mix(in_srgb,var(--heading)_7%,var(--surface))] shadow-[0_0_0_1px_var(--heading)]"
+                    : "border-border-md bg-surface hover:border-heading",
+                  invalid && !readOnly && !on && "border-danger",
+                )}
+              >
+                <span className="flex items-center gap-2 text-[12.5px] font-bold text-heading">
+                  <input
+                    type="radio"
+                    name={radioName}
+                    className="size-4 shrink-0 accent-[var(--heading)]"
+                    checked={on}
+                    disabled={readOnly}
+                    onChange={() => choose(opt.value)}
+                  />
+                  {opt.label}
+                </span>
+                {/* The whole text, as the report prints it (Omar 2026-11-19). */}
+                <span className="whitespace-pre-line text-[11px] leading-relaxed text-text-3">
+                  {description || "لا يُطبع له وصف."}
+                </span>
+              </label>
+            );
+          })}
+        </div>
       )}
       {invalid && !readOnly ? (
         <p className="m-0 mt-2 text-[11.5px] font-semibold text-danger" role="alert">

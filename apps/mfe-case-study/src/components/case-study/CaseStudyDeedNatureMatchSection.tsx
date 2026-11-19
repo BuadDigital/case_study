@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import {
   Button,
   FormGroup,
@@ -94,13 +94,16 @@ type OutcomeEdit = { value: string; notes: string };
  * the inspector's findings, then the specialist's outcome. Only the field inspector proposes; a prior
  * survey and the engineering office's verdict are context lines.
  *
- * How it works: the buttons show the choice being made (`edit`), else the saved outcome. «مطابق» saves on
+ * How it works: the buttons show the choice being made (`edit`), else the saved outcome; the inspector's
+ * suggestion carries a «اقتراح المعاين» tag on its own button (it replaced a separate «اعتماد اقتراح المعاين»
+ * button, 2026-11-19, that did what a click on the tagged button does). «مطابق» saves on
  * the click; an outcome that needs text — «غير مطابق» / «تعذّر محتمل», or «مطابق» against whoever said
  * «غير مطابق» — opens its notes, saved with it in one save (the server refuses it without them). Saved
  * notes are read, and changed through «تعديل».
  * Edge cases: clicking the saved outcome again drops the choice being made (it used to stay open — a
  * radio already checked fires no change); a new outcome starts with empty notes, so one outcome's reason
- * never becomes another's; an outcome saved without its notes opens them at once.
+ * never becomes another's — except that «غير مطابق» suggested by the inspector starts with his notes for
+ * each side, to edit; an outcome saved without its notes opens them at once.
  */
 export function CaseStudyDeedNatureMatchSection({
   draft,
@@ -109,7 +112,8 @@ export function CaseStudyDeedNatureMatchSection({
   sourceLabelAr,
   suggestedOutcome,
   infoLinesAr,
-  onAdoptSuggestion,
+  suggestedNotes = "",
+  officeDetails,
   dissent = null,
   sides = [],
 }: {
@@ -121,7 +125,10 @@ export function CaseStudyDeedNatureMatchSection({
   suggestedOutcome?: string;
   /** Prior-survey / engineering-office context — shown, never proposed. */
   infoLinesAr?: readonly string[];
-  onAdoptSuggestion?: () => void;
+  /** The inspector's notes for each side, the start of «غير مطابق»'s notes when he suggested it. */
+  suggestedNotes?: string;
+  /** What the engineering office sent, behind «عرض ما أرسله المكتب الهندسي» — given once it is sent. */
+  officeDetails?: ReactNode;
   /** The four sides: the deed beside the inspector's finding (empty until the inspection is in). */
   sides?: readonly DeedMatchSideRow[];
   /**
@@ -139,11 +146,11 @@ export function CaseStudyDeedNatureMatchSection({
   const labelOf = (value: string) => DEED_NATURE_MATCH_OPTIONS.find((o) => o.value === value)?.label ?? "";
 
   const [edit, setEdit] = useState<OutcomeEdit | null>(null);
+  const [officeOpen, setOfficeOpen] = useState(false);
   // An outcome saved without the text it needs opens its notes at once.
   const editor = edit ?? (needsText(outcome) && !savedNotes ? { value: outcome, notes: "" } : null);
   const shown = editor?.value ?? outcome;
   const shownHint = shown !== DeedNatureMatchOutcomes.Matched ? (OUTCOME_HINTS[shown] ?? "") : "";
-  const canAdopt = Boolean(onAdoptSuggestion && suggestedOutcome && suggestedOutcome !== outcome);
 
   function choose(value: string) {
     if (value === outcome) {
@@ -151,7 +158,8 @@ export function CaseStudyDeedNatureMatchSection({
       return;
     }
     if (needsText(value)) {
-      setEdit({ value, notes: "" });
+      const fromInspector = value === suggestedOutcome && value === DeedNatureMatchOutcomes.Differences;
+      setEdit({ value, notes: fromInspector ? suggestedNotes : "" });
       return;
     }
     setEdit(null);
@@ -177,18 +185,19 @@ export function CaseStudyDeedNatureMatchSection({
           </ul>
         ) : null}
 
-        {canAdopt ? (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => {
-              setEdit(null);
-              onAdoptSuggestion?.();
-            }}
-            className="w-fit cursor-pointer rounded-[var(--radius-sm)] border border-gold bg-gold-soft px-3 py-[7px] text-[12px] font-bold text-gold-d disabled:cursor-not-allowed disabled:opacity-55"
-          >
-            اعتماد اقتراح المعاين
-          </button>
+        {officeDetails ? (
+          <div>
+            <button
+              type="button"
+              aria-expanded={officeOpen}
+              onClick={() => setOfficeOpen((open) => !open)}
+              className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[11.5px] font-semibold text-heading underline-offset-2 hover:underline"
+            >
+              <i className={cn("ti text-sm", officeOpen ? "ti-chevron-up" : "ti-chevron-down")} aria-hidden />
+              {officeOpen ? "إخفاء ما أرسله المكتب الهندسي" : "عرض ما أرسله المكتب الهندسي"}
+            </button>
+            {officeOpen ? officeDetails : null}
+          </div>
         ) : null}
 
         <FormGroup>
@@ -219,6 +228,16 @@ export function CaseStudyDeedNatureMatchSection({
                     onChange={() => choose(opt.value)}
                   />
                   {opt.label}
+                  {opt.value === suggestedOutcome ? (
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-px text-[10px] font-bold",
+                        on ? "bg-white/20 text-on-ink" : "bg-gold-soft text-gold-d",
+                      )}
+                    >
+                      اقتراح المعاين
+                    </span>
+                  ) : null}
                 </label>
               );
             })}

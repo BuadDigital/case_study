@@ -65,10 +65,10 @@ import {
   arabicErrorMessage,
   effectiveValuationDate,
   ensureImageSlotCustomElement,
-  finishingTextForReport,
   loadReportOutputBundle,
   reportValuationChoices,
 } from "./evaluator-report-output-helpers";
+import { finishingTextForReport } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
 
 type ReportOutputInput = Parameters<typeof loadReportOutputBundle>[0];
 

@@ -116,17 +116,17 @@ describe("proposeDeedNatureMatch", () => {
     });
     expect(hit.waiting).toBe(true);
     expect(hit.suggested).toBe("");
-    expect(hit.infoLinesAr).toEqual(["المكتب الهندسي: الصك غير مطابق للطبيعة."]);
+    expect(hit.infoLinesAr).toEqual(["المكتب الهندسي (رفع مساحي مُرسل): الصك غير مطابق للطبيعة."]);
   });
 
-  it("says the office has not ruled yet when assigned without a verdict", () => {
+  it("says the office has not sent its survey yet when assigned without a verdict", () => {
     const hit = proposeDeedNatureMatch({
       ...base,
       engineeringAssigned: true,
       inspector: null,
       inspectorSubmitted: false,
     });
-    expect(hit.infoLinesAr).toEqual(["المكتب الهندسي: لم يُبدِ حكمه بعد."]);
+    expect(hit.infoLinesAr).toEqual(["المكتب الهندسي: لم يُرسل رفعه المساحي بعد."]);
   });
 });
 
@@ -232,4 +232,25 @@ describe("deedMatchSourceView", () => {
         .engineeringSaidNotMatched,
     ).toBe(true);
   });
+
+describe("deedMatchSourceView — the office's survey", () => {
+  const property = emptyProperty();
+  type Survey = NonNullable<Parameters<typeof deedMatchSourceView>[0]["survey"]>;
+  const survey: Survey = { status: "draft", acceptedAtUtc: null, deedMatchesNature: "yes" };
+  const view = (s: Survey) =>
+    deedMatchSourceView({ property, inspector: null, survey: s, hasPriorSurvey: false, engineeringAssigned: true });
+
+  it("is sent only once submitted or accepted", () => {
+    expect(view(survey).officeSent).toBe(false);
+    expect(view({ ...survey, status: "submitted" }).officeSent).toBe(true);
+    expect(view({ ...survey, acceptedAtUtc: "2026-11-19T10:00:00Z" }).officeSent).toBe(true);
+  });
+
+  it("says the survey is sent in the office's line", () => {
+    expect(view({ ...survey, status: "submitted" }).proposal.infoLinesAr).toContain(
+      "المكتب الهندسي (رفع مساحي مُرسل): الصك مطابق للطبيعة.",
+    );
+    expect(view(survey).proposal.infoLinesAr).toContain("المكتب الهندسي: لم يُرسل رفعه المساحي بعد.");
+  });
+});
 });

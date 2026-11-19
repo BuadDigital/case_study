@@ -159,13 +159,15 @@ export function proposeDeedNatureMatch(input: {
   if (input.hasPriorSurvey) {
     infoLinesAr.push("رفع مساحي سابق لنفس الصك — للعلم فقط، وليس مطابقة لهذه المعاملة.");
   }
+  // The office's verdict counts once its survey is sent (or accepted) — the line says so (Omar 2026-11-19:
+  // «has he sent a result?»); its form cannot be sent without the verdict, so no verdict means not sent.
   if (input.engineeringAssigned) {
     infoLinesAr.push(
       input.engineeringDeedMatchesNature === ChecklistAnswers.Yes
-        ? "المكتب الهندسي: الصك مطابق للطبيعة."
+        ? "المكتب الهندسي (رفع مساحي مُرسل): الصك مطابق للطبيعة."
         : input.engineeringDeedMatchesNature === ChecklistAnswers.No
-          ? "المكتب الهندسي: الصك غير مطابق للطبيعة."
-          : "المكتب الهندسي: لم يُبدِ حكمه بعد.",
+          ? "المكتب الهندسي (رفع مساحي مُرسل): الصك غير مطابق للطبيعة."
+          : "المكتب الهندسي: لم يُرسل رفعه المساحي بعد.",
     );
   }
 
@@ -231,7 +233,12 @@ export function deedMatchSourceView(input: {
   survey: Pick<EngineeringSurveySubmissionSnapshot, "status" | "acceptedAtUtc" | "deedMatchesNature"> | null;
   hasPriorSurvey: boolean;
   engineeringAssigned: boolean;
-}): { sides: DeedMatchSideRow[]; proposal: DeedNatureMatchProposal } {
+}): {
+  sides: DeedMatchSideRow[];
+  proposal: DeedNatureMatchProposal;
+  /** The office's survey is sent (or accepted) — what it sent can be shown. */
+  officeSent: boolean;
+} {
   const { property, inspector, survey } = input;
   const inspectorSubmitted =
     inspector?.status === SubmissionStatuses.Submitted || isInspectorWorkspaceAccepted(inspector);
@@ -249,5 +256,6 @@ export function deedMatchSourceView(input: {
       engineeringAssigned: input.engineeringAssigned,
       engineeringDeedMatchesNature: engineeringSubmitted ? (survey?.deedMatchesNature ?? null) : null,
     }),
+    officeSent: engineeringSubmitted,
   };
 }

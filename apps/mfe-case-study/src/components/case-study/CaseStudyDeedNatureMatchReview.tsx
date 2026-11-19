@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
 import {
-  adoptedDeedMatchNotes,
   deedMatchDissent,
   DeedNatureMatchOutcomes,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
@@ -28,8 +27,11 @@ export function CaseStudyDeedNatureMatchReview({
   engineeringAssigned = false,
   readOnly = false,
   readOnlyOnceDecided = false,
+  officeDetails,
 }: {
   caseStudyTaskId: string;
+  /** What the engineering office sent — offered under its line once its survey is sent. */
+  officeDetails?: ReactNode;
   property: PoPropertyIntake;
   poNumber: string;
   surveyTaskId: string | null;
@@ -53,6 +55,7 @@ export function CaseStudyDeedNatureMatchReview({
   const [draft, setDraft] = useState<CaseStudyReportDraft | null>(null);
   const [proposal, setProposal] = useState<DeedNatureMatchProposal | null>(null);
   const [sides, setSides] = useState<DeedMatchSideRow[]>([]);
+  const [officeSent, setOfficeSent] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savingLock = useRef(false);
@@ -86,6 +89,7 @@ export function CaseStudyDeedNatureMatchReview({
         });
         setSides(view.sides);
         setProposal(view.proposal);
+        setOfficeSent(view.officeSent);
       } catch (err) {
         if (!cancelled) {
           setLoadError(
@@ -193,17 +197,8 @@ export function CaseStudyDeedNatureMatchReview({
             proposal.suggested === DeedNatureMatchOutcomes.Differences,
           Boolean(proposal?.engineeringSaidNotMatched),
         )}
-        onAdoptSuggestion={() => {
-          if (!proposal?.suggested) return;
-          void persist({
-            deedNatureMatchOutcome: proposal.suggested,
-            deedNatureMatchNotes: adoptedDeedMatchNotes(
-              proposal.suggested,
-              draft.deedNatureMatchNotes,
-              proposal.inspectorMismatchNotes,
-            ),
-          });
-        }}
+        suggestedNotes={proposal?.inspectorMismatchNotes}
+        officeDetails={officeSent ? officeDetails : undefined}
         onPatch={(p) => void persist(p)}
       />
     </div>
