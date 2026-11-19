@@ -17,7 +17,7 @@ export const DeedNatureMatchOutcomes = {
 
 export const DEED_NATURE_MATCH_OPTIONS = [
   { value: DeedNatureMatchOutcomes.Matched, label: "مطابق" },
-  { value: DeedNatureMatchOutcomes.Differences, label: "فروق" },
+  { value: DeedNatureMatchOutcomes.Differences, label: "غير مطابق" },
   { value: DeedNatureMatchOutcomes.Impediment, label: "تعذّر محتمل" },
 ] as const;
 
@@ -132,7 +132,7 @@ export function deedNatureMatchRequiresNotes(
 
 /**
  * The match notes once the specialist adopts the inspector's suggestion: «مطابق» clears them;
- * «فروق» adds the inspector's per-side notes (the server refuses «فروق» without notes) and keeps
+ * «غير مطابق» adds the inspector's per-side notes (the server refuses it without notes) and keeps
  * what the specialist already wrote.
  */
 export function adoptedDeedMatchNotes(

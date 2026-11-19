@@ -167,7 +167,13 @@ export type ValuationAdjustmentFactorRationaleDto = {
 };
 
 /** An area line's method as a save sends it — «auto» goes back to the table's automatic choice. */
-export type AreaMethodChoice = "multiplier" | "amthal" | "cash" | "auto";
+export const AreaMethodChoices = {
+  Multiplier: "multiplier",
+  Amthal: "amthal",
+  Cash: "cash",
+  Auto: "auto",
+} as const;
+export type AreaMethodChoice = (typeof AreaMethodChoices)[keyof typeof AreaMethodChoices];
 
 export type SaveValuationMarketApproachRequest = {
   subjectAreaSqm?: number | null;

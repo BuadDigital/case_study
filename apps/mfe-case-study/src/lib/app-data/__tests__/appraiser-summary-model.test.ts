@@ -358,7 +358,7 @@ describe("appraiserAlerts", () => {
       { label: "قيد على الصك: مرهون", tone: "danger" },
       { label: "قيد على الصك: محجوز", tone: "warning" },
       { label: "مساحة الرفع المساحي تزيد عن مساحة الصك بـ 12.5 م²", tone: "warning" },
-      { label: "مطابقة الصك على الطبيعة: فروق", tone: "warning" },
+      { label: "مطابقة الصك على الطبيعة: غير مطابق", tone: "warning" },
     ]);
   });
 });

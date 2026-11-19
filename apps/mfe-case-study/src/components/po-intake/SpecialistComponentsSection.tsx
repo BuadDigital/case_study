@@ -10,6 +10,10 @@
  * such structures). Whether the
  * components are valued is the appraiser's scope choice. The report text is the specialist's
  * own and is required before accepting.
+ *
+ * Saving (Omar 2026-11-19: «what is حفظ مكونات العقار?»): the text and the table save themselves a
+ * pause after each edit, as the inspector's table always did, and one line under the title says
+ * where that stands — there is no save button to find, and nothing typed is lost on leaving.
  */
 import type { ReactNode } from "react";
 import {
@@ -19,10 +23,10 @@ import {
   Label,
   Note,
   Textarea,
-  useToast,
   useWorkDensity,
 } from "@platform/ui-kit";
 import { SPECIALIST_COMPONENTS_TABLE_HINT } from "../../lib/app-data/specialist-components";
+import { inventorySaveStatus } from "../../lib/app-data/building-inventory-editor-state";
 import { SpecialistComponentsTable } from "./SpecialistComponentsTable";
 import { InsReadField } from "./PropertyDetailInspectionFields";
 import { useBuildingInventoryEditor } from "./useBuildingInventoryEditor";
@@ -34,7 +38,6 @@ export function SpecialistComponentsSection({
   disabled,
   textReadOnly = false,
   inspectorReference,
-  onSaved,
 }: {
   poNumber: string;
   propertyId: string;
@@ -46,31 +49,21 @@ export function SpecialistComponentsSection({
   textReadOnly?: boolean;
   /** What the inspector sent (text / photo), shown read-only above the specialist's text. */
   inspectorReference?: ReactNode;
-  onSaved?: () => void;
 }) {
   const work = useWorkDensity(); // the work page's layout: one label size (Omar 2026-11-09)
-  const { showToast } = useToast();
   const editor = useBuildingInventoryEditor({
     actor: WorkspaceActors.Specialist,
     poNumber,
     propertyId,
     disabled,
-    autosave: false,
+    autosave: true,
   });
-  const { lines, loading, loadError, text, saving, dirty, error } = editor;
+  const { lines, loading, loadError, text, error } = editor;
 
-  const locked = Boolean(disabled) || saving || Boolean(loadError);
-
-  async function save() {
-    if (disabled) return;
-    const outcome = await editor.save();
-    if (!outcome.ok) {
-      if (outcome.message) showToast(outcome.message, "error");
-      return;
-    }
-    showToast("تم حفظ مكونات العقار", "success");
-    onSaved?.();
-  }
+  // Not locked while a save is in the air: the save loop takes edits made meanwhile, and disabling
+  // the fields would blur the one being typed in.
+  const locked = Boolean(disabled) || Boolean(loadError);
+  const saveState = inventorySaveStatus(editor) ?? (error ? null : "محفوظ ✓");
 
   if (!propertyId) return null;
 
@@ -89,6 +82,13 @@ export function SpecialistComponentsSection({
         <GentleBusy>
           <p className="text-[12px] text-text-2">جاري التحميل…</p>
         </GentleBusy>
+      ) : loadError ? (
+        <div className="space-y-2">
+          <Note tone="warn">{loadError}</Note>
+          <Button type="button" size="sm" onClick={() => void editor.reload()}>
+            إعادة المحاولة
+          </Button>
+        </div>
       ) : (
         <>
           {disabled || textReadOnly ? (
@@ -115,49 +115,57 @@ export function SpecialistComponentsSection({
             </FormGroup>
           )}
 
-          <div id="specialist-components-table">
-            <p className="m-0 text-[12px] font-bold text-heading">جدول الحصر</p>
-            {disabled ? null : (
-              <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                يعبّئه المعاين من الموقع (أدوار، ملاحق، سور…) وتراجعه وتصحّحه هنا.{" "}
-                {SPECIALIST_COMPONENTS_TABLE_HINT} يُطبع في التقرير، والمقيّم يقرّر هل يدخل في
-                القيمة.
-              </p>
-            )}
-          </div>
-          {lines.length > 0 ? (
-            <SpecialistComponentsTable
-              lines={lines}
-              disabled={locked}
-              readView={Boolean(disabled)}
-              rowKey={editor.rowKey}
-              onPatch={editor.patchLine}
-              onRemove={editor.removeLine}
-            />
-          ) : (
-            <p className="m-0 text-[12px] text-text-3">{disabled ? "لا توجد بنود." : "لا توجد بنود بعد."}</p>
-          )}
-
-          {!disabled ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" disabled={locked} onClick={editor.addLine}>
-                إضافة بند
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                loading={saving}
-                disabled={locked}
-                onClick={() => void save()}
-              >
-                حفظ مكونات العقار
-              </Button>
-              {dirty ? <span className="text-[11px] text-warn-text">تعديلات غير محفوظة</span> : null}
+          <div id="specialist-components-table" className="space-y-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <p className="m-0 text-[12px] font-bold text-heading">جدول الحصر</p>
+              {!disabled && saveState ? (
+                <span className="text-[11px] text-text-3" role="status">
+                  {saveState} — يُحفظ تلقائياً
+                </span>
+              ) : null}
             </div>
-          ) : null}
+            {disabled ? null : (
+              <>
+                <p className="m-0 text-[11px] leading-relaxed text-text-3">
+                  المباني والملاحق والأسوار في العقار بمساحاتها — يعبّئه المعاين وتصحّحه هنا، ويُطبع في التقرير.
+                </p>
+                <details className="text-[11px] text-text-3">
+                  <summary className="w-fit cursor-pointer text-text-2">متى يُعبّأ؟</summary>
+                  <p className="m-0 mt-1 leading-relaxed">
+                    {SPECIALIST_COMPONENTS_TABLE_HINT} والمقيّم يقرّر هل يدخل في القيمة.
+                  </p>
+                </details>
+              </>
+            )}
 
-          {error || loadError ? <Note tone="warn">{error ?? loadError}</Note> : null}
+            {lines.length > 0 ? (
+              <SpecialistComponentsTable
+                lines={lines}
+                disabled={locked}
+                readView={Boolean(disabled)}
+                rowKey={editor.rowKey}
+                onPatch={editor.patchLine}
+                onRemove={editor.removeLine}
+              />
+            ) : disabled ? (
+              <p className="m-0 text-[12px] text-text-3">لا توجد بنود.</p>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border-md px-4 py-4 text-center">
+                <p className="m-0 mb-2 text-[12px] text-text-2">لم يُضَف أي مبنى أو ملحق بعد.</p>
+                <Button type="button" size="sm" variant="outline" onClick={editor.addLine}>
+                  إضافة أول مبنى أو ملحق
+                </Button>
+              </div>
+            )}
+
+            {!disabled && lines.length > 0 ? (
+              <Button type="button" size="sm" variant="outline" disabled={locked} onClick={editor.addLine}>
+                إضافة مبنى أو ملحق
+              </Button>
+            ) : null}
+          </div>
+
+          {error ? <Note tone="warn">{error}</Note> : null}
         </>
       )}
     </div>

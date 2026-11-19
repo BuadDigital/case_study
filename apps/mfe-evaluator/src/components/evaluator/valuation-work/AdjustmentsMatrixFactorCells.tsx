@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Select, cn } from "@platform/ui-kit";
-import type { AreaMethodChoice } from "@platform/api-client";
+import { AreaMethodChoices, type AreaMethodChoice } from "@platform/api-client";
 import { fmt } from "@platform/app-shared/format/number";
 import type { AreaMethodCellProps } from "./lib/area-cash-rates";
 import { commitKeys, tdLabelClass } from "./AdjustmentsMatrixCells.styles";
@@ -14,6 +14,75 @@ import { useMatrixCellDraft } from "./useMatrixCellDraft";
  * include / delete / rename / area factor), the free-text draft input and the
  * add-a-factor controls. Shared by the desktop table and the phone cards.
  */
+
+/** Text field with a local draft — commits on blur only when changed (comp/subject description). */
+export function InlineDraftInput({
+  value,
+  disabled,
+  placeholder,
+  className,
+  onCommit,
+  hintUntilFocus = false,
+}: {
+  value: string;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  onCommit: (text: string) => void;
+  /** Spec hint: hide the current text on focus and restore it if nothing was typed. */
+  hintUntilFocus?: boolean;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [edited, setEdited] = useState(false);
+  const display = draft ?? (hintUntilFocus && focused ? "" : value);
+  return (
+    <input
+      type="text"
+      disabled={disabled}
+      placeholder={focused ? undefined : placeholder}
+      value={display}
+      onFocus={() => {
+        setFocused(true);
+        if (hintUntilFocus && draft == null) setDraft("");
+      }}
+      onChange={(e) => {
+        setEdited(true);
+        setDraft(e.target.value);
+      }}
+      onKeyDown={(e) =>
+        commitKeys(e, () => {
+          setFocused(false);
+          if (draft == null) return;
+          if (hintUntilFocus && !edited) {
+            setDraft(null);
+            return;
+          }
+          const text = draft;
+          setDraft(null);
+          setEdited(false);
+          if (text !== value) onCommit(text);
+        })
+      }
+      onBlur={() => {
+        setFocused(false);
+        if (draft == null) return;
+        if (hintUntilFocus && !edited) {
+          setDraft(null);
+          return;
+        }
+        const text = draft;
+        setDraft(null);
+        setEdited(false);
+        if (text !== value) onCommit(text);
+      }}
+      className={cn(
+        className,
+        focused ? "placeholder:opacity-0" : hintUntilFocus && value && "text-text-3",
+      )}
+    />
+  );
+}
 
 export function LabelCell({
   label,
@@ -237,10 +306,10 @@ export function LabelCell({
 }
 
 const AREA_METHOD_OPTIONS: { value: AreaMethodChoice; label: string; cashOnly?: boolean }[] = [
-  { value: "auto", label: "آلي" },
-  { value: "multiplier", label: "المضاعف" },
-  { value: "amthal", label: "الأمثال" },
-  { value: "cash", label: "مبلغ نقدي", cashOnly: true },
+  { value: AreaMethodChoices.Auto, label: "آلي" },
+  { value: AreaMethodChoices.Multiplier, label: "المضاعف" },
+  { value: AreaMethodChoices.Amthal, label: "الأمثال" },
+  { value: AreaMethodChoices.Cash, label: "مبلغ نقدي", cashOnly: true },
 ];
 
 /**
@@ -260,14 +329,17 @@ function AreaMethodSelect({
   onChange: (method: AreaMethodChoice) => void;
 }) {
   const value =
-    !method.choice || (method.choice === "cash" && !method.cashAllowed) ? "auto" : method.choice;
+    !method.choice || (method.choice === AreaMethodChoices.Cash && !method.cashAllowed) ? AreaMethodChoices.Auto : method.choice;
   return (
     <label className={cn("mt-1.5 flex items-center gap-[7px]", touch && "mt-2.5 justify-between gap-3")}>
       <span className="text-[10.5px] font-medium text-gold-d">طريقة القياس</span>
       <Select
         disabled={locked}
         value={value}
-        onChange={(e) => onChange(e.target.value as AreaMethodChoice)}
+        onChange={(e) => {
+          const picked = AREA_METHOD_OPTIONS.find((o) => o.value === e.target.value);
+          if (picked) onChange(picked.value);
+        }}
         className={cn(
           "!w-auto rounded-[7px] !leading-normal font-bold text-heading",
           touch ? "min-h-11 px-2 text-[16px]" : "!h-auto px-[7px] py-[4px] text-[12px]",
@@ -335,7 +407,6 @@ function AreaNumberInput({
 }
 
 
-/** Text field with a local draft — commits on blur only when changed (comp/subject description). */
 /** What the land row of a built subject's table says about itself, in both layouts. */
 export const LAND_AREA_ROW = {
   label: "مساحة الأرض",
@@ -374,74 +445,6 @@ export function LandAreaInput({
       />
       <span className="text-[10.5px] text-text-3">م²</span>
     </span>
-  );
-}
-
-export function InlineDraftInput({
-  value,
-  disabled,
-  placeholder,
-  className,
-  onCommit,
-  hintUntilFocus = false,
-}: {
-  value: string;
-  disabled?: boolean;
-  placeholder?: string;
-  className?: string;
-  onCommit: (text: string) => void;
-  /** Spec hint: hide the current text on focus and restore it if nothing was typed. */
-  hintUntilFocus?: boolean;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const [focused, setFocused] = useState(false);
-  const [edited, setEdited] = useState(false);
-  const display = draft ?? (hintUntilFocus && focused ? "" : value);
-  return (
-    <input
-      type="text"
-      disabled={disabled}
-      placeholder={focused ? undefined : placeholder}
-      value={display}
-      onFocus={() => {
-        setFocused(true);
-        if (hintUntilFocus && draft == null) setDraft("");
-      }}
-      onChange={(e) => {
-        setEdited(true);
-        setDraft(e.target.value);
-      }}
-      onKeyDown={(e) =>
-        commitKeys(e, () => {
-          setFocused(false);
-          if (draft == null) return;
-          if (hintUntilFocus && !edited) {
-            setDraft(null);
-            return;
-          }
-          const text = draft;
-          setDraft(null);
-          setEdited(false);
-          if (text !== value) onCommit(text);
-        })
-      }
-      onBlur={() => {
-        setFocused(false);
-        if (draft == null) return;
-        if (hintUntilFocus && !edited) {
-          setDraft(null);
-          return;
-        }
-        const text = draft;
-        setDraft(null);
-        setEdited(false);
-        if (text !== value) onCommit(text);
-      }}
-      className={cn(
-        className,
-        focused ? "placeholder:opacity-0" : hintUntilFocus && value && "text-text-3",
-      )}
-    />
   );
 }
 

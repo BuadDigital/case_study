@@ -30,7 +30,7 @@ export type InspectorBoundaryMatch = {
 };
 
 import { jeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
-import { toLatinDigits } from "@platform/ui-kit";
+import { haversineMeters, parseLatLng, toLatinDigits, type LatLng } from "@platform/ui-kit";
 import { SubmissionStatuses } from "../workflow/task-types";
 
 export type InspectorPhotoAttachment = {
@@ -1696,13 +1696,26 @@ export function hasInspectorOriginalMapPin(
   );
 }
 
+/** Two map pins this close are one place — a GPS reading or a rounding apart, not a different site. */
+export const MAP_PIN_SAME_SPOT_METERS = 5;
+
+/** Both pins placed and within MAP_PIN_SAME_SPOT_METERS of each other. */
+export function mapPinsSameSpot(a: LatLng | null | undefined, b: LatLng | null | undefined): boolean {
+  return Boolean(a && b && haversineMeters(a, b) <= MAP_PIN_SAME_SPOT_METERS);
+}
+
+/**
+ * The active pin is somewhere else than the inspector's original.
+ * Edge cases: compared by distance (2026-11-19) — compared as text, «21.481» and «21.48100» were two
+ * places, so «اعتماد موقع المعاين» showed with both pins on the same spot.
+ */
 export function activeMapDiffersFromInspectorOriginal(
   draft: InspectorWorkspaceDraft,
 ): boolean {
   if (!hasInspectorOriginalMapPin(draft)) return false;
-  return (
-    draft.mapLatitude.trim() !== draft.inspectorMapLatitude.trim() ||
-    draft.mapLongitude.trim() !== draft.inspectorMapLongitude.trim()
+  return !mapPinsSameSpot(
+    parseLatLng(draft.mapLatitude, draft.mapLongitude),
+    parseLatLng(draft.inspectorMapLatitude, draft.inspectorMapLongitude),
   );
 }
 
