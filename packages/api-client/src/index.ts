@@ -689,6 +689,18 @@ export {
 } from "./transactions";
 
 export {
+  acceptAppraiserPeerTransfer,
+  cancelAppraiserHandoverRequest,
+  completeAppraiserReassignment,
+  declineAppraiserPeerTransfer,
+  listAppraiserHandoverRequests,
+  requestAppraiserPeerTransfer,
+  requestAppraiserReassignment,
+  takeAppraiserReassignment,
+  type AppraiserHandoverRequestDto,
+} from "./appraiser-handover-requests";
+
+export {
   listPropertyComparableLinks,
   type PropertyComparableLinkItemDto,
   type PropertyComparableLinkListDto,

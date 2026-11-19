@@ -75,6 +75,8 @@ export type CaseStudyReportDeeds = {
 
 export type CaseStudyReportModel = {
   title: string;
+  /** The report's version: above 1 the printed number takes «/N» (2026-11-18). */
+  version?: number;
   providerName: string;
   requestNumber: string;
   requestDate: string;
@@ -327,6 +329,7 @@ export function buildCaseStudyReportModel(
 
   return {
     title: CASE_STUDY_REPORT_TITLE,
+    version: draft.version,
     providerName: caseStudyProviderName(),
     requestNumber: approval.requestNumber,
     requestDate: requestDateIso ? formatDateAr(requestDateIso) : "—",

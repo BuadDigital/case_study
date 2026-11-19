@@ -40,6 +40,12 @@ public interface IWorkOrderPropertyRepository
     /// </summary>
     Task<bool> IsDistributedAsync(Guid propertyId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The deed's transaction has an active «التعديل» (reopening) that reopened the study — the
+    /// distribution lock is lifted for it (Omar 2026-11-18: a wrong deed number is corrected then).
+    /// </summary>
+    Task<bool> HasActiveStudyReopeningAsync(Guid propertyId, CancellationToken cancellationToken);
+
     /// <summary>Throws <see cref="PersistenceConcurrencyException"/> when the write lost a race.</summary>
     Task SaveChangesAsync(CancellationToken cancellationToken);
 

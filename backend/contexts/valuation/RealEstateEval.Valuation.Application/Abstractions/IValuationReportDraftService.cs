@@ -84,6 +84,16 @@ public interface IValuationReportDraftService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Review voids the appraiser's approval of the property's report while returning the valuation to an
+    /// appraiser — before a deposit code only. Null result: no open request (nothing to void).
+    /// </summary>
+    Task<(ValuationReportDraftDto? Result, Dictionary<string, string>? Errors)> WithdrawApprovalForReturnAsync(
+        Guid propertyId,
+        WithdrawReportDraftRequest request,
+        ReportDraftActor actor,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The assigned appraiser records the Qeema deposit code and the one-page PDF certificate: the final copy is
     /// issued, the request closes and his task completes. A later call corrects the code (audited, no new version).
     /// </summary>

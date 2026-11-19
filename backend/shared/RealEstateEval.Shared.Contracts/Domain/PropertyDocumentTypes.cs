@@ -140,6 +140,9 @@ public static class PropertyDocumentTypes
             legacyScopes: ["evaluator-report"]),
         T("deposit-certificate", "شهادة الإيداع", PropertyDocumentGroups.Outputs, fromTab: false,
             legacyScopes: ["evaluator-deposit-certificate"]),
+        // Each delivered version of the case-study report, kept when it goes to Enfaz (Omar 2026-11-18).
+        T("case-study-report", "تقرير دراسة الحالة", PropertyDocumentGroups.Outputs, fromTab: false, pdfOnly: true,
+            legacyScopes: ["case-study-report"]),
 
         T(ValuedKey, "مستند ذو قيمة", PropertyDocumentGroups.Valued,
             legacyScopes: [ValuedScope]),

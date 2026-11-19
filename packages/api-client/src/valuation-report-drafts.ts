@@ -66,6 +66,8 @@ export type ReportDraftStateDto = {
   reportStage: "draft" | "deposit_issued" | "final_issued";
   /** The appraiser's progress ladder 0–100 (hand-over to the specialist, 75, is raised by the reader). */
   progressPct?: number;
+  /** The current draft's version (1, then n+1 after «التعديل», 2026-11-18). */
+  version?: number;
 };
 
 type Result<T> =

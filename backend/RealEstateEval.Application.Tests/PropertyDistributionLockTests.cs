@@ -71,6 +71,32 @@ public class PropertyDistributionLockTests
     }
 
     [Fact]
+    public async Task An_active_edit_that_reopened_the_study_lifts_the_lock()
+    {
+        var (bundle, propertyId) = await SeedAsync(distributed: true);
+        var deed = bundle.CaseStudy.WorkOrderProperties.Single(p => p.Id == propertyId);
+        bundle.CaseStudy.TransactionReopenings.Add(new TransactionReopening
+        {
+            Id = Guid.NewGuid(),
+            TransactionId = deed.TransactionId,
+            PropertyId = propertyId,
+            Source = TransactionReopeningSources.Enfaz,
+            EnfazReference = "ENF-1",
+            Reason = "رقم الصك خاطئ في التقرير",
+            ReopensStudy = true,
+            OpenedAtUtc = DateTime.UtcNow,
+        });
+        await bundle.CaseStudy.SaveChangesAsync();
+        var service = TestWorkOrderServiceFactory.Create(bundle, failures: TestBoundedContexts.CreateFailureService(bundle));
+
+        var (saved, errors) = await service.CompleteBourseDataAsync(
+            Po, propertyId, Bourse(area: "500", propertyType: "عمارة"), CancellationToken.None);
+
+        Assert.Null(errors);
+        Assert.Equal("عمارة", saved!.PropertyType);
+    }
+
+    [Fact]
     public async Task A_deed_not_yet_distributed_saves_the_new_area()
     {
         var (bundle, propertyId) = await SeedAsync(distributed: false);

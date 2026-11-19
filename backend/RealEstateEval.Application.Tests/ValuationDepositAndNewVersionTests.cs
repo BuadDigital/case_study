@@ -235,6 +235,31 @@ public class ValuationDepositAndNewVersionTests
         Assert.Equal(ValuationReportDraftService.NoDepositedRequestAr, none!["_"]);
     }
 
+    // Omar 2026-11-18: the coordinator opens «التعديل»; a value change reopens the valuation through this call.
+    [Fact]
+    public async Task The_coordinator_reopens_by_property_for_an_edit_but_not_the_appraiser()
+    {
+        await using var rig = await ArrangeApprovedAsync();
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-9"), Specialist);
+        var coordinator = new ReportDraftActor
+        {
+            UserId = "u-coord", PrototypeRole = "case-specialist", SubRoles = [CaseSpecialistSubRoles.Coordination],
+        };
+
+        var (_, refused) = await rig.Service.ReopenNewVersionByPropertyAsync(
+            rig.PropertyId, new ReopenReportIssuanceRequest { Reason = "إنفاذ تطلب تعديل القيمة" }, Appraiser);
+        Assert.NotNull(refused);
+
+        var (state, errors) = await rig.Service.ReopenNewVersionByPropertyAsync(
+            rig.PropertyId, new ReopenReportIssuanceRequest { Reason = "إنفاذ تطلب تعديل القيمة" }, coordinator);
+        Assert.Null(errors);
+        Assert.Equal(ReportIssuanceStages.Draft, state!.Stage);
+
+        // The header badge reads the states: the reopened report is already its next version (found live 2026-11-19).
+        var states = await rig.Service.ListStatesAsync([rig.PropertyId]);
+        Assert.Equal(2, Assert.Single(states).Version);
+    }
+
     // ---- an approved recall of a deposited report ----
 
     [Fact]

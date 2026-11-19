@@ -26,6 +26,7 @@ import { CaseStudyReportEditor } from "../components/case-study/CaseStudyReportE
 import { CaseStudyAppraisalDeedsPanel } from "../components/case-study/CaseStudyAppraisalDeedsPanel";
 import { CaseStudyValuationPanel } from "../components/case-study/CaseStudyValuationPanel";
 import { ReviewCorrectionDialog } from "../components/case-study/ReviewCorrectionDialog";
+import { AppraiserHandoverStaffCard } from "../components/appraiser-handover/AppraiserHandoverCards";
 import { reopenCaseStudyReportDraft } from "../lib/app-data/case-study-report-commands";
 import { reviewCorrectionOptions } from "../lib/app-data/review-correction-model";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
@@ -42,6 +43,7 @@ import type {
   PoPropertyIntake,
 } from "../lib/app-data/po-intake-data";
 import {
+  canAcceptPartyWork,
   canFormallyReceive,
   canReviewTransaction,
   canHandOverToEnfaz,
@@ -374,6 +376,9 @@ function WorkPageBody({
           </Note>
         ) : null}
 
+        {/* The appraiser asked whoever handed him the transaction to reassign it (Omar 2026-11-18). */}
+        {canAcceptPartyWork(access) ? <AppraiserHandoverStaffCard propertyId={property.id} /> : null}
+
         {reviewLock ? (
           <Note tone="warn" className="mb-3" data-testid="work-review-lock">
             {reviewLock === "report-approved"
@@ -416,6 +421,7 @@ function WorkPageBody({
           options={correctionOptions}
           deedLabel={property.deedNumber}
           enfazHandedOver={studyTask.propertyHandedOverToEnfaz === true}
+          currentAppraiserId={appraisalTask?.assigneeId}
           onClose={() => setCorrectionOpen(false)}
           onReturnStudy={async (reason, clearEnfazHandover) => {
             const result = await reopenCaseStudyReportDraft(studyTask.id, reason, clearEnfazHandover);
@@ -423,9 +429,9 @@ function WorkPageBody({
             setCorrectionRound((n) => n + 1);
             return { ok: true };
           }}
-          onReturnValuation={async (reason) => {
+          onReturnValuation={async (reason, newAppraiser) => {
             if (!appraisalTask) return { ok: false, error: "لم يُعيَّن مقيّم لهذه المعاملة." };
-            const result = await reopenPartySubmission(appraisalTask.id, reason);
+            const result = await reopenPartySubmission(appraisalTask.id, reason, newAppraiser);
             if (!result.ok) return { ok: false, error: result.error };
             // The task lists carry the package's state; the valuation section rereads its package on this.
             notifyTasksChanged();

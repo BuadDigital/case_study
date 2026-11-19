@@ -75,6 +75,10 @@ public sealed partial class ValuationReportDraftService
         // official reference; the report number PRV-… derives from it and must exist before the copy freezes.
         var (_, numberError) = await EnsureReportNumberCoreAsync(vr, cancellationToken);
         if (numberError is not null) return (null, Error(numberError));
+        // A later version (after «التعديل») is printed and sent to Enfaz as PRV-…/N (Omar 2026-11-18): the
+        // package's number takes the suffix; the request keeps the bare PRV.
+        if (draft.Version > 1 && await RestampVersionedNumberAsync(vr, draft.Version, cancellationToken) is { } versionError)
+            return (null, Error(versionError));
 
         // The report freezes as the deposit copy (gates, hand-over check and snapshot live there). A
         // retry after a failed second save finds the copy already issued and only completes the approval.
@@ -118,34 +122,84 @@ public sealed partial class ValuationReportDraftService
     {
         var (vr, refused) = await FindForAssignedAppraiserAsync(valuationRequestId, actor, cancellationToken);
         if (vr is null) return (null, refused);
+        return await WithdrawApprovalCoreAsync(vr, request.Note, actor, notifyReview: true, cancellationToken);
+    }
 
-        var draft = await CurrentDraftAsync(valuationRequestId, tracked: true, cancellationToken);
+    /// <summary>The reviewer's refusal when he is not review (CanReviewTransaction).</summary>
+    public const string ReviewWithdrawApprovalForbiddenAr = "إلغاء اعتماد المقيّم عند إرجاع التقييم للمراجع";
+
+    /// <summary>
+    /// The reviewer voids the appraiser's approval while returning the valuation to an appraiser (Omar
+    /// 2026-11-18: the return voids the earlier approval). Before a deposit code only.
+    /// </summary>
+    /// <remarks>
+    /// How it works: review only; finds the property's open valuation request and runs the same core as the
+    /// appraiser's own withdrawal (deposit copy withdrawn first, the draft back to «sent», the timeline
+    /// milestone), without the notice to review — the reviewer is the one acting, and Case Study's return
+    /// notice tells the appraiser.
+    /// Edge cases: no open request, or a draft not approved → the current state, nothing changes (the
+    /// return goes on). A recorded deposit code refuses (the path after the deposit is «التعديل»).
+    /// </remarks>
+    public async Task<(ValuationReportDraftDto? Result, Dictionary<string, string>? Errors)> WithdrawApprovalForReturnAsync(
+        Guid propertyId,
+        WithdrawReportDraftRequest request,
+        ReportDraftActor actor,
+        CancellationToken cancellationToken = default)
+    {
+        if (!PoRoleMatrixRules.CanReviewTransaction(actor.Staff))
+            return (null, Forbidden(ReviewWithdrawApprovalForbiddenAr));
+
+        var vr = await db.ValuationRequests
+            .Where(x => x.PropertyId == propertyId
+                && x.Status != ValuationRequestStatus.Done
+                && x.Status != ValuationRequestStatus.Merged)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (vr is null) return (null, null);
+        return await WithdrawApprovalCoreAsync(vr, request.Note, actor, notifyReview: false, cancellationToken);
+    }
+
+    /// <summary>
+    /// Takes the appraiser's approval back: the deposit copy first (a recorded code or final copy refuses
+    /// and nothing changes), then the draft returns to «sent». Shared by the appraiser's own withdrawal and
+    /// the reviewer's return.
+    /// </summary>
+    private async Task<(ValuationReportDraftDto? Result, Dictionary<string, string>? Errors)> WithdrawApprovalCoreAsync(
+        ValuationRequest vr,
+        string? note,
+        ReportDraftActor actor,
+        bool notifyReview,
+        CancellationToken cancellationToken)
+    {
+        var draft = await CurrentDraftAsync(vr.Id, tracked: true, cancellationToken);
         if (draft is null || !draft.IsApproved)
-            return (await GetAsync(valuationRequestId, cancellationToken), null);
+            return (await GetAsync(vr.Id, cancellationToken), null);
 
-        // The deposit copy goes first: a recorded code or final copy refuses, and nothing changes.
-        var (ok, depositError) = await issuance.WithdrawDepositAsync(valuationRequestId, actor.UserId, cancellationToken);
+        var (ok, depositError) = await issuance.WithdrawDepositAsync(vr.Id, actor.UserId, cancellationToken);
         if (!ok) return (null, Error(depositError ?? "تعذّر سحب الاعتماد"));
 
-        var withdrawError = draft.WithdrawApproval(request.Note, _time.GetUtcNow().UtcDateTime);
+        var withdrawError = draft.WithdrawApproval(note, _time.GetUtcNow().UtcDateTime);
         if (withdrawError is not null) return (null, Error(withdrawError));
 
-        await StageNoticeAsync(
-            vr,
-            ValuationNoticeAudiences.CaseSpecialistReview,
-            "سحب المقيّم اعتماد تقرير التقييم",
-            string.IsNullOrWhiteSpace(draft.AppraiserNote)
-                ? $"سحب المقيّم اعتماد تقرير التقييم للعقار {vr.DisplayId} لتعديله."
-                : $"سحب المقيّم اعتماد تقرير التقييم للعقار {vr.DisplayId}: {draft.AppraiserNote}",
-            NotificationContract.Tones.Warn,
-            cancellationToken);
+        if (notifyReview)
+        {
+            await StageNoticeAsync(
+                vr,
+                ValuationNoticeAudiences.CaseSpecialistReview,
+                "سحب المقيّم اعتماد تقرير التقييم",
+                string.IsNullOrWhiteSpace(draft.AppraiserNote)
+                    ? $"سحب المقيّم اعتماد تقرير التقييم للعقار {vr.DisplayId} لتعديله."
+                    : $"سحب المقيّم اعتماد تقرير التقييم للعقار {vr.DisplayId}: {draft.AppraiserNote}",
+                NotificationContract.Tones.Warn,
+                cancellationToken);
+        }
         await db.SaveChangesAsync(cancellationToken);
         await RecordTimelineAsync(
             vr.PropertyId,
             po => ValuationTimelineTexts.ApprovalWithdrawn(
                 po, vr.PropertyId, vr.Id, actor.DisplayName, draft.AppraiserNote, _time.GetUtcNow().UtcDateTime),
             cancellationToken);
-        return (await GetAsync(valuationRequestId, cancellationToken), null);
+        return (await GetAsync(vr.Id, cancellationToken), null);
     }
 
     /// <summary>
@@ -214,6 +268,31 @@ public sealed partial class ValuationReportDraftService
         vr.AssignReportNumber(numbers.ValuationReportNumber, _time.GetUtcNow().UtcDateTime);
         await db.SaveChangesAsync(cancellationToken);
         return (vr.ReportNumber, null);
+    }
+
+    /// <summary>
+    /// Stamps PRV-…/N on the appraisal packages for a later version; null on success, else the Arabic reason.
+    /// </summary>
+    /// <remarks>
+    /// How it works: the same Case Study call that fixed the number (idempotent on the PR reference) with
+    /// the version, which stamps the suffixed number. Edge cases: no Case Study client or a failed call →
+    /// ReportNumberUnavailableAr, and the approval stops before anything freezes.
+    /// </remarks>
+    private async Task<string?> RestampVersionedNumberAsync(
+        ValuationRequest vr,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        if (caseStudyCommands is null) return ReportNumberUnavailableAr;
+        try
+        {
+            var (_, error) = await caseStudyCommands.ConfirmTransactionReferenceAsync(vr.PropertyId, cancellationToken, version);
+            return error;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return ReportNumberUnavailableAr;
+        }
     }
 
     /// <summary>A report-cycle milestone on the property timeline — best effort, never fails the step.</summary>

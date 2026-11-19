@@ -176,6 +176,12 @@ export const PROPERTY_DOCUMENT_TYPES: readonly PropertyDocumentType[] = [
     uploadableFromTab: false,
     legacyScopes: ["evaluator-deposit-certificate"],
   }),
+  // Each delivered version of the case-study report, kept when it goes to Enfaz (Omar 2026-11-18).
+  t("case-study-report", "تقرير دراسة الحالة", "outputs", {
+    uploadableFromTab: false,
+    pdfOnly: true,
+    legacyScopes: ["case-study-report"],
+  }),
 
   t(VALUED_DOCUMENT_KEY, "مستند ذو قيمة", "valued", {
     legacyScopes: [VALUED_DOCUMENT_SCOPE],

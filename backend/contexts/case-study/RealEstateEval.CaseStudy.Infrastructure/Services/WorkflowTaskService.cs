@@ -103,6 +103,18 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken = default) =>
         _distribution.RedistributePartiesAsync(id, request, actor, actorName, actorUserId, cancellationToken);
 
+    public Task<IReadOnlyDictionary<string, string>?> ReassignAppraiserAsync(
+        Guid appraisalTaskId,
+        string newAssigneeId,
+        string? newAssigneeName,
+        string reason,
+        StaffActor actor,
+        string? actorName,
+        string? actorUserId = null,
+        CancellationToken cancellationToken = default) =>
+        _distribution.ReassignAppraiserAsync(
+            appraisalTaskId, newAssigneeId, newAssigneeName, reason, actor, actorName, actorUserId, cancellationToken);
+
     public Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(
         Guid id,
         AdvanceTaskAfterEnfathRequest request,

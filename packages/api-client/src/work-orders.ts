@@ -1316,6 +1316,8 @@ export type EnfazReturnRequest = {
   enfazReference?: string;
   /** Field work is needed: the study is reopened and a task is made for the visit. */
   needsFieldWork?: boolean;
+  /** Enfaz asks to change the value or the forced-sale ratio — the valuation report reopens (2026-11-18). */
+  changesValue?: boolean;
 };
 
 /**

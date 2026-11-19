@@ -12,7 +12,7 @@ import { apiConfig } from "./valuation-work/lib/shell-utils";
 
 /** The queues' status labels read the same state from a shared cache; keep it as fresh as this page's own read. */
 function shareState(propertyId: string, dto: ValuationReportDraftDto) {
-  putReportDraftStates([{ propertyId, status: dto.status, reportStage: dto.reportStage }]);
+  putReportDraftStates([{ propertyId, status: dto.status, reportStage: dto.reportStage, version: dto.version }]);
 }
 
 export const reportDraftKey = (propertyId: string) => ["report-draft", propertyId] as const;

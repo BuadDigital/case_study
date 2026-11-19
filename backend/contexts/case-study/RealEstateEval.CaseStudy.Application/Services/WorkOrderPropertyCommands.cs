@@ -159,7 +159,12 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     {
         var errors = PropertyDistributionLockRules.Errors(before, WorkOrderMapper.ToPropertyDto(edited));
         if (errors.Count == 0) return null;
-        return await _db.IsDistributedAsync(edited.Id, cancellationToken) ? errors : null;
+        // «التعديل» that reopened the study lifts the lock while it is active (Omar 2026-11-18); the
+        // change log still records every change.
+        return await _db.IsDistributedAsync(edited.Id, cancellationToken)
+               && !await _db.HasActiveStudyReopeningAsync(edited.Id, cancellationToken)
+            ? errors
+            : null;
     }
 
     public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(

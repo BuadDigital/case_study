@@ -1,3 +1,5 @@
+using RealEstateEval.CaseStudy.Application.Mapping;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Abstractions;
@@ -70,6 +72,17 @@ public sealed partial class TransactionStateService(
         // Omar 2026-11-08: the upload follows «تجهيز المعاملة للرفع» (the package checked).
         if (!property.IsReadyForUpload)
             return (null, NotReadyForUploadAr);
+
+        // «التعديل» (Omar 2026-11-18): a study-only edit that changed what the valuation report prints or reads
+        // does not go back to Enfaz under the old valuation report.
+        if (property.TransactionId != Guid.Empty
+            && await db.GetActiveReopeningAsync(property.TransactionId, cancellationToken) is
+                { ReopensStudy: true, ReopensValuation: false } reopening
+            && EditLevelRules.ChangedValuationInputs(reopening.ValuationInputsJson, WorkOrderMapper.ToPropertyDto(property))
+                is { Count: > 0 } changed)
+        {
+            return (null, $"{EditLevelRules.ValuationInputsChangedAr} ({EditLevelRules.ChangedLabelsAr(changed)}).");
+        }
 
         // A deed never goes to Enfaz under a temporary number. The first report
         // approval normally fixed the PR root; this is the safety net for anything that slipped past.

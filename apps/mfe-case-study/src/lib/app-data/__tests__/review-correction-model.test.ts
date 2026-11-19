@@ -45,6 +45,23 @@ describe("reviewCorrectionOptions — «طلب تصحيح» (Omar 2026-11-11)", 
     expect(options.every((o) => o.unavailable?.includes("إعادة فتح المعاملة"))).toBe(true);
   });
 
+  it("still returns the valuation after the approval, voiding it, until the deposit code (Omar 2026-11-18)", () => {
+    const approved = { ...base, reviewLock: "report-approved" as const };
+    const [study, valuation] = reviewCorrectionOptions({
+      ...approved,
+      draft: { status: "approved", reportStage: "deposit_issued" },
+    });
+    const [, deposited] = reviewCorrectionOptions({
+      ...approved,
+      draft: { status: "approved", reportStage: "final_issued" },
+    });
+
+    expect(study!.unavailable).toContain("إعادة فتح المعاملة");
+    expect(valuation!.unavailable).toBeNull();
+    expect(valuation!.action).toContain("يسقط اعتماد المقيّم");
+    expect(deposited!.unavailable).toContain("إعادة فتح المعاملة");
+  });
+
   it("says the draft is with the appraiser when a valuation return would cross it", () => {
     const [, sent] = reviewCorrectionOptions({ ...base, draft: { status: "sent" } });
     const [, preparing] = reviewCorrectionOptions({ ...base, draft: { status: "preparing" } });

@@ -41,6 +41,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddIntegrationEventInbox();
         // Dead AddBlobStorage registration removed — nothing on this host resolves IBlobStorage.
         builder.Services.AddHostedService<ValuationIntegrationEventConsumer>();
+        // The appraiser's reassignment requests: the team after the head start, the end-of-day reminder.
+        builder.Services.AddHostedService<RealEstateEval.CaseStudy.Infrastructure.Services.AppraiserHandoverSweepHostedService>();
 
         if (builder.Environment.IsDevelopment())
         {

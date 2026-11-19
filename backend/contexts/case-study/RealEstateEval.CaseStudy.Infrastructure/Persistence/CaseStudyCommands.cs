@@ -60,7 +60,8 @@ public sealed class CaseStudyCommands : ICaseStudyCommands
     /// </remarks>
     public async Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
         Guid propertyId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int version = 1)
     {
         var now = _time.UtcNow();
         var (reference, error) = await _transactions.ConfirmOfficialReferenceAsync(propertyId, now, cancellationToken);
@@ -69,6 +70,8 @@ public sealed class CaseStudyCommands : ICaseStudyCommands
 
         var transaction = await _transactions.GetForPropertyAsync(propertyId, cancellationToken);
         var reportNo = ReferenceNumbering.ValuationReportNumber(reference)!;
+        // A later version carries its suffix to the print and the Enfaz sheet (PRV-…/2, Omar 2026-11-18).
+        var stampedNo = ReferenceNumbering.WithVersion(reportNo, version);
 
         // The appraisal package carries the report number for the print and the Enfaz sheet —
         // on every deed of the transaction (phase 5: one report, uploaded to Enfaz per deed).
@@ -94,14 +97,14 @@ public sealed class CaseStudyCommands : ICaseStudyCommands
                     PropertyId = task.PropertyId,
                     PoNumber = task.PoNumber,
                     Status = PartyTaskSubmissionStatus.Draft,
-                    PayloadJson = AppraisalPayloadReportNumber.Seed(task, reportNo),
+                    PayloadJson = AppraisalPayloadReportNumber.Seed(task, stampedNo),
                     CreatedAtUtc = now,
                     UpdatedAtUtc = now,
                 });
             }
             else
             {
-                submission.PayloadJson = AppraisalPayloadReportNumber.Stamp(submission.PayloadJson, reportNo, task);
+                submission.PayloadJson = AppraisalPayloadReportNumber.Stamp(submission.PayloadJson, stampedNo, task);
                 submission.UpdatedAtUtc = now;
             }
         }

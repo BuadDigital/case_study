@@ -259,9 +259,10 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
     public async Task<ActionResult<CaseStudyTransactionNumbersDto>> ConfirmTransactionReference(
         Guid propertyId,
         [FromServices] ICaseStudyCommands commands,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] int version = 1)
     {
-        var (result, error) = await commands.ConfirmTransactionReferenceAsync(propertyId, cancellationToken);
+        var (result, error) = await commands.ConfirmTransactionReferenceAsync(propertyId, cancellationToken, version);
         if (error is not null)
             return this.BadRequestProblem(error);
         return Ok(result);

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   listAttachmentsForProperty,
   renderPrintPdf,
+  uploadAttachment,
   type FileAttachmentMetaDto,
 } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
@@ -23,7 +24,7 @@ import { officialLetterFontsHtml } from "../../lib/app-data/official-letter-layo
 import { buildPropertyPhotosPrintHtml } from "../../lib/app-data/property-photos-pdf";
 import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
 import { photoMarkId } from "@platform/app-shared/app-data/property-detail-document-types";
-import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
+import { blobToDataUrl, fileToBase64 } from "@platform/app-shared/media/file-encoding";
 import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
@@ -155,6 +156,47 @@ export async function renderCaseStudyReportPdf(input: {
     ok: false,
     message: res.message?.trim() || "تعذّر إنشاء ملف تقرير دراسة الحالة — حاول مرة أخرى.",
   };
+}
+
+/** Where each delivered version of the case-study report is kept (Omar 2026-11-18). */
+export const CASE_STUDY_REPORT_SCOPE = "case-study-report";
+
+/** `{propertyId}:case-study:v{n}` — one file per delivered version. */
+export function caseStudyReportVersionKey(propertyId: string, version: number | undefined): string {
+  return `${propertyId}:case-study:v${Math.max(1, version ?? 1)}`;
+}
+
+/**
+ * Keeps the case-study report PDF of this version with the deed's documents, so an earlier version stays
+ * readable after «التعديل» reopens the report (Omar 2026-11-18).
+ *
+ * How it works: called with the PDF printed for Enfaz; reads the deed's attachments and uploads the file
+ * under `case-study-report` / `{propertyId}:case-study:v{n}` only when that version is not kept yet.
+ * Edge cases: best effort — a failed read or upload never stops the Enfaz download (returns false).
+ */
+export async function keepCaseStudyReportVersion(
+  propertyId: string,
+  version: number | undefined,
+  blob: Blob,
+): Promise<boolean> {
+  const config = prototypeModulesApiConfig();
+  if (!config || !propertyId) return false;
+  const scopeKey = caseStudyReportVersionKey(propertyId, version);
+  try {
+    const existing = await listAttachmentsForProperty(config, propertyId);
+    if (!existing.ok) return false;
+    if (existing.data.some((a) => a.scope === CASE_STUDY_REPORT_SCOPE && a.scopeKey === scopeKey)) return true;
+    const uploaded = await uploadAttachment(config, {
+      scope: CASE_STUDY_REPORT_SCOPE,
+      scopeKey,
+      fileName: `تقرير دراسة الحالة - نسخة ${Math.max(1, version ?? 1)}.pdf`,
+      contentType: "application/pdf",
+      contentBase64: await fileToBase64(blob),
+    });
+    return uploaded.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**

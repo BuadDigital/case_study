@@ -186,8 +186,8 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
-        if (!WorkflowTaskLifecycleRules.CanReassignParties(actor))
-            return (null, Error("إعادة إسناد الأطراف صلاحية أخصائي دراسة الحالة أو مشرف القسم أو مسؤول التحول الرقمي أو المقيّم"));
+        if (!WorkflowTaskLifecycleRules.CanRedistributeParties(actor))
+            return (null, Error("إعادة إسناد الأطراف صلاحية أخصائي دراسة الحالة أو مشرف القسم أو مسؤول التحول الرقمي"));
 
         var parent = await _caseStudy.GetTaskForUpdateAsync(id, cancellationToken);
         if (parent is null) return (null, null);
@@ -208,7 +208,78 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
 
         var distribution = WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution);
         var names = request.AssigneeNames ?? new Dictionary<string, string>();
+        var (_, errors) = await MoveSeatsAsync(
+            parent, distribution, names, reason, actor, actorName, actorUserId, openOnly: true, cancellationToken);
+        return errors is null ? (WorkflowTaskMapper.ToDto(parent), null) : (null, errors);
+    }
 
+    /// <summary>
+    /// Review's return to another appraiser (Omar 2026-11-18): the appraisal task's seat moves to
+    /// <paramref name="newAssigneeId"/> with the work kept. The caller has already authorised the move.
+    /// </summary>
+    /// <remarks>
+    /// How it works: loads the appraisal task and its case-study parent, takes the parent's current
+    /// distribution with only the appraiser changed, and runs the same seat move as «تعديل الأطراف»
+    /// (timeline, audit, the new appraiser told, the outgoing one told with the reason). Unlike
+    /// «تعديل الأطراف» the task may be completed (a package returned or awaiting approval) and the parent
+    /// may be past the study phase.
+    /// Edge cases: not an appraisal task, no parent, or the same appraiser → refused / nothing moves.
+    /// </remarks>
+    public async Task<IReadOnlyDictionary<string, string>?> ReassignAppraiserAsync(
+        Guid appraisalTaskId,
+        string newAssigneeId,
+        string? newAssigneeName,
+        string reason,
+        StaffActor actor,
+        string? actorName,
+        string? actorUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var child = await _caseStudy.GetTaskForUpdateAsync(appraisalTaskId, cancellationToken);
+        if (child is null || child.Kind != WorkflowTaskKind.PropertyAppraisal || child.ParentTaskId is not Guid parentId)
+            return Error("مهمة التقييم غير موجودة");
+        var parent = await _caseStudy.GetTaskForUpdateAsync(parentId, cancellationToken);
+        if (parent is null || parent.Kind != CaseStudyPropertyKind)
+            return Error("معاملة دراسة الحالة غير موجودة");
+
+        // The other seats are copied from the tasks the seat move compares against, so only the appraiser
+        // moves even when the stored distribution is blank or stale.
+        var distribution = WorkflowTaskMapper.DeserializeDistribution(parent.DistributionJson)
+                           ?? new TaskDistributionDraftDto();
+        var children = await _caseStudy.ListChildrenForUpdateAsync(parent.Id, cancellationToken);
+        string SeatOf(WorkflowTaskKind kind) => children.FirstOrDefault(c => c.Kind == kind)?.AssigneeId ?? "";
+        distribution.InspectorId = SeatOf(WorkflowTaskKind.FieldInspection);
+        distribution.EngineeringOfficeId = SeatOf(WorkflowTaskKind.EngineeringSurvey);
+        distribution.ValuatorId = newAssigneeId.Trim();
+        var names = new Dictionary<string, string>
+        {
+            [WorkflowTaskKind.PropertyAppraisal.ToDbValue()] = newAssigneeName?.Trim() ?? "",
+        };
+        var (_, errors) = await MoveSeatsAsync(
+            parent, distribution, names, reason, actor, actorName, actorUserId, openOnly: false, cancellationToken);
+        return errors;
+    }
+
+    /// <summary>
+    /// Moves every party seat whose assignee changed in <paramref name="distribution"/>: assigns the
+    /// child, saves the parent's distribution, writes the audit row and the timeline, and tells the new
+    /// and the outgoing assignees. Shared by «تعديل الأطراف» and review's return to another appraiser.
+    /// </summary>
+    /// <remarks>
+    /// Edge cases: <paramref name="openOnly"/> refuses a seat whose task is not open (the «تعديل الأطراف»
+    /// rule: finished work keeps the name of whoever did it); a cancelled task is always refused.
+    /// </remarks>
+    private async Task<(bool Moved, IReadOnlyDictionary<string, string>? Errors)> MoveSeatsAsync(
+        WorkflowTask parent,
+        TaskDistributionDraftDto distribution,
+        Dictionary<string, string> names,
+        string reason,
+        StaffActor actor,
+        string? actorName,
+        string? actorUserId,
+        bool openOnly,
+        CancellationToken cancellationToken)
+    {
         var children = await _caseStudy.ListChildrenForUpdateAsync(parent.Id, cancellationToken);
 
         var now = _time.UtcNow();
@@ -237,10 +308,12 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
             if (string.Equals(child.AssigneeId, newAssigneeId, StringComparison.Ordinal)) continue;
 
             // Only open party work moves to someone else; a finished (or cancelled) task keeps the
-            // name of whoever did it, and the caller is told instead of a silent no-op.
-            if (child.Status != WorkflowTaskStatus.Open)
+            // name of whoever did it, and the caller is told instead of a silent no-op. Review's return
+            // moves a finished appraisal too (openOnly false) — never a cancelled one.
+            if (child.Status == WorkflowTaskStatus.Cancelled
+                || (openOnly && child.Status != WorkflowTaskStatus.Open))
             {
-                return (null, Error(
+                return (false, Error(
                     $"مهمة {WorkflowTaskKindLabels.RoleAr(child.Kind)} ليست مفتوحة — لا يمكن إعادة إسنادها بعد إنجازها أو إلغائها."));
             }
 
@@ -302,6 +375,6 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
             await NotifyAssignmentReplacedAsync(parent, replaced, deed, reason, cancellationToken);
         }
 
-        return (WorkflowTaskMapper.ToDto(parent), null);
+        return (changed.Count > 0, null);
     }
 }

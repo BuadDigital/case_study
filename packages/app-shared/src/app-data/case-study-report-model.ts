@@ -83,6 +83,8 @@ export type CaseStudyReportDraft = {
   propertyId?: string;
   poNumber?: string;
   status: CaseStudyReportStatus;
+  /** The report's version (2026-11-18): above 1 the printed number is PRC-…/N. */
+  version?: number;
   currentStep: number;
   requestNumber: string;
   requestDate: string;
@@ -124,6 +126,7 @@ export function caseStudyReportDtoToDraft(dto: CaseStudyReportDto): CaseStudyRep
     propertyId: dto.propertyId,
     poNumber: dto.poNumber,
     status: dto.status as CaseStudyReportStatus,
+    version: dto.version ?? 1,
     currentStep: dto.currentStep,
     requestNumber: dto.requestNumber,
     requestDate: dto.requestDate,

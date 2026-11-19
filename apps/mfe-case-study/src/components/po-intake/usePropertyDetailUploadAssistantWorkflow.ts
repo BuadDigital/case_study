@@ -22,6 +22,7 @@ import {
 import type { CaseStudyReportDeeds } from "../../lib/app-data/case-study-report-document-model";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
+  keepCaseStudyReportVersion,
   renderCaseStudyReportPdf,
   renderInfathPhotosPdf,
   useInfathCaseStudyReportDraft,
@@ -525,6 +526,8 @@ export function usePropertyDetailEnfathUploadWorkflow({
             return false;
           }
           saveInfathBlob(res.blob, item.document?.fileName || "تقرير دراسة الحالة.pdf");
+          // The delivered version is kept with the deed's documents (Omar 2026-11-18) — best effort.
+          void keepCaseStudyReportVersion(property.id, caseStudyDraft.version, res.blob);
           return true;
         }
         if (item.photos) {

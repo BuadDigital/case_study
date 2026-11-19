@@ -73,6 +73,7 @@ import { FavoriteStar } from "../components/ui/FavoriteStar";
 import { MY_WORK_PIN_LIMIT, pinnedFirst, useMyWorkPins } from "../lib/app-data/my-work-pins";
 import { QueueRowMoreCell } from "./active-transaction-queue-row-parts";
 import { useMyWorkRowMenu } from "./useMyWorkRowMenu";
+import { AppraiserHandoverInbox } from "../components/appraiser-handover/AppraiserHandoverCards";
 import { DeedWithArea, MY_WORK_LONG_VALUE, Muted, MyWorkDates } from "./my-work-table-parts";
 import { useActiveReopeningsQuery } from "../query/use-active-reopenings-query";
 
@@ -193,7 +194,7 @@ function PinButton({ pinned, onToggle }: { pinned: boolean; onToggle: () => void
 export function MyWorkView() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { role, rolePages } = useAppAccess();
+  const { role, rolePages, distributionAssigneeId } = useAppAccess();
   const nowMs = useTickingMinute();
   // The chip picked by hand: a stage, «الكل» ("all"), or null while none was picked — the page then
   // follows the role's own stage (`defaultMyWorkStage`, Omar 2026-11-11).
@@ -414,6 +415,10 @@ export function MyWorkView() {
     // Spaced like «أوامر العمل»: the shell's gap-3 is the only space between blocks (no margins).
     <PageShell variant="canvas" className="h-fit min-w-0 max-w-full gap-3 py-4 sm:py-5">
       <SituationBar cards={CARDS} values={values} flush />
+      {/* The appraiser's reassignment requests and the transfers waiting for him (Omar 2026-11-18). */}
+      {role === "real-estate-appraiser" && distributionAssigneeId ? (
+        <AppraiserHandoverInbox myAssigneeId={distributionAssigneeId} />
+      ) : null}
 
       {visibleGroups.length > 0 ? (
         // The system's list toolbar (as «أوامر العمل»): search first, then every chip on one row —

@@ -126,6 +126,15 @@ public class CorrectInspectedTypeRequest
 public class ReopenPartyTaskSubmissionRequest
 {
     public string ReturnNote { get; set; } = "";
+
+    /// <summary>
+    /// Appraisal only: review returns the valuation to another appraiser in the same step (Omar
+    /// 2026-11-18). Empty or the current appraiser → a plain return.
+    /// </summary>
+    public string? NewAssigneeId { get; set; }
+
+    /// <summary>The new appraiser's display name for the task (with <see cref="NewAssigneeId"/>).</summary>
+    public string? NewAssigneeName { get; set; }
 }
 
 /// <summary>

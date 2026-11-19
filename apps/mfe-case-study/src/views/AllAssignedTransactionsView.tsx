@@ -36,7 +36,7 @@ import {
   canReopenCompletedTransaction,
 } from "../lib/app-data/all-transactions-queue";
 import {
-  canReassignParties,
+  canRedistributeParties,
   canReopenCaseStudyReport,
   canSkipEngineeringSurvey,
 } from "../lib/app-data/po-roles";
@@ -115,8 +115,8 @@ export function AllAssignedTransactionsView() {
   const listsOwn = isPartyRole && !roleSeesAllTransactionsPage(role);
 
   const mayReopenReport = canReopenCaseStudyReport(access);
-  // The appraiser too (Omar 2026-11-18): he hands a party to someone else on any transaction here.
-  const mayReassignParties = canReassignParties(access);
+  // Not the appraiser (Omar 2026-11-18): he asks whoever handed him the transaction instead.
+  const mayReassignParties = canRedistributeParties(access);
   const mayDropOffice = canSkipEngineeringSurvey(access);
   const mayReopenCompleted = canReopenCompletedTransaction(role);
   useEffect(() => {
@@ -186,14 +186,14 @@ export function AllAssignedTransactionsView() {
         });
         // «تعديل الأطراف» (Omar 2026-11-15): the parties working on the deed — hand one that has not
         // delivered to someone else, or drop an office the transaction does not need. Offered on the
-        // deed's case-study task once distributed (the server's rule), to whoever may do either —
-        // the appraiser included (2026-11-18). The parent is read from this page's list: the
-        // appraiser's general task list holds only his own tasks.
+        // deed's case-study task once distributed (the server's rule), to whoever may do either.
+        // The parent is read from this page's own list.
         const parent =
           ctx.task.kind === "case-study-property"
             ? ctx.task
             : ctx.queueTasks.find((t) => t.id === ctx.task.parentTaskId);
         if (
+          !isPartyRole &&
           parent?.kind === "case-study-property" &&
           parent.phase === "case-study" &&
           parent.status !== "cancelled" &&

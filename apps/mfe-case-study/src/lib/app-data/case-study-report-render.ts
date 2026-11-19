@@ -46,6 +46,7 @@ export function caseStudyReportAssetUrl(
 }
 
 import { escapeHtml as escapeCaseStudyReportHtml } from "@platform/app-shared/lib/html-escape";
+import { versionedReportNo } from "@platform/app-shared/domain/report-number";
 export { escapeCaseStudyReportHtml };
 
 function renderCb(checked: boolean): string {
@@ -286,7 +287,8 @@ export function buildCaseStudyReportBodyHtml(
   const stampSrc = caseStudyReportAssetUrl(caseStudyStampImage(), origin);
   const esc = escapeCaseStudyReportHtml;
   const layout = orgLetterheadLayout(getCachedOrganizationBranding());
-  const reference = options?.referenceNumber?.trim();
+  // A later version prints PRC-…/N (Omar 2026-11-18); version 1 the bare number.
+  const reference = versionedReportNo(options?.referenceNumber, model.version);
   const referenceHtml = reference
     ? `
     <div class="csrd-title-sub csrd-ltr" dir="ltr">${esc(reference)}</div>`

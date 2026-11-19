@@ -8,6 +8,8 @@ export type CaseStudyReportDto = {
   propertyId?: string;
   poNumber?: string;
   status: string;
+  /** 1, then +1 each time the report is reopened after reaching Enfaz (printed PRC-…/N, 2026-11-18). */
+  version?: number;
   currentStep: number;
   requestNumber: string;
   requestDate: string;

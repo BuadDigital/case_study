@@ -19,7 +19,9 @@ public partial class PartyTaskSubmissionService
         PartySubmissionActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanReopenValuationReport(actor.Staff))
+        // Reached only from Valuation (dispatch), after its own check: review's «نسخة جديدة» or any
+        // specialist's «التعديل» — the coordinator included (found live 2026-11-19).
+        if (!PoRoleMatrixRules.CanReopenValuationForEdit(actor.Staff))
             return (null, Error(NewVersionForbiddenAr));
 
         var task = await _repo.GetTaskAsync(taskId, cancellationToken);

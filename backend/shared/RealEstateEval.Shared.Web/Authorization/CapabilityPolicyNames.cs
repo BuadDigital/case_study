@@ -114,12 +114,6 @@ public static class CapabilityPolicyNames
     public const string EditPropertyData = "Capability:edit-property-data";
 
     /// <summary>
-    /// Hand a case-study party to someone else: case staff and the appraiser (2026-11-18). The door
-    /// only — <c>WorkflowTaskLifecycleRules.CanReassignParties</c> decides by role behind it.
-    /// </summary>
-    public const string ReassignParties = "Capability:reassign-parties";
-
-    /// <summary>
     /// Case-study workspace reads (work orders, forms, party submissions, workflow queue).
     /// Case staff manage the file; field parties see their assigned slice (service-layer filter).
     /// </summary>

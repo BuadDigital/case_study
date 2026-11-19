@@ -51,6 +51,27 @@ export function isPropertyDistributed(
 }
 
 /**
+ * «التعديل» lifts the lock (Omar 2026-11-18): while the deed's transaction has an active reopening that
+ * reopened the study, the locked fields are editable again (a wrong deed number is corrected then).
+ *
+ * How it works: any reopening not closed, with the study reopened, on this deed or on its transaction —
+ * the same test as the server's HasActiveStudyReopeningAsync. Edge cases: the list still loading → the
+ * lock stays (the server is the judge either way).
+ */
+export function editLiftsDistributionLock(
+  reopenings: readonly { propertyId: string; transactionId: string; reopensStudy: boolean; status: string }[],
+  propertyId: string,
+  transactionId: string | null | undefined,
+): boolean {
+  return reopenings.some(
+    (r) =>
+      r.reopensStudy &&
+      r.status !== "closed" &&
+      (r.propertyId === propertyId || (Boolean(transactionId) && r.transactionId === transactionId)),
+  );
+}
+
+/**
  * The property a whole-object replace may write: under the lock the locked keys keep the current
  * values (a prior-PO clone must not bring another deed's number, area or boundaries).
  * Edge cases: the area is kept too, although it is no longer locked (2026-11-17). Typing it is a

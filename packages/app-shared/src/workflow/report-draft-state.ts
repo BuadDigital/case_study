@@ -10,6 +10,8 @@ export type ReportDraftState = {
   reportStage: "draft" | "deposit_issued" | "final_issued";
   /** The appraiser's progress ladder 0–100 as the server computed it; absent when the state came from a single draft read. */
   progressPct?: number;
+  /** The current draft's version (2026-11-18): above 1 the header icon carries its number. */
+  version?: number;
 };
 
 type AppraisalStageGroup = "draft_sent" | "approved" | "closed";
@@ -35,6 +37,7 @@ export function putReportDraftStates(
     status: ReportDraftState["status"];
     reportStage: ReportDraftState["reportStage"];
     progressPct?: number;
+    version?: number;
   }[],
 ): void {
   let changed = false;
@@ -42,8 +45,20 @@ export function putReportDraftStates(
     const prev = states.get(s.propertyId);
     // A single draft read carries no progress: keep the last ladder value the batch gave.
     const progressPct = s.progressPct ?? prev?.progressPct;
-    if (prev?.status === s.status && prev.reportStage === s.reportStage && prev.progressPct === progressPct) continue;
-    states.set(s.propertyId, { status: s.status, reportStage: s.reportStage, progressPct });
+    const draftVersion = s.version ?? prev?.version;
+    if (
+      prev?.status === s.status &&
+      prev.reportStage === s.reportStage &&
+      prev.progressPct === progressPct &&
+      prev.version === draftVersion
+    )
+      continue;
+    states.set(s.propertyId, {
+      status: s.status,
+      reportStage: s.reportStage,
+      progressPct,
+      version: draftVersion,
+    });
     changed = true;
   }
   if (!changed) return;

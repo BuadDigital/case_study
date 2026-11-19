@@ -262,13 +262,18 @@ export async function submitPartySubmission(
   }
 }
 
+/**
+ * Returns a party's package for correction. With `newAssignee` (appraisal only, review's return —
+ * Omar 2026-11-18) the task moves to that appraiser in the same step.
+ */
 export async function reopenPartySubmission(
   taskId: string,
   returnNote: string,
+  newAssignee?: { id: string; name: string } | null,
 ): Promise<PartySubmissionMutationResult> {
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await reopenPartyTaskSubmission(config, taskId, returnNote);
+  const result = await reopenPartyTaskSubmission(config, taskId, returnNote, newAssignee);
   const mapped = mutationFromApiResult(result, "تعذّر إعادة فتح مهمة الطرف");
   if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
   return mapped;

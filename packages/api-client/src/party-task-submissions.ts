@@ -86,6 +86,9 @@ async function parseSaveFailure(
 
 export type ReopenPartyTaskSubmissionRequest = {
   returnNote: string;
+  /** Appraisal only: review returns the valuation to another appraiser in the same step (2026-11-18). */
+  newAssigneeId?: string;
+  newAssigneeName?: string;
 };
 
 function normalizeProvenanceEntry(raw: unknown): PartyFieldProvenanceEntry {
@@ -327,6 +330,7 @@ export async function reopenPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,
   returnNote: string,
+  newAssignee?: { id: string; name: string } | null,
 ): Promise<
   | ApiOk<PartyTaskSubmissionDto>
   | (ApiErr & { errors?: Record<string, string> })
@@ -336,7 +340,10 @@ export async function reopenPartyTaskSubmission(
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/reopen`, {
       method: "POST",
       headers: authHeaders(config.token),
-      body: JSON.stringify({ returnNote } satisfies ReopenPartyTaskSubmissionRequest),
+      body: JSON.stringify({
+        returnNote,
+        ...(newAssignee ? { newAssigneeId: newAssignee.id, newAssigneeName: newAssignee.name } : {}),
+      } satisfies ReopenPartyTaskSubmissionRequest),
     });
     return await readSubmissionWrite(res);
   } catch {

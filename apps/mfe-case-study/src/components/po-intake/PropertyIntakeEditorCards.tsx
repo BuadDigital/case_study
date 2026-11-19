@@ -36,10 +36,12 @@ import {
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
 import {
   DISTRIBUTION_LOCKED_KEYS,
+  editLiftsDistributionLock,
   isPropertyDistributed,
   keepDistributionLockedFields,
 } from "../../lib/app-data/property-distribution-lock";
 import { fetchRecentPoRecord, useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useActiveReopeningsQuery } from "../../query/use-active-reopenings-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { PoPropertyEnfathForm } from "./PoPropertyDeedForm";
 import {
@@ -165,7 +167,11 @@ export function usePropertyIntakeEditor({
   // The distribution lock (Omar 2026-11-15): once the deed is distributed, the fields the parties work
   // from are greyed out in the forms and their patches are dropped here; the server refuses them too.
   const tasksQuery = useWorkflowTasksQuery();
-  const distributionLocked = isPropertyDistributed(poNumber, propertyId, tasksQuery.data ?? []);
+  // «التعديل» that reopened the study lifts it while active (Omar 2026-11-18).
+  const reopenings = useActiveReopeningsQuery();
+  const distributionLocked =
+    !editLiftsDistributionLock(reopenings, propertyId, property?.transactionId) &&
+    isPropertyDistributed(poNumber, propertyId, tasksQuery.data ?? []);
   // The form waits for the task list too, so it is drawn once in its final state — before this the
   // fields showed editable for half a second, then turned grey with the lock lines (2026-11-15).
   const tasksLoading = tasksQuery.isLoading;

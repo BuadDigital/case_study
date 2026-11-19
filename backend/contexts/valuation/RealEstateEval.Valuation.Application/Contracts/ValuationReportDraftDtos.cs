@@ -79,6 +79,9 @@ public class ReportDraftStateDto
     /// <summary>draft | deposit_issued | final_issued.</summary>
     public string ReportStage { get; init; } = "draft";
 
+    /// <summary>The current draft's version (1, then n+1 after «التعديل») — the header icon's badge.</summary>
+    public int Version { get; init; } = 1;
+
     /// <summary>
     /// The appraiser's progress ladder (0–100) from his real work and the report cycle, except that «handed over
     /// to the specialist» (75) is known to Case Study only — the reader raises it from the task's package status.

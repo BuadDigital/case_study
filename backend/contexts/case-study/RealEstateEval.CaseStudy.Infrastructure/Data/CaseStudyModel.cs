@@ -108,6 +108,7 @@ public static class CaseStudyModel
             e.Property(x => x.OpenedByName).HasMaxLength(256);
             e.Property(x => x.ClosedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ClosedByName).HasMaxLength(256);
+            e.Property(x => x.ValuationInputsJson).HasColumnType("jsonb");
             e.HasIndex(x => new { x.TransactionId, x.Status });
             e.HasIndex(x => x.Status);
             e.HasAllowedValues("TransactionReopenings", nameof(TransactionReopening.Source), TransactionReopeningSources.All);
@@ -401,6 +402,7 @@ public static class CaseStudyModel
             MapTable(e, "CaseStudyReports", DatabaseSchemas.CaseStudy, ownsMigrations);
             e.UseOptimisticConcurrency();
             e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.ReportVersion).HasDefaultValue(1);
             e.Property(x => x.RequestNumber).HasMaxLength(128);
             e.Property(x => x.RequestDate).HasMaxLength(32);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
@@ -514,6 +516,40 @@ public static class CaseStudyModel
             e.HasAllowedValues("TransactionCancellations", nameof(TransactionCancellation.Scope), TransactionCancellationScopes.All);
             e.HasAllowedValues("TransactionCancellations", nameof(TransactionCancellation.Status), TransactionCancellationStatuses.All);
             e.HasAllowedValues("TransactionCancellations", nameof(TransactionCancellation.ReasonCode), TransactionCancellationReasons.All);
+        });
+
+        // The appraiser's reassignment requests and peer transfers (Omar 2026-11-18): one open per task.
+        builder.Entity<AppraiserHandoverRequest>(e =>
+        {
+            MapTable(e, "AppraiserHandoverRequests", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.UseOptimisticConcurrency();
+            e.Property(x => x.Kind).HasMaxLength(16);
+            e.Property(x => x.Status).HasMaxLength(16);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.Reason).HasMaxLength(2000);
+            e.Property(x => x.RequestedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.RequestedByName).HasMaxLength(256);
+            e.Property(x => x.RequestedByAssigneeId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.HandlerSubRole).HasMaxLength(32);
+            e.Property(x => x.HandingUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.TakenByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.TakenByName).HasMaxLength(256);
+            e.Property(x => x.PeerAssigneeId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.PeerName).HasMaxLength(256);
+            e.Property(x => x.Direction).HasMaxLength(16);
+            e.Property(x => x.ClosedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ClosedByName).HasMaxLength(256);
+            e.Property(x => x.ClosingNote).HasMaxLength(2000);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.AppraisalTaskId)
+                .IsUnique()
+                .HasFilter("\"Status\" IN ('pending', 'taken')");
+            e.HasOne<WorkflowTask>()
+                .WithMany()
+                .HasForeignKey(x => x.AppraisalTaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasAllowedValues("AppraiserHandoverRequests", nameof(AppraiserHandoverRequest.Kind), AppraiserHandoverKinds.All);
+            e.HasAllowedValues("AppraiserHandoverRequests", nameof(AppraiserHandoverRequest.Status), AppraiserHandoverStatuses.All);
         });
 
         return builder;

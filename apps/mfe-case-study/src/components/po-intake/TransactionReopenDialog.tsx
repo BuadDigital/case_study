@@ -40,6 +40,8 @@ export function TransactionReopenDialog({
   const [reopenStudy, setReopenStudy] = useState(false);
   const [reopenValuation, setReopenValuation] = useState(false);
   const [needsFieldWork, setNeedsFieldWork] = useState(false);
+  // Enfaz asks to change the value or the forced-sale ratio: the valuation report reopens with it (2026-11-18).
+  const [changesValue, setChangesValue] = useState(false);
   const [error, setError] = useState<ReopenError | null>(null);
   const [notices, setNotices] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,6 +55,7 @@ export function TransactionReopenDialog({
       reopenStudy,
       reopenValuation,
       needsFieldWork,
+      changesValue,
     });
     if (!plan.ok) {
       setError({ field: plan.field, text: plan.error });
@@ -105,9 +108,30 @@ export function TransactionReopenDialog({
   const clearChoiceError = () => {
     if (error?.field === "choice") setError(null);
   };
-  const choices: { key: string; label: string; checked: boolean; set: (v: boolean) => void }[] = [
+  const choices: {
+    key: string;
+    label: string;
+    checked: boolean;
+    set: (v: boolean) => void;
+    locked?: boolean;
+  }[] = [
+    {
+      key: "value",
+      label: "تعديل القيمة أو نسبة التصفية (يُفتح تقرير التقييم معه)",
+      checked: changesValue,
+      set: (v) => {
+        setChangesValue(v);
+        if (v) setReopenValuation(true);
+      },
+    },
     { key: "study", label: "تقرير دراسة الحالة", checked: reopenStudy, set: setReopenStudy },
-    { key: "valuation", label: "تقرير التقييم (نسخة جديدة وإيداع جديد في «قيمة»)", checked: reopenValuation, set: setReopenValuation },
+    {
+      key: "valuation",
+      label: "تقرير التقييم (نسخة جديدة وإيداع جديد في «قيمة»)",
+      checked: reopenValuation || changesValue,
+      set: setReopenValuation,
+      locked: changesValue,
+    },
     { key: "field", label: "عمل ميداني (إعادة تصوير أو زيارة — يُعاد فتح الدراسة)", checked: needsFieldWork, set: setNeedsFieldWork },
   ];
 
@@ -184,7 +208,7 @@ export function TransactionReopenDialog({
             <input
               type="checkbox"
               checked={choice.checked}
-              disabled={busy}
+              disabled={busy || choice.locked}
               onChange={(e) => {
                 choice.set(e.target.checked);
                 clearChoiceError();

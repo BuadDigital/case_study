@@ -89,6 +89,12 @@ public sealed partial class ValuationReportDraftService
                 PropertyId = vr.PropertyId,
                 Status = status,
                 ReportStage = stage,
+                // No live draft (none yet, or its copy was superseded by «التعديل»): the version the next
+                // draft takes, as the single read's NextVersionAsync — so the header badge shows /2 at once.
+                Version = draft?.Version
+                    ?? Math.Max(
+                        own.Select(i => i.Version).DefaultIfEmpty(0).Max(),
+                        drafts.Where(d => d.ValuationRequestId == vr.Id).Select(d => d.Version).DefaultIfEmpty(0).Max()) + 1,
                 ProgressPct = AppraiserProgressRules.Overall(work, status, stage),
             };
         }).ToList();

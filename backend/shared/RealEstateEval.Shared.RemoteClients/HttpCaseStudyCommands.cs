@@ -64,13 +64,14 @@ public sealed class HttpCaseStudyCommands(
     /// </remarks>
     public async Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
         Guid propertyId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int version = 1)
     {
         var (body, errors) = await UpstreamJson.PostForResultAsync<CaseStudyTransactionNumbersDto>(
             http,
             httpContext,
             options.Value.CaseStudyBaseUrl,
-            $"/api/case-study-dispatch/properties/{propertyId:D}/confirm-reference",
+            $"/api/case-study-dispatch/properties/{propertyId:D}/confirm-reference{(version > 1 ? $"?version={version}" : "")}",
             new { },
             Setting,
             cancellationToken);

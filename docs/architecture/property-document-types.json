@@ -26,6 +26,7 @@
     { "key": "inspection-photo", "labelAr": "صور المعاينة", "group": "photos", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": false, "pdfOnly": false, "countsAs": null, "legacyScopes": ["field-inspection-photo"] },
     { "key": "valuation-report", "labelAr": "تقرير التقييم", "group": "outputs", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": false, "pdfOnly": true, "countsAs": null, "legacyScopes": ["evaluator-report"] },
     { "key": "deposit-certificate", "labelAr": "شهادة الإيداع", "group": "outputs", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": false, "pdfOnly": false, "countsAs": null, "legacyScopes": ["evaluator-deposit-certificate"] },
+    { "key": "case-study-report", "labelAr": "تقرير دراسة الحالة", "group": "outputs", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": false, "pdfOnly": true, "countsAs": null, "legacyScopes": ["case-study-report"] },
     { "key": "valued-document", "labelAr": "مستند ذو قيمة", "group": "valued", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": ["property-valued-document"] },
     { "key": "unlisted", "labelAr": "مستند غير معرّف", "group": "unlisted", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": ["property-other"] }
   ]

@@ -333,7 +333,7 @@ public class WorkflowTasksController : ControllerBase
     }
 
     [HttpPost("{id:guid}/redistribute")]
-    [Authorize(Policy = CapabilityPolicyNames.ReassignParties)]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> Redistribute(
         Guid id,
         [FromBody] RedistributePartiesRequest request,
