@@ -84,6 +84,11 @@ public sealed partial class TransactionStateService
         // returns as before.
         if (property.IsBillingReady) return (null, Fail(BillingReadyBlocksReturnAr));
 
+        // From here on the steps change two services and must all finish once started (Omar 2026-11-19): a
+        // page closed mid-way used to cancel between them, leaving the valuation reopened and the stamp
+        // cleared with no reopening row — and the retry refused as «not handed over».
+        cancellationToken = CancellationToken.None;
+
         var handoverBefore = new
         {
             at = property.EnfazHandoverAtUtc,

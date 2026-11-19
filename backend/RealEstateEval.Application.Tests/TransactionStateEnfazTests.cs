@@ -604,6 +604,31 @@ public class TransactionStateEnfazTests
         Assert.Empty(await rig.Service.ListActiveReopeningsAsync());
     }
 
+    [Fact]
+    public async Task A_page_closed_after_the_valuation_reopen_still_records_the_reopening()
+    {
+        // Found live 2026-11-19: the request was cancelled between the services, the reopening row was lost.
+        await using var rig = Arrange(handedOver: true, withTransaction: true);
+        using var page = new CancellationTokenSource();
+        rig.ValuationReopen.During = page.Cancel;
+
+        var (opened, errors) = await rig.Service.ReturnFromEnfazAsync(
+            WorkOrderId, PropertyId,
+            new ReturnFromEnfazRequest
+            {
+                Reason = Reason, ReopenStudy = true, ReopenValuation = true, Source = "enfaz", EnfazReference = "ENF-9",
+            },
+            Specialist,
+            page.Token);
+
+        Assert.Null(errors);
+        Assert.True(page.IsCancellationRequested);
+        Assert.Single(rig.Reports.Calls);
+        var reopening = await rig.Db.TransactionReopenings.SingleAsync();
+        Assert.Equal(TransactionReopeningStatuses.Open, reopening.Status);
+        Assert.Equal("ENF-9", opened!.Reopening!.EnfazReference);
+    }
+
     // ------------------------------------------------------------ «جاهز للفوترة»
 
     private static readonly DateTime Marked = new(2026, 10, 20, 8, 0, 0, DateTimeKind.Utc);
@@ -792,12 +817,16 @@ public class TransactionStateEnfazTests
         public List<(Guid PropertyId, string Reason)> Calls { get; } = [];
         public string? Error { get; set; }
 
+        /// <summary>Runs inside the call (a test closes the page here).</summary>
+        public Action? During { get; set; }
+
         public Task<(bool Reopened, string? Error)> ReopenDepositedReportAsync(
             Guid propertyId,
             string reason,
             CancellationToken cancellationToken = default)
         {
             Calls.Add((propertyId, reason));
+            During?.Invoke();
             return Task.FromResult<(bool Reopened, string? Error)>(Error is null ? (true, null) : (false, Error));
         }
 
